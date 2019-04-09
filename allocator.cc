@@ -1,3 +1,5 @@
+// This file is a fork of gemmlowp's allocator.h, under Apache 2.0 license.
+
 #include "allocator.h"
 
 #include "check_macros.h"

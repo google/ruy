@@ -15,10 +15,10 @@ TEST(TuneTest, TuneTest) {
   sleep(1);
   ASSERT_FALSE(tuning_resolver.Resolve() == Tuning::kAuto);
 
-  tuning_resolver.SetExplicitTuning(Tuning::kAuto);
+  tuning_resolver.SetTuning(Tuning::kAuto);
 
   for (auto tuning : {Tuning::kOutOfOrder, Tuning::kInOrder}) {
-    tuning_resolver.SetExplicitTuning(tuning);
+    tuning_resolver.SetTuning(tuning);
     ASSERT_TRUE(tuning_resolver.Resolve() == tuning);
     // See above comment about 1 second.
     sleep(1);

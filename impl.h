@@ -277,7 +277,7 @@ struct TrMulImpl {
     context->EnsureNPerThreadStates(1);
     TuningResolver* tuning_resolver =
         &context->per_thread_states[0]->tuning_resolver;
-    tuning_resolver->SetExplicitTuning(context->explicit_tuning);
+    tuning_resolver->SetTuning(context->explicit_tuning);
     const Tuning tuning = tuning_resolver->Resolve();
 
     Matrix<PackedLhsScalar> packed_lhs;
@@ -383,8 +383,7 @@ struct TrMulImpl {
 
     context->EnsureNPerThreadStates(thread_count);
     for (auto &per_thread_state : context->per_thread_states) {
-      per_thread_state->tuning_resolver.SetExplicitTuning(
-          context->explicit_tuning);
+      per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
     }
 
     TaskType* tasks = allocator->GetPointer(tasks_buffer_handle);

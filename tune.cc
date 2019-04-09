@@ -10,20 +10,22 @@ namespace ruy {
 
 namespace {
 
-bool TuningResolverIsTimestampRecent(std::uint64_t old_timestamp,
-                                     std::uint64_t new_timestamp,
-                                     std::uint64_t expiry) {
+bool IsTimestampRecent(std::uint64_t old_timestamp, std::uint64_t new_timestamp,
+                       std::uint64_t expiry) {
   return (new_timestamp - old_timestamp) < expiry;
 }
 
-std::uint64_t TuningResolverGetTimestamp() { return TimeNowRelaxed(); }
-
-std::uint64_t TuningResolverGetTimestampExpiry() {
+std::uint64_t GetTimestampExpiry() {
   static constexpr int kExpiryInverseSecs = 4;
   return TimeFrequency() / kExpiryInverseSecs;
 }
 
+}  // namespace
+
 #ifdef __aarch64__
+
+namespace {
+
 void PoorlyOrderedKernel(int iters) {
   asm volatile(
       "mov w0, %w[iters]\n"
@@ -74,7 +76,9 @@ void NicelyOrderedKernel(int iters) {
       : "cc", "x0", "v0", "v1", "v2", "v3");
 }
 
-float TuningResolverEvalRatio() {
+}  // namespace
+
+float TuningResolver::EvalRatio() {
   // With the current settings, 400 iterations and 4 repeats, this test has
   // a latency of roughly 80 microseconds on a Cortex-A53 at 1.4 GHz.
   static constexpr int kLoopIters = 400;
@@ -99,11 +103,12 @@ float TuningResolverEvalRatio() {
          static_cast<float>(timing_poorly_ordered);
 }
 
-float TuningResolverThresholdRatio() {
-  // Empirically determined threshold to distinguish in-order Cortex-A53/A55
-  // cores from out-of-order Cortex-A57/A73/A75/A76 cores. Based on these
-  // experimental results, which were obtained with much lower (kLoopIters=1000,
-  // kRepeats=1) so as to make them resilient to noise, we have:
+float TuningResolver::ThresholdRatio() {
+  // Empirically (see :tune_tool) determined threshold to distinguish in-order
+  // Cortex-A53/A55 cores from out-of-order Cortex-A57/A73/A75/A76 cores. Based
+  // on these experimental results, which were obtained with much lower
+  // (kLoopIters=1000, kRepeats=1) so as to make them resilient to noise, we
+  // have:
   //
   // CPU core type | in/out of order | observed ratio
   //               |                 | (timing_nicely_ordered /
@@ -124,22 +129,19 @@ float TuningResolverThresholdRatio() {
   return 0.65f;
 }
 
-Tuning TuningResolverResolve() {
-  const bool is_probably_inorder =
-      TuningResolverEvalRatio() < TuningResolverThresholdRatio();
+Tuning TuningResolver::ResolveNow() {
+  const bool is_probably_inorder = EvalRatio() < ThresholdRatio();
   return is_probably_inorder ? Tuning::kInOrder : Tuning::kOutOfOrder;
 }
 
 #else  // not defined __aarch64__
 
-float TuningResolverEvalRatio() { return 0; }
-float TuningResolverThresholdRatio() { return 0; }
+float TuningResolver::EvalRatio() { return 0; }
+float TuningResolver::ThresholdRatio() { return 0; }
 
-Tuning TuningResolverResolve() { return Tuning::kOutOfOrder; }
+Tuning TuningResolver::ResolveNow() { return Tuning::kOutOfOrder; }
 
 #endif
-
-}  // namespace
 
 Tuning TuningResolver::Resolve() {
 #if (defined RUY_OPT_SET) && !(RUY_OPT_SET & RUY_OPT_TUNING)
@@ -148,17 +150,17 @@ Tuning TuningResolver::Resolve() {
   if (unresolved_tuning_ != Tuning::kAuto) {
     return unresolved_tuning_;
   }
-  std::uint64_t new_timestamp = TuningResolverGetTimestamp();
+  std::uint64_t new_timestamp = TimeNowRelaxed();
   if (!timestamp_expiry_) {
-    timestamp_expiry_ = TuningResolverGetTimestampExpiry();
+    timestamp_expiry_ = GetTimestampExpiry();
   }
   if (last_resolved_tuning_ != Tuning::kAuto &&
-      TuningResolverIsTimestampRecent(last_resolved_timestamp_, new_timestamp,
-                                      timestamp_expiry_)) {
+      IsTimestampRecent(last_resolved_timestamp_, new_timestamp,
+                        timestamp_expiry_)) {
     return last_resolved_tuning_;
   }
   last_resolved_timestamp_ = new_timestamp;
-  last_resolved_tuning_ = TuningResolverResolve();
+  last_resolved_tuning_ = ResolveNow();
   return last_resolved_tuning_;
 }
 
