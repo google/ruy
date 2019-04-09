@@ -48,8 +48,8 @@ const char* PathName(Path path) {
   switch (path) {
     RUY_PATHNAME_CASE(kReference)
     RUY_PATHNAME_CASE(kStandardCpp)
-    RUY_PATHNAME_CASE(kNeonAsm)
-    RUY_PATHNAME_CASE(kNeonDotprodAsm)
+    RUY_PATHNAME_CASE(kNeon)
+    RUY_PATHNAME_CASE(kNeonDotprod)
     default:
       RUY_CHECK(false);
       return nullptr;
@@ -1476,7 +1476,7 @@ std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
   if (benchmark) {
     return {Tuning::kAuto};
   }
-  if (path == Path::kNeonAsm || path == Path::kNeonDotprodAsm) {
+  if (path == Path::kNeon || path == Path::kNeonDotprod) {
     return {Tuning::kInOrder, Tuning::kOutOfOrder, Tuning::kAuto};
   }
   return {Tuning::kAuto};

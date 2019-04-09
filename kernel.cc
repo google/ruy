@@ -71,7 +71,7 @@ void CheckOffsetsInKernelParams8bit(const Params&) {
 
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonAsm, optimized for out-of-order cores)");
+      "Kernel (kNeon, optimized for out-of-order cores)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -962,7 +962,7 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
 
 void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonAsm, optimized for in-order cores)");
+      "Kernel (kNeon, optimized for in-order cores)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -1896,7 +1896,7 @@ void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
 
 void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonDotprodAsm, optimized for out-of-order cores)");
+      "Kernel (kNeonDotprod, optimized for out-of-order cores)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -3072,7 +3072,7 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
 
 void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonDotprodAsm, optimized for in-order cores)");
+      "Kernel (kNeonDotprod, optimized for in-order cores)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -4142,7 +4142,7 @@ void CheckOffsetsInKernelParamsFloat(const Params&) {
 void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
   CheckOffsetsInKernelParamsFloat(params);
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonAsm, optimized for out-of-order cores)");
+      "Kernel (kNeon, optimized for out-of-order cores)");
 
   const float* lhs_col_ptr = params.lhs_base_ptr;
   const float* rhs_col_ptr = params.rhs_base_ptr;
@@ -4729,7 +4729,7 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
 
 void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonAsm, optimized for in-order cores)");
+      "Kernel (kNeon, optimized for in-order cores)");
 
   CheckOffsetsInKernelParamsFloat(params);
 
@@ -5169,7 +5169,7 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
 
 void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
-      "Kernel (kNeonDotprodAsm, optimized for in-order cores)");
+      "Kernel (kNeonDotprod, optimized for in-order cores)");
 
   CheckOffsetsInKernelParamsFloat(params);
 

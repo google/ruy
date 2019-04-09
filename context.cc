@@ -23,12 +23,11 @@ Path Context::GetRuntimeEnabledPaths() {
   runtime_enabled_paths_ = kAllPaths;
 
   // Now selectively disable paths that aren't supported on this machine.
-  if ((runtime_enabled_paths_ & Path::kNeonDotprodAsm) != Path::kNone) {
+  if ((runtime_enabled_paths_ & Path::kNeonDotprod) != Path::kNone) {
     if (!DetectDotprod()) {
-      runtime_enabled_paths_ = runtime_enabled_paths_ ^ Path::kNeonDotprodAsm;
+      runtime_enabled_paths_ = runtime_enabled_paths_ ^ Path::kNeonDotprod;
       // Sanity check.
-      RUY_DCHECK((runtime_enabled_paths_ & Path::kNeonDotprodAsm) ==
-                 Path::kNone);
+      RUY_DCHECK((runtime_enabled_paths_ & Path::kNeonDotprod) == Path::kNone);
     }
   }
 

@@ -34,8 +34,8 @@ enum class Path : std::uint8_t {
   kNone = 0,
   kReference = 0x1,    // reference code.
   kStandardCpp = 0x2,  // Standard C++ only. No SIMD or other arch features.
-  kNeonAsm = 0x4,
-  kNeonDotprodAsm = 0x8,
+  kNeon = 0x4,
+  kNeonDotprod = 0x8,
 };
 
 inline constexpr Path operator|(Path p, Path q) {
@@ -58,8 +58,8 @@ inline Path GetMostSignificantPath(Path path_mask) {
 }
 
 #ifdef __aarch64__
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp |
-                           Path::kNeonAsm | Path::kNeonDotprodAsm;
+constexpr Path kAllPaths =
+    Path::kReference | Path::kStandardCpp | Path::kNeon | Path::kNeonDotprod;
 #else
 constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp;
 #endif

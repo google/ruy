@@ -16,11 +16,11 @@ struct PackedTypeImpl {
 };
 
 template <>
-struct PackedTypeImpl<Path::kNeonAsm, std::uint8_t> {
+struct PackedTypeImpl<Path::kNeon, std::uint8_t> {
   using Type = std::int8_t;
 };
 template <>
-struct PackedTypeImpl<Path::kNeonDotprodAsm, std::uint8_t> {
+struct PackedTypeImpl<Path::kNeonDotprod, std::uint8_t> {
   using Type = std::int8_t;
 };
 
@@ -84,8 +84,8 @@ struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
   }
 };
 
-RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeonAsm)
-RUY_INHERIT_PACK(Path::kNeonAsm, Path::kNeonDotprodAsm)
+RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeon)
+RUY_INHERIT_PACK(Path::kNeon, Path::kNeonDotprod)
 
 #if (defined __aarch64__) && (RUY_OPT_SET & RUY_OPT_ASM)
 
@@ -117,8 +117,8 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
                                 int input_xor);
 
 template <typename Scalar>
-struct PackImpl<Path::kNeonAsm, FixedKernelLayout<Order::kColMajor, 16, 4>,
-                Scalar, std::int8_t, std::int32_t> {
+struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
+                std::int8_t, std::int32_t> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -179,11 +179,9 @@ struct PackImpl<Path::kNeonAsm, FixedKernelLayout<Order::kColMajor, 16, 4>,
   }
 };
 
-
 template <typename Scalar>
-struct PackImpl<Path::kNeonDotprodAsm,
-                FixedKernelLayout<Order::kRowMajor, 4, 8>, Scalar, std::int8_t,
-                std::int32_t> {
+struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kRowMajor, 4, 8>,
+                Scalar, std::int8_t, std::int32_t> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -258,8 +256,8 @@ void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
                           float* packed_ptr, int start_col, int end_col);
 
 template <>
-struct PackImpl<Path::kNeonAsm, FixedKernelLayout<Order::kRowMajor, 4, 8>,
-                float, float, float> {
+struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
+                float, float> {
   static void Run(Tuning tuning, const Matrix<float>& src_matrix,
                   Matrix<float>* packed_matrix, int start_col, int end_col,
                   float*) {

@@ -153,8 +153,8 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
         : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, Spec>(tuning) {} \
   };
 
-RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeonAsm)
-RUY_INHERIT_KERNEL(Path::kNeonAsm, Path::kNeonDotprodAsm)
+RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
+RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
 
 #if (defined __aarch64__) && (RUY_OPT_SET & RUY_OPT_ASM)
 
@@ -299,7 +299,7 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params);
 
 template <typename DstScalar>
-struct Kernel<Path::kNeonAsm, std::int8_t, std::int8_t, DstScalar,
+struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
               BasicSpec<std::int32_t, DstScalar>> {
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
@@ -322,7 +322,7 @@ struct Kernel<Path::kNeonAsm, std::int8_t, std::int8_t, DstScalar,
 };
 
 template <typename DstScalar>
-struct Kernel<Path::kNeonDotprodAsm, std::int8_t, std::int8_t, DstScalar,
+struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
               BasicSpec<std::int32_t, DstScalar>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
@@ -416,7 +416,7 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params);
 void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params);
 
 template <>
-struct Kernel<Path::kNeonAsm, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kNeon, float, float, float, BasicSpec<float, float>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
@@ -439,11 +439,10 @@ struct Kernel<Path::kNeonAsm, float, float, float, BasicSpec<float, float>> {
 // its presence allows us to distinguish, in the in-order tuning case, between
 // A53 and A55r1. TODO: should this be folded into tuning?
 template <>
-struct Kernel<Path::kNeonDotprodAsm, float, float, float,
-              BasicSpec<float, float>>
-    : Kernel<Path::kNeonAsm, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kNeonDotprod, float, float, float, BasicSpec<float, float>>
+    : Kernel<Path::kNeon, float, float, float, BasicSpec<float, float>> {
   using Base =
-      Kernel<Path::kNeonAsm, float, float, float, BasicSpec<float, float>>;
+      Kernel<Path::kNeon, float, float, float, BasicSpec<float, float>>;
   explicit Kernel(Tuning tuning_) : Base(tuning_) {}
   void Run(const Matrix<float>& lhs, const Matrix<float>& rhs, const float*,
            const float*, const BasicSpec<float, float>& spec, int start_row,

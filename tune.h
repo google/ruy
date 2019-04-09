@@ -5,8 +5,8 @@
 // Tunings are merely local variations of optimized code paths, that are
 // drop-in replacements for each other --- the input and output data layouts
 // are identical.  By contrast, what ruy calls a Path dictates its own
-// data layouts. For example, Path::kNeonDotprodAsm will use different
-// layouts compared to Path::kNeonAsm; but within each, different tunings
+// data layouts. For example, Path::kNeonDotprod will use different
+// layouts compared to Path::kNeon; but within each, different tunings
 // will share that same layout.
 //
 // # Tuning is for now only based on 1 bit: OutOfOrder / InOrder
@@ -17,8 +17,8 @@
 // to small-scale asm details (which is what "tuning" is about); and for each
 // asm code path, there tends to be one main in-order CPU architecture that
 // we focus our tuning effort on. Examples:
-//  * For Path::kNeonAsm, the main in-order CPU is Cortex-A53/A55 (pre-dotprod)
-//  * For Path::kNeonDotprodAsm, the main in-order CPU is Cortex-A55r1 (dotprod)
+//  * For Path::kNeon, the main in-order CPU is Cortex-A53/A55 (pre-dotprod)
+//  * For Path::kNeonDotprod, the main in-order CPU is Cortex-A55r1 (dotprod)
 //
 // Because having tuned code paths is a compromise of efficiency gains
 // versus implementation effort and code size, we are happy to stop at just this
