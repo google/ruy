@@ -1,8 +1,7 @@
 # ruy is not BLAS
 
-ruy is a matrix multiplication library. Its aim is to be the only matrix
-multiplication library that TensorFlow Lite would need, and to be more efficient
-in that context.
+ruy is a matrix multiplication library. Its focus is to cover the matrix
+multiplication needs of TensorFlow Lite.
 
 ruy supports both floating-point (like Eigen) and quantized (like gemmlowp).
 
