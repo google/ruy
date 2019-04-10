@@ -87,6 +87,20 @@ struct Matrix final {
   // The zero_point, i.e. which Scalar value is to be interpreted as zero.
   // When Scalar is floating-point, this must be 0.
   Scalar zero_point = 0;
+  // The row/column sums needed for quantized matrix multiplication when
+  // the opposite operand of the multiplication uses a non-symmetric zero
+  // point.
+  // This member is only relevant for packed matrices.
+  // Additionally, Ruy always uses 32-bit signed accumulators for quantized
+  // matrix multiplication.
+  // For floating point types, there is no quantization, so this pointer
+  // will always be null. We still need code referencing it to compile
+  // though, even if it is always branched around. Hence we use Scalar*
+  // itself as the type in that case.
+  using SumsType =
+      typename std::conditional<std::is_floating_point<Scalar>::value, Scalar,
+                                std::int32_t>::type;
+  SumsType* sums = nullptr;
 };
 
 template <typename StreamType, typename Scalar>

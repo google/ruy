@@ -31,7 +31,6 @@ struct TrMulTask final : Task {
             const BlockMap& block_map_,
 
             std::atomic<std::uint32_t>* atomic_n_, std::uint32_t thread_id_,
-            AccumScalar* lhs_sums_, AccumScalar* rhs_sums_,
             std::atomic<bool>* lhs_packed_, std::atomic<bool>* rhs_packed_,
             const Spec& spec_, TuningResolver* tuning_resolver_,
             Allocator* local_allocator_, Trace* trace_)
@@ -43,8 +42,6 @@ struct TrMulTask final : Task {
         block_map(block_map_),
         atomic_n(atomic_n_),
         thread_id(thread_id_),
-        lhs_sums(lhs_sums_),
-        rhs_sums(rhs_sums_),
         lhs_packed(lhs_packed_),
         rhs_packed(rhs_packed_),
         spec(spec_),
@@ -120,7 +117,7 @@ struct TrMulTask final : Task {
         if (local_lhs_packed && !local_lhs_packed[block_r]) {
           if (!lhs_packed[block_r].load(std::memory_order_acquire)) {
             Pack<ThePath, LhsKernelLayout>(tuning, lhs, packed_lhs, start_r,
-                                           end_r, lhs_sums);
+                                           end_r);
             TraceRecordBlockPackedLhs(n, trace);
             local_lhs_packed[block_r] = true;
             lhs_packed[block_r].store(true, std::memory_order_release);
@@ -129,14 +126,14 @@ struct TrMulTask final : Task {
         if (local_rhs_packed && !local_rhs_packed[block_c]) {
           if (!rhs_packed[block_c].load(std::memory_order_acquire)) {
             Pack<ThePath, RhsKernelLayout>(tuning, rhs, packed_rhs, start_c,
-                                           end_c, rhs_sums);
+                                           end_c);
             TraceRecordBlockPackedRhs(n, trace);
             local_rhs_packed[block_c] = true;
             rhs_packed[block_c].store(true, std::memory_order_release);
           }
         }
-        RunKernel(kernel, *packed_lhs, *packed_rhs, lhs_sums, rhs_sums, spec,
-                  start_r, start_c, end_r, end_c, result);
+        RunKernel(kernel, *packed_lhs, *packed_rhs, spec, start_r, start_c,
+                  end_r, end_c, result);
       }
       TraceRecordBlockFinished(n, trace);
       n = next_n;
@@ -163,8 +160,6 @@ struct TrMulTask final : Task {
   const BlockMap& block_map;
   std::atomic<std::uint32_t>* atomic_n;
   std::uint32_t thread_id;
-  AccumScalar* lhs_sums;
-  AccumScalar* rhs_sums;
   std::atomic<bool>* lhs_packed;
   std::atomic<bool>* rhs_packed;
   const Spec& spec;
@@ -258,8 +253,13 @@ struct TrMulImpl {
         Spec::kLoopStructure == LoopStructure::kAuto ? auto_loop_structure
                                                      : Spec::kLoopStructure;
 
-    Allocator::Handle<AccumScalar> lhs_sums_handle;
-    Allocator::Handle<AccumScalar> rhs_sums_handle;
+    Matrix<PackedLhsScalar> packed_lhs;
+    Matrix<PackedRhsScalar> packed_rhs;
+    using LhsSumsType = typename Matrix<PackedLhsScalar>::SumsType;
+    using RhsSumsType = typename Matrix<PackedRhsScalar>::SumsType;
+
+    Allocator::Handle<LhsSumsType> lhs_sums_handle;
+    Allocator::Handle<RhsSumsType> rhs_sums_handle;
     Allocator::Handle<std::atomic<bool>> lhs_packed_handle;
     Allocator::Handle<std::atomic<bool>> rhs_packed_handle;
     Allocator::Handle<PackedLhsScalar> lhs_packed_data_handle;
@@ -271,8 +271,6 @@ struct TrMulImpl {
     }
     Allocator* allocator = context->main_allocator.get();
 
-    AccumScalar* lhs_sums = nullptr;
-    AccumScalar* rhs_sums = nullptr;
 
     context->EnsureNPerThreadStates(1);
     TuningResolver* tuning_resolver =
@@ -280,8 +278,6 @@ struct TrMulImpl {
     tuning_resolver->SetTuning(context->explicit_tuning);
     const Tuning tuning = tuning_resolver->Resolve();
 
-    Matrix<PackedLhsScalar> packed_lhs;
-    Matrix<PackedRhsScalar> packed_rhs;
     CreatePackedMatrix<LhsKernelLayout>(tuning, lhs, allocator,
                                         &lhs_packed_data_handle, &packed_lhs);
     CreatePackedMatrix<RhsKernelLayout>(tuning, rhs, allocator,
@@ -304,20 +300,20 @@ struct TrMulImpl {
       packed_rhs.set_data(allocator->GetPointer(rhs_packed_data_handle));
 
       if (lhs_use_packing_sums) {
-        lhs_sums = allocator->GetPointer(lhs_sums_handle);
+        packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
       }
       if (rhs_use_packing_sums) {
-        rhs_sums = allocator->GetPointer(rhs_sums_handle);
+        packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
       }
 
       Kernel kernel(tuning);
 
       Pack<ThePath, LhsKernelLayout>(tuning, lhs, &packed_lhs, 0,
-                                     rows_rounded_up, lhs_sums);
+                                     rows_rounded_up);
       Pack<ThePath, RhsKernelLayout>(tuning, rhs, &packed_rhs, 0,
-                                     cols_rounded_up, rhs_sums);
-      RunKernel(kernel, packed_lhs, packed_rhs, lhs_sums, rhs_sums, spec, 0, 0,
-                rows_rounded_up, cols_rounded_up, dst);
+                                     cols_rounded_up);
+      RunKernel(kernel, packed_lhs, packed_rhs, spec, 0, 0, rows_rounded_up,
+                cols_rounded_up, dst);
 
       allocator->Decommit();
       return;
@@ -363,14 +359,14 @@ struct TrMulImpl {
     std::atomic<bool>* rhs_packed = nullptr;
 
     if (lhs_use_packing_sums) {
-      lhs_sums = allocator->GetPointer(lhs_sums_handle);
+      packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
     }
     lhs_packed = allocator->GetPointer(lhs_packed_handle);
     for (int i = 0; i < num_blocks_of_rows; i++) {
       lhs_packed[i].store(false, std::memory_order_release);
     }
     if (rhs_use_packing_sums) {
-      rhs_sums = allocator->GetPointer(rhs_sums_handle);
+      packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
     }
     rhs_packed = allocator->GetPointer(rhs_packed_handle);
     for (int i = 0; i < num_blocks_of_cols; i++) {
@@ -393,7 +389,7 @@ struct TrMulImpl {
       tasks_ptrs[i] = static_cast<Task*>(tasks + i);
       new (tasks_ptrs[i])
           TaskType(lhs, rhs, &packed_lhs, &packed_rhs, dst, block_map, atomic_n,
-                   i, lhs_sums, rhs_sums, lhs_packed, rhs_packed, spec,
+                   i, lhs_packed, rhs_packed, spec,
                    &context->per_thread_states[i]->tuning_resolver,
                    &context->per_thread_states[i]->allocator, trace);
     }

@@ -33,31 +33,32 @@ PackedScalar Pack(Scalar x) {
 }
 
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
-          typename PackedScalar, typename AccumScalar>
+          typename PackedScalar, typename SumsType>
 struct PackImpl {};
 
-#define RUY_INHERIT_PACK(PARENT, CHILD)                                        \
-  template <typename FixedKernelLayout, typename Scalar,                       \
-            typename PackedScalar, typename AccumScalar>                       \
-  struct PackImpl<CHILD, FixedKernelLayout, Scalar, PackedScalar, AccumScalar> \
-      : PackImpl<PARENT, FixedKernelLayout, Scalar, PackedScalar,              \
-                 AccumScalar> {};
+#define RUY_INHERIT_PACK(PARENT, CHILD)                                       \
+  template <typename FixedKernelLayout, typename Scalar,                      \
+            typename PackedScalar, typename SumsType>                         \
+  struct PackImpl<CHILD, FixedKernelLayout, Scalar, PackedScalar, SumsType>   \
+      : PackImpl<PARENT, FixedKernelLayout, Scalar, PackedScalar, SumsType> { \
+  };
 
 template <typename FixedKernelLayout, typename Scalar, typename PackedScalar,
-          typename AccumScalar>
+          typename SumsType>
 struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
-                AccumScalar> {
+                SumsType> {
   static void Run(Tuning, const Matrix<Scalar>& src_matrix,
                   Matrix<PackedScalar>* packed_matrix, int start_col,
-                  int end_col, AccumScalar* sums) {
+                  int end_col) {
     gemmlowp::ScopedProfilingLabel label("Pack (generic)");
     RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
-    AccumScalar* sums_ptr = sums ? sums + start_col : nullptr;
+    auto* sums = packed_matrix->sums;
+    SumsType* sums_ptr = sums ? sums + start_col : nullptr;
     for (int block_col = start_col; block_col < end_col;
          block_col += FixedKernelLayout::kCols) {
       for (int c = 0; c < FixedKernelLayout::kCols; c++) {
         int col = block_col + c;
-        AccumScalar accum = 0;
+        SumsType accum = 0;
         for (int block_row = 0; block_row < packed_matrix->layout.rows;
              block_row += FixedKernelLayout::kRows) {
           for (int r = 0; r < FixedKernelLayout::kRows; r++) {
@@ -127,10 +128,11 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
 
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   Matrix<std::int8_t>* packed_matrix, int start_col,
-                  int end_col, std::int32_t* sums) {
+                  int end_col) {
     RUY_DCHECK(IsLinearColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 4, 0);
+    std::int32_t* sums = packed_matrix->sums;
     Scalar zerobuf[16];
     memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
     for (int block_col = start_col; block_col < end_col; block_col += 4) {
@@ -190,10 +192,11 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kRowMajor, 4, 8>,
 
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   Matrix<std::int8_t>* packed_matrix, int start_col,
-                  int end_col, std::int32_t* sums) {
+                  int end_col) {
     RUY_DCHECK(IsLinearColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 8, 0);
+    std::int32_t* sums = packed_matrix->sums;
     Scalar zerobuf[16];
     memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
     for (int block_col = start_col; block_col < end_col; block_col += 4) {
@@ -259,8 +262,7 @@ template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
                 float, float> {
   static void Run(Tuning tuning, const Matrix<float>& src_matrix,
-                  Matrix<float>* packed_matrix, int start_col, int end_col,
-                  float*) {
+                  Matrix<float>* packed_matrix, int start_col, int end_col) {
     RUY_DCHECK(IsLinearColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 8, 0);
@@ -314,12 +316,12 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
 #endif  // (defined __aarch64__) && (RUY_OPT_SET & RUY_OPT_ASM)
 
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
-          typename PackedScalar, typename AccumScalar>
+          typename PackedScalar>
 void Pack(Tuning tuning, const Matrix<Scalar>& src_matrix,
-          Matrix<PackedScalar>* packed_matrix, int start_col, int end_col,
-          AccumScalar* sums) {
-  PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, AccumScalar>::Run(
-      tuning, src_matrix, packed_matrix, start_col, end_col, sums);
+          Matrix<PackedScalar>* packed_matrix, int start_col, int end_col) {
+  using SumsType = typename Matrix<PackedScalar>::SumsType;
+  PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType>::Run(
+      tuning, src_matrix, packed_matrix, start_col, end_col);
 }
 
 }  // namespace ruy

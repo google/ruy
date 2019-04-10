@@ -24,22 +24,19 @@ template <Path ThePath, typename LhsScalar, typename RhsScalar,
 void RunKernel(
     const Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, Spec>& kernel,
     const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-    const typename Spec::AccumScalar* lhs_sums,
-    const typename Spec::AccumScalar* rhs_sums, const Spec& spec, int start_row,
-    int start_col, int end_row, int end_col, Matrix<DstScalar>* dst) {
+    const Spec& spec, int start_row, int start_col, int end_row, int end_col,
+    Matrix<DstScalar>* dst) {
   using Kernel = Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, Spec>;
   using LhsLayout = typename Kernel::LhsLayout;
   using RhsLayout = typename Kernel::RhsLayout;
 #if RUY_OPT_SET & RUY_OPT_FAT_KERNEL
-  kernel.Run(lhs, rhs, lhs_sums, rhs_sums, spec, start_row, start_col, end_row,
-             end_col, dst);
+  kernel.Run(lhs, rhs, spec, start_row, start_col, end_row, end_col, dst);
 #else
   for (int col = start_col; col < end_col; col += RhsLayout::kCols) {
     int block_end_col = std::min(col + RhsLayout::kCols, end_col);
     for (int row = start_row; row < end_row; row += LhsLayout::kCols) {
       int block_end_row = std::min(row + LhsLayout::kCols, end_row);
-      kernel.Run(lhs, rhs, lhs_sums, rhs_sums, spec, row, col, block_end_row,
-                 block_end_col, dst);
+      kernel.Run(lhs, rhs, spec, row, col, block_end_row, block_end_col, dst);
     }
   }
 #endif
@@ -107,7 +104,6 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 1, 1>;
   explicit Kernel(Tuning) {}
   void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-           const AccumScalar* lhs_sums, const AccumScalar* rhs_sums,
            const Spec& spec, int start_row, int start_col, int end_row,
            int end_col, Matrix<DstScalar>* dst) const {
     gemmlowp::ScopedProfilingLabel label("Kernel (Standard Cpp)");
@@ -125,10 +121,10 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
           accum += spec.bias[i];
         }
         if (lhs.zero_point) {
-          accum -= lhs.zero_point * rhs_sums[j];
+          accum -= lhs.zero_point * rhs.sums[j];
         }
         if (rhs.zero_point) {
-          accum -= rhs.zero_point * lhs_sums[i];
+          accum -= rhs.zero_point * lhs.sums[i];
         }
         if (lhs.zero_point && rhs.zero_point) {
           accum += lhs.zero_point * rhs.zero_point * depth;
@@ -224,8 +220,6 @@ struct KernelParams8bit {
 template <typename DstScalar, int LhsCols, int RhsCols>
 void MakeKernelParams8bit(const Matrix<std::int8_t>& lhs,
                           const Matrix<std::int8_t>& rhs,
-                          const std::int32_t* lhs_sums,
-                          const std::int32_t* rhs_sums,
                           const BasicSpec<std::int32_t, DstScalar>& spec,
                           int start_row, int start_col, int end_row,
                           int end_col, Matrix<DstScalar>* dst,
@@ -248,12 +242,12 @@ void MakeKernelParams8bit(const Matrix<std::int8_t>& lhs,
     params->bias = spec.bias;
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
-  if (lhs_sums) {
-    params->lhs_sums = lhs_sums;
+  if (lhs.sums) {
+    params->lhs_sums = lhs.sums;
     params->flags |= RUY_ASM_FLAG_HAS_LHS_SUMS;
   }
-  if (rhs_sums) {
-    params->rhs_sums = rhs_sums;
+  if (rhs.sums) {
+    params->rhs_sums = rhs.sums;
     params->flags |= RUY_ASM_FLAG_HAS_RHS_SUMS;
   }
   params->start_row = start_row;
@@ -306,13 +300,12 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
   Tuning tuning = Tuning::kAuto;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const Matrix<std::int8_t>& lhs, const Matrix<std::int8_t>& rhs,
-           const std::int32_t* lhs_sums, const std::int32_t* rhs_sums,
            const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParams8bit(lhs, rhs, lhs_sums, rhs_sums, spec, start_row,
-                         start_col, end_row, end_col, dst, &params);
+    MakeKernelParams8bit(lhs, rhs, spec, start_row, start_col, end_row, end_col,
+                         dst, &params);
     if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
       Kernel8bitNeonInOrder(params);
     } else {
@@ -329,13 +322,12 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const Matrix<std::int8_t>& lhs, const Matrix<std::int8_t>& rhs,
-           const std::int32_t* lhs_sums, const std::int32_t* rhs_sums,
            const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParams8bit(lhs, rhs, lhs_sums, rhs_sums, spec, start_row,
-                         start_col, end_row, end_col, dst, &params);
+    MakeKernelParams8bit(lhs, rhs, spec, start_row, start_col, end_row, end_col,
+                         dst, &params);
     if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
       Kernel8bitNeonDotprodInOrder(params);
     } else {
@@ -421,9 +413,9 @@ struct Kernel<Path::kNeon, float, float, float, BasicSpec<float, float>> {
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const Matrix<float>& lhs, const Matrix<float>& rhs, const float*,
-           const float*, const BasicSpec<float, float>& spec, int start_row,
-           int start_col, int end_row, int end_col, Matrix<float>* dst) const {
+  void Run(const Matrix<float>& lhs, const Matrix<float>& rhs,
+           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,
                           end_col, dst, &params);
@@ -444,9 +436,9 @@ struct Kernel<Path::kNeonDotprod, float, float, float, BasicSpec<float, float>>
   using Base =
       Kernel<Path::kNeon, float, float, float, BasicSpec<float, float>>;
   explicit Kernel(Tuning tuning_) : Base(tuning_) {}
-  void Run(const Matrix<float>& lhs, const Matrix<float>& rhs, const float*,
-           const float*, const BasicSpec<float, float>& spec, int start_row,
-           int start_col, int end_row, int end_col, Matrix<float>* dst) const {
+  void Run(const Matrix<float>& lhs, const Matrix<float>& rhs,
+           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,
                           end_col, dst, &params);
