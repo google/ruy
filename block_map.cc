@@ -100,6 +100,12 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
   const int depth_ceil_log2 = ceil_log2(depth);
   const int kernel_width_log2 = ceil_log2(std::max(kernel_cols, kernel_rows));
 
+  // l1_size_log2 was originally, coarsely speaking the number of rows of LHS,
+  // or the number of columns of RHS in a matrix multiplication that we expect,
+  // to fit in L1 cache.
+  //
+  // This initial rationale is not necessarily still relevant. The logic below
+  // was determined empirically, not in a principled way.
   int l1_size_log2;
   if (size_floor_log2 <= 3) {
     l1_size_log2 = size_floor_log2;
@@ -109,6 +115,9 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
     l1_size_log2 = 5;
   }
 
+  // The 15 here implicitly encodes target a 32k L1 cache (2^15 == 32k).
+  // Once again this only has a distant memory of being originally motivated
+  // by such clear principles linking this logic to cache sizes.
   l1_size_log2 = std::min(
       l1_size_log2, 15 - depth_ceil_log2 -
                         ceil_log2(std::max(lhs_scalar_size, rhs_scalar_size)));
