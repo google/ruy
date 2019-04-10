@@ -28,6 +28,16 @@ inline int round_up_pot(int value, int modulo) {
   return round_down_pot(value + modulo - 1, modulo);
 }
 
+inline int clamp(int x, int lo, int hi) {
+  if (x < lo) {
+    return lo;
+  } else if (x > hi) {
+    return hi;
+  } else {
+    return x;
+  }
+}
+
 }  // namespace ruy
 
 #endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_SIZE_UTIL_H_

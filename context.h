@@ -30,16 +30,18 @@ struct PerThreadState {
 struct Context final {
   Path last_taken_path = Path::kNone;
   Tuning explicit_tuning = Tuning::kAuto;
-  // Allocator for main thread work before invoking the threadpool.
-  // Our simple Allocator does not allow reserving/allocating more blocks
-  // while it's already in committed state, so the main thread needs both
-  // this allocator, and its per-thread allocator.
-  std::unique_ptr<Allocator> main_allocator;
   ThreadPool workers_pool;
   int max_num_threads = 1;
   // State for each thread in the thread pool. Entry 0 is the main thread.
   std::vector<std::unique_ptr<PerThreadState>> per_thread_states;
   TracingContext tracing;
+
+  Allocator* GetMainAllocator() {
+    if (!main_allocator_) {
+      main_allocator_.reset(new Allocator);
+    }
+    return main_allocator_.get();
+  }
 
   void EnsureNPerThreadStates(int thread_count) {
     while (per_thread_states.size() < thread_count) {
@@ -51,6 +53,11 @@ struct Context final {
   Path GetRuntimeEnabledPaths();
 
  private:
+  // Allocator for main thread work before invoking the threadpool.
+  // Our simple Allocator does not allow reserving/allocating more blocks
+  // while it's already in committed state, so the main thread needs both
+  // this allocator, and its per-thread allocator.
+  std::unique_ptr<Allocator> main_allocator_;
   Path runtime_enabled_paths_ = Path::kNone;
 };
 

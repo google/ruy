@@ -202,6 +202,35 @@ void CreatePackedMatrix(Tuning tuning, const Matrix<Scalar>& src,
   Reserve(allocator, outersize * packed->layout.stride, packed_data_handle);
 }
 
+inline int GetThreadCount(Context* context, int rows, int cols, int depth) {
+  // Empirically determined rule for reasonable number of
+  // threads to use. This is proportional to the number of arithmetic ops
+  // in this Mul (product of the 3 sizes).
+  int guess = (std::uint64_t(rows) * cols * depth) >> 13;
+  return clamp(guess, 1, context->max_num_threads);
+}
+
+template <typename Spec>
+LoopStructure GetLoopStructure(int thread_count, int rows, int cols,
+                               int depth) {
+  if (Spec::kLoopStructure != LoopStructure::kAuto) {
+    return Spec::kLoopStructure;
+  }
+  if (thread_count == 1 &&
+      (rows + cols) * depth < kCacheFriendlyLoopThreshold) {
+    return LoopStructure::kSimple;
+  }
+  return LoopStructure::kGeneral;
+}
+
+inline Tuning GetTuning(Context* context) {
+  context->EnsureNPerThreadStates(1);
+  TuningResolver* tuning_resolver =
+      &context->per_thread_states[0]->tuning_resolver;
+  tuning_resolver->SetTuning(context->explicit_tuning);
+  return tuning_resolver->Resolve();
+}
+
 // General TrMulImpl definition.  See the reference-code implementation given
 // in the partial specialization below for ThePath==kReference.
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
@@ -210,24 +239,7 @@ struct TrMulImpl {
   using AccumScalar = typename Spec::AccumScalar;
   static void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                   const Spec& spec, Context* context, Matrix<DstScalar>* dst) {
-    gemmlowp::ScopedProfilingLabel label("TrMulImpl");
-    using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
-    using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
-    using Kernel =
-        Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar, Spec>;
-    using LhsKernelLayout = typename Kernel::LhsLayout;
-    using RhsKernelLayout = typename Kernel::RhsLayout;
-    const PackedLhsScalar packed_lhs_zero_point =
-        Pack<PackedLhsScalar>(lhs.zero_point);
-    const PackedRhsScalar packed_rhs_zero_point =
-        Pack<PackedRhsScalar>(rhs.zero_point);
-    const bool lhs_use_packing_sums = packed_rhs_zero_point != 0;
-    const bool rhs_use_packing_sums = packed_lhs_zero_point != 0;
-
-    const int rows = lhs.layout.cols;
-    const int cols = rhs.layout.cols;
-    const int depth = lhs.layout.rows;
-
+    // Fall back, if needed, to Path::kStandardCpp.
     if (ThePath != Path::kStandardCpp) {
       if (!IsLinear(lhs.layout) || !IsLinear(rhs.layout) ||
           !IsLinear(dst->layout) || lhs.layout.order != Order::kColMajor ||
@@ -239,53 +251,47 @@ struct TrMulImpl {
       }
     }
 
-    int thread_count = context->max_num_threads;
-    thread_count =
-        std::min<int>(thread_count, (std::uint64_t(rows) * cols * depth) >> 13);
-    thread_count = std::max(thread_count, 1);
+    gemmlowp::ScopedProfilingLabel label("TrMulImpl");
+    using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
+    using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
+    using Kernel =
+        Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar, Spec>;
+    using LhsKernelLayout = typename Kernel::LhsLayout;
+    using RhsKernelLayout = typename Kernel::RhsLayout;
 
-    const LoopStructure auto_loop_structure =
-        (thread_count == 1 &&
-         (rows + cols) * depth < kCacheFriendlyLoopThreshold)
-            ? LoopStructure::kSimple
-            : LoopStructure::kGeneral;
-    const LoopStructure loop_structure =
-        Spec::kLoopStructure == LoopStructure::kAuto ? auto_loop_structure
-                                                     : Spec::kLoopStructure;
+    const int rows = lhs.layout.cols;
+    const int cols = rhs.layout.cols;
+    const int depth = lhs.layout.rows;
+    const int rows_rounded_up = round_up_pot(rows, LhsKernelLayout::kCols);
+    const int cols_rounded_up = round_up_pot(cols, RhsKernelLayout::kCols);
 
+    int thread_count = GetThreadCount(context, rows, cols, depth);
+    const auto loop_structure =
+        GetLoopStructure<Spec>(thread_count, rows, cols, depth);
+    const Tuning tuning = GetTuning(context);
+    Allocator* allocator = context->GetMainAllocator();
+
+    // The packed matrices.
     Matrix<PackedLhsScalar> packed_lhs;
     Matrix<PackedRhsScalar> packed_rhs;
     using LhsSumsType = typename Matrix<PackedLhsScalar>::SumsType;
     using RhsSumsType = typename Matrix<PackedRhsScalar>::SumsType;
+    const bool lhs_use_packing_sums =
+        Pack<PackedRhsScalar>(rhs.zero_point) != 0;
+    const bool rhs_use_packing_sums =
+        Pack<PackedLhsScalar>(lhs.zero_point) != 0;
 
+    // Allocator handles.
     Allocator::Handle<LhsSumsType> lhs_sums_handle;
     Allocator::Handle<RhsSumsType> rhs_sums_handle;
-    Allocator::Handle<std::atomic<bool>> lhs_packed_handle;
-    Allocator::Handle<std::atomic<bool>> rhs_packed_handle;
     Allocator::Handle<PackedLhsScalar> lhs_packed_data_handle;
     Allocator::Handle<PackedRhsScalar> rhs_packed_data_handle;
-    Allocator::Handle<std::atomic<std::uint32_t>> atomic_n_handle;
 
-    if (!context->main_allocator) {
-      context->main_allocator.reset(new Allocator);
-    }
-    Allocator* allocator = context->main_allocator.get();
-
-
-    context->EnsureNPerThreadStates(1);
-    TuningResolver* tuning_resolver =
-        &context->per_thread_states[0]->tuning_resolver;
-    tuning_resolver->SetTuning(context->explicit_tuning);
-    const Tuning tuning = tuning_resolver->Resolve();
-
+    // Allocator reservations.
     CreatePackedMatrix<LhsKernelLayout>(tuning, lhs, allocator,
                                         &lhs_packed_data_handle, &packed_lhs);
     CreatePackedMatrix<RhsKernelLayout>(tuning, rhs, allocator,
                                         &rhs_packed_data_handle, &packed_rhs);
-
-    const int rows_rounded_up = round_up_pot(rows, LhsKernelLayout::kCols);
-    const int cols_rounded_up = round_up_pot(cols, RhsKernelLayout::kCols);
-
     if (lhs_use_packing_sums) {
       Reserve(allocator, rows_rounded_up, &lhs_sums_handle);
     }
@@ -295,10 +301,12 @@ struct TrMulImpl {
 
     if (loop_structure == LoopStructure::kSimple) {
       gemmlowp::ScopedProfilingLabel label_simple("TrMulImpl, simple loop");
+
       allocator->Commit();
+
+      // Get pointers from the allocator.
       packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
       packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
-
       if (lhs_use_packing_sums) {
         packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
       }
@@ -306,12 +314,12 @@ struct TrMulImpl {
         packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
       }
 
-      Kernel kernel(tuning);
-
       Pack<ThePath, LhsKernelLayout>(tuning, lhs, &packed_lhs, 0,
                                      rows_rounded_up);
       Pack<ThePath, RhsKernelLayout>(tuning, rhs, &packed_rhs, 0,
                                      cols_rounded_up);
+
+      Kernel kernel(tuning);
       RunKernel(kernel, packed_lhs, packed_rhs, spec, 0, 0, rows_rounded_up,
                 cols_rounded_up, dst);
 
@@ -324,63 +332,63 @@ struct TrMulImpl {
     auto* trace = GetTraceOrNull(&context->tracing, rows, depth, cols);
     TraceRecordStart(trace);
 
-    Reserve(allocator, 1, &atomic_n_handle);
-
+    // Initialize block map.
     BlockMap block_map;
     MakeBlockMap(rows_rounded_up, cols_rounded_up, depth,
                  LhsKernelLayout::kCols, RhsKernelLayout::kCols,
                  sizeof(LhsScalar), sizeof(RhsScalar), &block_map);
-
     std::uint16_t num_blocks_of_rows = NumBlocksOfRows(block_map);
     std::uint16_t num_blocks_of_cols = NumBlocksOfCols(block_map);
     std::uint32_t num_blocks = NumBlocks(block_map);
-
     RUY_DCHECK_EQ(num_blocks, num_blocks_of_rows * num_blocks_of_cols);
-    thread_count = std::min<int>(thread_count, num_blocks);
-    thread_count = std::max(thread_count, 1);
 
-    Reserve(allocator, num_blocks_of_rows, &lhs_packed_handle);
-    Reserve(allocator, num_blocks_of_cols, &rhs_packed_handle);
+    // Initialize per-thread state.
+    thread_count = clamp(thread_count, 1, num_blocks);
+    context->EnsureNPerThreadStates(thread_count);
+    for (auto& per_thread_state : context->per_thread_states) {
+      per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
+    }
 
+    // Allocator handles.
+    Allocator::Handle<std::atomic<bool>> lhs_packed_handle;
+    Allocator::Handle<std::atomic<bool>> rhs_packed_handle;
+    Allocator::Handle<std::atomic<std::uint32_t>> atomic_n_handle;
     using TaskType = TrMulTask<ThePath, LhsScalar, RhsScalar, PackedLhsScalar,
                                PackedRhsScalar, DstScalar, Spec>;
-
     Allocator::Handle<TaskType> tasks_buffer_handle;
     Allocator::Handle<Task*> tasks_ptrs_handle;
+
+    // Allocator reservations.
+    Reserve(allocator, num_blocks_of_rows, &lhs_packed_handle);
+    Reserve(allocator, num_blocks_of_cols, &rhs_packed_handle);
+    Reserve(allocator, 1, &atomic_n_handle);
     Reserve(allocator, thread_count, &tasks_buffer_handle);
     Reserve(allocator, thread_count, &tasks_ptrs_handle);
 
     allocator->Commit();
 
+    // Get pointers from the allocator.
     packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
     packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
-
-    std::atomic<bool>* lhs_packed = nullptr;
-    std::atomic<bool>* rhs_packed = nullptr;
-
     if (lhs_use_packing_sums) {
       packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
-    }
-    lhs_packed = allocator->GetPointer(lhs_packed_handle);
-    for (int i = 0; i < num_blocks_of_rows; i++) {
-      lhs_packed[i].store(false, std::memory_order_release);
     }
     if (rhs_use_packing_sums) {
       packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
     }
-    rhs_packed = allocator->GetPointer(rhs_packed_handle);
+    std::atomic<bool>* lhs_packed = allocator->GetPointer(lhs_packed_handle);
+    std::atomic<bool>* rhs_packed = allocator->GetPointer(rhs_packed_handle);
+    std::atomic<std::uint32_t>* atomic_n =
+        allocator->GetPointer(atomic_n_handle);
+
+    // Initialize allocated data.
+    for (int i = 0; i < num_blocks_of_rows; i++) {
+      lhs_packed[i].store(false, std::memory_order_release);
+    }
     for (int i = 0; i < num_blocks_of_cols; i++) {
       rhs_packed[i].store(false, std::memory_order_release);
     }
-
-    std::atomic<std::uint32_t>* atomic_n =
-        allocator->GetPointer(atomic_n_handle);
     atomic_n->store(thread_count);
-
-    context->EnsureNPerThreadStates(thread_count);
-    for (auto &per_thread_state : context->per_thread_states) {
-      per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
-    }
 
     TaskType* tasks = allocator->GetPointer(tasks_buffer_handle);
     Task** tasks_ptrs = allocator->GetPointer(tasks_ptrs_handle);
@@ -394,11 +402,13 @@ struct TrMulImpl {
                    &context->per_thread_states[i]->allocator, trace);
     }
 
+    // Do the computation.
     TraceRecordExecute(trace);
     TraceStartRecordingBlockAndThreadFields(block_map, thread_count, trace);
 
     context->workers_pool.Execute(thread_count, tasks_ptrs);
 
+    // Finish up.
     for (int i = 0; i < thread_count; i++) {
       tasks[i].~TaskType();
     }
