@@ -1,5 +1,11 @@
 #include "thread_pool.h"
 
+#include <atomic>
+#include <chrono>              // NOLINT(build/c++11)
+#include <condition_variable>  // NOLINT(build/c++11)
+#include <mutex>               // NOLINT(build/c++11)
+#include <thread>              // NOLINT(build/c++11)
+
 #include "blocking_counter.h"
 #include "check_macros.h"
 #include "time.h"
@@ -206,12 +212,12 @@ class Thread {
   BlockingCounter* const counter_to_decrement_when_ready_;
 };
 
-void ThreadPool::Execute(int thread_count, Task** tasks_ptrs) {
-  RUY_DCHECK_GE(thread_count, 1);
+void ThreadPool::Execute(int task_count, Task** tasks_ptrs) {
+  RUY_DCHECK_GE(task_count, 1);
   // Task #0 will be run on the current thread.
-  CreateThreads(thread_count - 1);
-  counter_to_decrement_when_ready_.Reset(thread_count - 1);
-  for (int i = 1; i < thread_count; i++) {
+  CreateThreads(task_count - 1);
+  counter_to_decrement_when_ready_.Reset(task_count - 1);
+  for (int i = 1; i < task_count; i++) {
     threads_[i - 1]->StartWork(tasks_ptrs[i]);
   }
   // Execute task #0 workload immediately on the current thread.
@@ -224,7 +230,7 @@ void ThreadPool::Execute(int thread_count, Task** tasks_ptrs) {
 // Ensures that the pool has at least the given count of threads.
 // If any new thread has to be created, this function waits for it to
 // be ready.
-void ThreadPool::CreateThreads(std::size_t threads_count) {
+void ThreadPool::CreateThreads(int threads_count) {
   if (threads_.size() >= threads_count) {
     return;
   }

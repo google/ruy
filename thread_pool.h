@@ -4,11 +4,6 @@
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_THREAD_POOL_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_THREAD_POOL_H_
 
-#include <atomic>
-#include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <thread>
 #include <vector>
 
 #include "blocking_counter.h"
@@ -23,26 +18,48 @@ struct Task {
 
 class Thread;
 
-// A very simple pool of threads, that only allows the very
+// A simple pool of threads, that only allows the very
 // specific parallelization pattern that we use here:
-// a fixed number of threads can be given work, and one then
-// waits for all of them to finish.
+// One thread, which we call the 'main thread', calls Execute, distributing
+// a Task each to N threads, being N-1 'worker threads' and the main thread
+// itself. After the main thread has completed its own Task, it waits for
+// the worker threads to have all completed. That is the only synchronization
+// performed by this ThreadPool.
 //
-// See MultiThreadGemmContextBase for how other ThreadPool implementations can
-// be used.
+// In particular, there is a naive 1:1 mapping of Tasks to threads.
+// This ThreadPool considers it outside of its own scope to try to work
+// with fewer threads than there are Tasks. The idea is that such N:M mappings
+// of tasks to threads can be implemented as a higher-level feature on top of
+// the present low-level 1:1 threadpool. For example, a user might have a
+// Task subclass referencing a shared atomic counter indexing into a vector of
+// finer-granularity subtasks. Different threads would then concurrently
+// increment this atomic counter, getting each their own subtasks to work on.
+// That approach is the one used in ruy's multi-thread matrix multiplication
+// implementation --- see ruy's TrMulTask.
 class ThreadPool {
  public:
   ThreadPool() {}
 
   ~ThreadPool();
 
-  void Execute(int thread_count, Task** tasks_ptrs);
+  // Executes task_count tasks on task_count threads.
+  // Grows the threadpool as needed to have at least (task_count-1) threads.
+  // The 0-th task is run on the thread on which Execute is called: that
+  // is by definition what we call the "main thread". Synchronization of all
+  // threads is performed before this function returns.
+  //
+  // As explained in the class comment, there is a 1:1 mapping of tasks to
+  // threads. If you need something smarter than that, for instance if you
+  // want to run an unbounded number of tasks on a bounded number of threads,
+  // then you need something higher-level than this ThreadPool, that can
+  // be layered on top of it by appropriately subclassing Tasks.
+  void Execute(int task_count, Task** tasks_ptrs);
 
  private:
   // Ensures that the pool has at least the given count of threads.
   // If any new thread has to be created, this function waits for it to
   // be ready.
-  void CreateThreads(std::size_t threads_count);
+  void CreateThreads(int threads_count);
 
   // copy construction disallowed
   ThreadPool(const ThreadPool&) = delete;
