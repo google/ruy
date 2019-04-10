@@ -52,7 +52,7 @@ struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
                   int end_col) {
     gemmlowp::ScopedProfilingLabel label("Pack (generic)");
     RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
-    auto* sums = packed_matrix->sums;
+    SumsType* sums = packed_matrix->sums.get();
     SumsType* sums_ptr = sums ? sums + start_col : nullptr;
     for (int block_col = start_col; block_col < end_col;
          block_col += FixedKernelLayout::kCols) {
@@ -70,7 +70,7 @@ struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
               packed_val = packed_matrix->zero_point;
             }
             accum += packed_val;
-            PackedScalar* block_ptr = packed_matrix->data() +
+            PackedScalar* block_ptr = packed_matrix->data.get() +
                                       FixedKernelLayout::kCols * block_row +
                                       packed_matrix->layout.stride * block_col;
             relaxed_atomic_store(block_ptr + FixedKernelLayout::kRows * c + r,
@@ -132,12 +132,12 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
     RUY_DCHECK(IsLinearColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 4, 0);
-    std::int32_t* sums = packed_matrix->sums;
+    std::int32_t* sums = packed_matrix->sums.get();
     Scalar zerobuf[16];
     memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
     for (int block_col = start_col; block_col < end_col; block_col += 4) {
       int src_stride = src_matrix.layout.stride;
-      const Scalar* src_ptr0 = src_matrix.data() + src_stride * block_col;
+      const Scalar* src_ptr0 = src_matrix.data.get() + src_stride * block_col;
       const Scalar* src_ptr1 = src_ptr0 + src_stride;
       const Scalar* src_ptr2 = src_ptr1 + src_stride;
       const Scalar* src_ptr3 = src_ptr2 + src_stride;
@@ -164,7 +164,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
         }
       }
       std::int8_t* packed_ptr =
-          packed_matrix->data() + packed_matrix->layout.stride * block_col;
+          packed_matrix->data.get() + packed_matrix->layout.stride * block_col;
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
       if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
         Pack8bitNeonInOrder(
@@ -196,12 +196,12 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kRowMajor, 4, 8>,
     RUY_DCHECK(IsLinearColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 8, 0);
-    std::int32_t* sums = packed_matrix->sums;
+    std::int32_t* sums = packed_matrix->sums.get();
     Scalar zerobuf[16];
     memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
     for (int block_col = start_col; block_col < end_col; block_col += 4) {
       int src_stride = src_matrix.layout.stride;
-      const Scalar* src_ptr0 = src_matrix.data() + src_stride * block_col;
+      const Scalar* src_ptr0 = src_matrix.data.get() + src_stride * block_col;
       const Scalar* src_ptr1 = src_ptr0 + src_stride;
       const Scalar* src_ptr2 = src_ptr1 + src_stride;
       const Scalar* src_ptr3 = src_ptr2 + src_stride;
@@ -228,7 +228,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kRowMajor, 4, 8>,
         }
       }
       std::int8_t* packed_ptr =
-          packed_matrix->data() +
+          packed_matrix->data.get() +
           packed_matrix->layout.stride * (block_col & ~7) +
           ((block_col & 4) * 4);
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
@@ -269,7 +269,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
     const float zerobuf[4] = {0};
     for (int block_col = start_col; block_col < end_col; block_col += 4) {
       int src_stride = src_matrix.layout.stride;
-      const float* src_ptr0 = src_matrix.data() + src_stride * block_col;
+      const float* src_ptr0 = src_matrix.data.get() + src_stride * block_col;
       const float* src_ptr1 = src_ptr0 + src_stride;
       const float* src_ptr2 = src_ptr1 + src_stride;
       const float* src_ptr3 = src_ptr2 + src_stride;
@@ -295,7 +295,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
           src_inc3 = 0;
         }
       }
-      float* packed_ptr = packed_matrix->data() +
+      float* packed_ptr = packed_matrix->data.get() +
                           packed_matrix->layout.stride * (block_col & ~7) +
                           ((block_col & 4));
       if (__builtin_expect(tuning == Tuning::kInOrder, true)) {

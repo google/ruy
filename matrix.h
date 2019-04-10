@@ -30,58 +30,74 @@ struct Layout final {
   KernelLayout kernel;
 };
 
+namespace detail {
+
+// Thin wrapper around a pointer that tracks its constness dynamically.
+//
+// This is our take on the C++ problem of enforcing constness of data
+// wrapped in a containers class: it's not worth the hassle of trying to
+// make it fully work at compile-time.
+// Instead, we only enforce constness at runtime, and to make it
+// zero-overhead, we only enforce it in debug builds.
+template <typename T>
+class ConstCheckingPtr final {
+ public:
+  // Convenience methods. Most `set` calls go through these.
+  void operator=(T* ptr) { set(ptr); }
+  void operator=(const T* ptr) { set(ptr); }
+
+  // Core accessors. These encapsulate the main logic:
+  // - for `set`, the constness of the argument determines whether internal
+  // pointer should be tracked as const/mutable.
+  // - for `get`, the constness of `this` determines whether the call
+  // counts as a const or mutable use of the internal pointer.
+  void set(T* ptr) {
+    ptr_ = ptr;
+    set_mutable(true);
+  }
+  void set(const T* ptr) {
+    ptr_ = ptr;
+    set_mutable(false);
+  }
+  T* get() /* NOT const */ {
+    assert_mutable();
+    return const_cast<T*>(ptr_);
+  }
+  const T* get() const { return ptr_; }
+
+ private:
+  static_assert(!std::is_const<T>::value, "");
+  const T* ptr_ = nullptr;
+#ifndef NDEBUG
+  bool is_mutable_ = true;
+  void set_mutable(bool val) { is_mutable_ = val; }
+  void assert_mutable() { RUY_DCHECK(is_mutable_); }
+#else
+  void set_mutable(bool) {}
+  void assert_mutable() {}
+#endif
+};
+
+}  // namespace detail
+
 // A Matrix is really what Eigen and gemmlowp would have called a 'matrix map':
 // it merely wraps existing data as a matrix. It doesn't own any buffer.
 // Scalar may be any floating-point or integral type. When integral, it may be
 // signed or unsigned.
 template <typename Scalar>
 struct Matrix final {
-  static_assert(!std::is_const<Scalar>::value, "");
 
   void operator=(const Matrix& other) {
-    mutable_data_ = other.mutable_data_;
-#ifndef NDEBUG
-    has_mutable_data_ = other.has_mutable_data_;
-#endif
+    data = other.data;
     layout = other.layout;
     zero_point = other.zero_point;
   }
 
  private:
-  // Our take on the c++ problem of enforcing constness of data wrapped in a
-  // containers class: it's not worth the hassle
-  // of trying to make it fully work at compile-time. Instead, we only enforce
-  // constness at runtime, and to make it zero-overhead, we only enforce it
-  // in debug builds.
-  union {
-    Scalar* mutable_data_ = nullptr;
-    const Scalar* const_data_;
-  };
-#ifndef NDEBUG
-  bool has_mutable_data_ = false;
-#endif
 
  public:
-  void set_data(Scalar* data) {
-    mutable_data_ = data;
-#ifndef NDEBUG
-    has_mutable_data_ = true;
-#endif
-  }
-  void set_data(const Scalar* data) {
-    const_data_ = data;
-#ifndef NDEBUG
-    has_mutable_data_ = false;
-#endif
-  }
-  Scalar* data() {
-#ifndef NDEBUG
-    RUY_DCHECK(has_mutable_data_);
-#endif
-    return mutable_data_;
-  }
-  const Scalar* data() const { return const_data_; }
-
+  // The underlying buffer wrapped by this matrix.
+  detail::ConstCheckingPtr<Scalar> data;
   // The shape and data layout of this matrix.
   Layout layout;
   // The zero_point, i.e. which Scalar value is to be interpreted as zero.
@@ -100,7 +116,7 @@ struct Matrix final {
   using SumsType =
       typename std::conditional<std::is_floating_point<Scalar>::value, Scalar,
                                 std::int32_t>::type;
-  SumsType* sums = nullptr;
+  detail::ConstCheckingPtr<SumsType> sums;
 };
 
 template <typename StreamType, typename Scalar>

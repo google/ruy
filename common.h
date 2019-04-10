@@ -115,12 +115,12 @@ inline int Offset(const Layout& layout, int row, int col) {
 
 template <typename Scalar>
 const Scalar* ElementPtr(const Matrix<Scalar>& mat, int row, int col) {
-  return mat.data() + Offset(mat.layout, row, col);
+  return mat.data.get() + Offset(mat.layout, row, col);
 }
 
 template <typename Scalar>
 Scalar* ElementPtr(Matrix<Scalar>* mat, int row, int col) {
-  return mat->data() + Offset(mat->layout, row, col);
+  return mat->data.get() + Offset(mat->layout, row, col);
 }
 
 template <typename Scalar>

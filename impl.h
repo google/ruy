@@ -296,8 +296,8 @@ struct TrMulImpl {
     if (loop_structure == LoopStructure::kSimple) {
       gemmlowp::ScopedProfilingLabel label_simple("TrMulImpl, simple loop");
       allocator->Commit();
-      packed_lhs.set_data(allocator->GetPointer(lhs_packed_data_handle));
-      packed_rhs.set_data(allocator->GetPointer(rhs_packed_data_handle));
+      packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
+      packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
 
       if (lhs_use_packing_sums) {
         packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
@@ -352,8 +352,8 @@ struct TrMulImpl {
 
     allocator->Commit();
 
-    packed_lhs.set_data(allocator->GetPointer(lhs_packed_data_handle));
-    packed_rhs.set_data(allocator->GetPointer(rhs_packed_data_handle));
+    packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
+    packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
 
     std::atomic<bool>* lhs_packed = nullptr;
     std::atomic<bool>* rhs_packed = nullptr;

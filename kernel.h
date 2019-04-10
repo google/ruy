@@ -121,10 +121,10 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
           accum += spec.bias[i];
         }
         if (lhs.zero_point) {
-          accum -= lhs.zero_point * rhs.sums[j];
+          accum -= lhs.zero_point * rhs.sums.get()[j];
         }
         if (rhs.zero_point) {
-          accum -= rhs.zero_point * lhs.sums[i];
+          accum -= rhs.zero_point * lhs.sums.get()[i];
         }
         if (lhs.zero_point && rhs.zero_point) {
           accum += lhs.zero_point * rhs.zero_point * depth;
@@ -234,20 +234,20 @@ void MakeKernelParams8bit(const Matrix<std::int8_t>& lhs,
   RUY_DCHECK_EQ(end_row % LhsCols, 0);
   RUY_DCHECK_EQ(end_col % RhsCols, 0);
 
-  params->lhs_base_ptr = lhs.data() + start_row * lhs.layout.stride;
-  params->rhs_base_ptr = rhs.data() + start_col * rhs.layout.stride;
+  params->lhs_base_ptr = lhs.data.get() + start_row * lhs.layout.stride;
+  params->rhs_base_ptr = rhs.data.get() + start_col * rhs.layout.stride;
   params->flags = 0;
   params->bias = params->zero_data;
   if (spec.bias) {
     params->bias = spec.bias;
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
-  if (lhs.sums) {
-    params->lhs_sums = lhs.sums;
+  if (lhs.sums.get()) {
+    params->lhs_sums = lhs.sums.get();
     params->flags |= RUY_ASM_FLAG_HAS_LHS_SUMS;
   }
-  if (rhs.sums) {
-    params->rhs_sums = rhs.sums;
+  if (rhs.sums.get()) {
+    params->rhs_sums = rhs.sums.get();
     params->flags |= RUY_ASM_FLAG_HAS_RHS_SUMS;
   }
   params->start_row = start_row;
@@ -284,7 +284,7 @@ void MakeKernelParams8bit(const Matrix<std::int8_t>& lhs,
 
   params->dst_type_id = DstTypeId<DstScalar>::kValue;
   params->dst_base_ptr =
-      dst->data() + start_col * dst->layout.stride + start_row;
+      dst->data.get() + start_col * dst->layout.stride + start_row;
 }
 
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params);
@@ -374,10 +374,10 @@ inline void MakeKernelParamsFloat(const Matrix<float>& lhs,
   RUY_DCHECK_EQ(end_row % LhsCols, 0);
   RUY_DCHECK_EQ(end_col % RhsCols, 0);
 
-  params->lhs_base_ptr = lhs.data() + start_row * lhs.layout.stride;
-  params->rhs_base_ptr = rhs.data() + start_col * rhs.layout.stride;
+  params->lhs_base_ptr = lhs.data.get() + start_row * lhs.layout.stride;
+  params->rhs_base_ptr = rhs.data.get() + start_col * rhs.layout.stride;
   params->dst_base_ptr =
-      dst->data() + start_col * dst->layout.stride + start_row;
+      dst->data.get() + start_col * dst->layout.stride + start_row;
 
   std::uint8_t flags = 0;
   params->bias = params->zero_data;

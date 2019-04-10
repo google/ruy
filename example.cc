@@ -12,13 +12,13 @@ int main() {
 
     ruy::Matrix<float> lhs;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-    lhs.set_data(lhs_data);
+    lhs.data = lhs_data;
     ruy::Matrix<float> rhs;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-    rhs.set_data(rhs_data);
+    rhs.data = rhs_data;
     ruy::Matrix<float> dst;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-    dst.set_data(dst_data);
+    dst.data = dst_data;
 
     ruy::BasicSpec<float, float> spec;
     ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, &context, &dst);
@@ -36,13 +36,13 @@ int main() {
 
     ruy::Matrix<std::uint8_t> lhs;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-    lhs.set_data(lhs_data);
+    lhs.data = lhs_data;
     ruy::Matrix<std::uint8_t> rhs;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-    rhs.set_data(rhs_data);
+    rhs.data = rhs_data;
     ruy::Matrix<std::uint8_t> dst;
     ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-    dst.set_data(dst_data);
+    dst.data = dst_data;
 
     ruy::BasicSpec<std::int32_t, std::uint8_t> spec;
     spec.multiplier_fixedpoint = 1 << 30;
