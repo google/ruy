@@ -12,6 +12,11 @@ namespace ruy {
 // 'column-major' means that each column is contiguous in memory.
 enum class Order : std::uint8_t { kColMajor, kRowMajor };
 
+// KernelLayout describes small-scale block structure in a matrix layout.
+// The default (rows = 1, cols = 1) means no such small-scale block structure,
+// since 1x1 blocks is the same as no blocks. In that case, the overall
+// matrix layout is just the usual linear row-major or column-major layout
+// described by the other members of struct Layout.
 struct KernelLayout final {
   Order order = Order::kColMajor;
   std::uint8_t rows = 1;
@@ -27,6 +32,8 @@ struct Layout final {
   std::int32_t stride = 0;
   Order order = Order::kColMajor;
 
+  // Small scale layout shuffling, potentially departing from
+  // linear row-major or column-major storage. See KernelLayout.
   KernelLayout kernel;
 };
 

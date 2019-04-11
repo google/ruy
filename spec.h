@@ -54,7 +54,18 @@ struct BasicSpec {
   // Only for non-floating-point cases. The exponent part of the aforementioned
   // multiplier.
   int multiplier_exponent = 0;
+  // Per-channel variant of multiplier_fixedpoint. If not nullptr, this must
+  // point to a buffer of as many values as there are rows in the destination
+  // matrix. Each row of the destination matrix will use the corresponding
+  // buffer element instead of multiplier_fixedpoint.
   const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
+  // Per-channel variant of multiplier_exponent. If not nullptr, this must
+  // point to a buffer of as many values as there are rows in the destination
+  // matrix. Each row of the destination matrix will use the corresponding
+  // buffer element instead of multiplier_exponent.
+  //
+  // Either none or both of multiplier_exponent_perchannel and
+  // multiplier_fixedpoint_perchannel must be nullptr.
   const int* multiplier_exponent_perchannel = nullptr;
   // min clamp bound of destination values.
   DstScalar clamp_min = std::numeric_limits<DstScalar>::lowest();
