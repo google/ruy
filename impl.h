@@ -329,7 +329,7 @@ struct TrMulImpl {
 
     gemmlowp::ScopedProfilingLabel label_general("TrMulImpl, general case");
 
-    auto* trace = GetTraceOrNull(&context->tracing, rows, depth, cols);
+    auto* trace = NewTraceOrNull(&context->tracing, rows, depth, cols);
     TraceRecordStart(trace);
 
     // Initialize block map.

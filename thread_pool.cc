@@ -32,7 +32,7 @@ namespace ruy {
 // between consecutive GEMM invokations, not just intra-GEMM considerations.
 // Of course, we need to balance keeping CPUs spinning longer to resume work
 // faster, versus passively waiting to conserve power.
-static constexpr float kThreadPoolMaxBusyWaitSeconds = 2e-3f;
+static constexpr double kThreadPoolMaxBusyWaitSeconds = 2e-3;
 
 // Waits until *var != initial_value.
 //
@@ -65,17 +65,15 @@ T WaitForVariableChange(std::atomic<T>* var, T initial_value,
     return new_value;
   }
   // Then try busy-waiting.
-  const std::int64_t wait_duration = static_cast<std::int64_t>(
-      TimeFrequency() * kThreadPoolMaxBusyWaitSeconds);
-  const std::int64_t wait_end = TimeNowRelaxed() + wait_duration;
-
-  while (TimeNowRelaxed() < wait_end) {
+  const Duration wait_duration =
+      DurationFromSeconds(kThreadPoolMaxBusyWaitSeconds);
+  const TimePoint wait_start = Clock::now();
+  while (Clock::now() - wait_start < wait_duration) {
     new_value = var->load(std::memory_order_acquire);
     if (new_value != initial_value) {
       return new_value;
     }
   }
-
   // Finally, do real passive waiting.
   mutex->lock();
   new_value = var->load(std::memory_order_acquire);

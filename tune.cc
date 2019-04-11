@@ -8,20 +8,6 @@
 
 namespace ruy {
 
-namespace {
-
-bool IsTimestampRecent(std::uint64_t old_timestamp, std::uint64_t new_timestamp,
-                       std::uint64_t expiry) {
-  return (new_timestamp - old_timestamp) < expiry;
-}
-
-std::uint64_t GetTimestampExpiry() {
-  static constexpr int kExpiryInverseSecs = 4;
-  return TimeFrequency() / kExpiryInverseSecs;
-}
-
-}  // namespace
-
 #ifdef __aarch64__
 
 namespace {
@@ -84,23 +70,20 @@ float TuningResolver::EvalRatio() {
   static constexpr int kLoopIters = 400;
   static constexpr int kRepeats = 4;
 
-  std::uint64_t timing_poorly_ordered =
-      std::numeric_limits<std::uint64_t>::max();
-  std::uint64_t timing_nicely_ordered =
-      std::numeric_limits<std::uint64_t>::max();
+  Duration timing_poorly_ordered = Duration::max();
+  Duration timing_nicely_ordered = Duration::max();
 
   for (int r = 0; r < kRepeats; r++) {
-    std::uint64_t t0 = TimeNowBarrier();
+    TimePoint t0 = Clock::now();
     PoorlyOrderedKernel(kLoopIters);
-    std::uint64_t t1 = TimeNowBarrier();
+    TimePoint t1 = Clock::now();
     NicelyOrderedKernel(kLoopIters);
-    std::uint64_t t2 = TimeNowBarrier();
+    TimePoint t2 = Clock::now();
     timing_poorly_ordered = std::min(timing_poorly_ordered, t1 - t0);
     timing_nicely_ordered = std::min(timing_nicely_ordered, t2 - t1);
   }
 
-  return static_cast<float>(timing_nicely_ordered) /
-         static_cast<float>(timing_poorly_ordered);
+  return ToSeconds(timing_nicely_ordered) / ToSeconds(timing_poorly_ordered);
 }
 
 float TuningResolver::ThresholdRatio() {
@@ -111,8 +94,6 @@ float TuningResolver::ThresholdRatio() {
   // have:
   //
   // CPU core type | in/out of order | observed ratio
-  //               |                 | (timing_nicely_ordered /
-  //               timing_poorly_ordered)
   // --------------+-----------------+-----------------------------------------
   // Cortex-A53    | in-order        | 0.32 -- 0.329
   // Cortex-A55    | in-order        | 0.319 -- 0.325
@@ -143,6 +124,11 @@ Tuning TuningResolver::ResolveNow() { return Tuning::kOutOfOrder; }
 
 #endif
 
+static constexpr double kExpirySecs = 0.25;
+
+TuningResolver::TuningResolver()
+    : expiry_duration_(DurationFromSeconds(kExpirySecs)) {}
+
 Tuning TuningResolver::Resolve() {
 #if (defined RUY_OPT_SET) && !(RUY_OPT_SET & RUY_OPT_TUNING)
   return Tuning::kOutOfOrder;
@@ -150,16 +136,12 @@ Tuning TuningResolver::Resolve() {
   if (unresolved_tuning_ != Tuning::kAuto) {
     return unresolved_tuning_;
   }
-  std::uint64_t new_timestamp = TimeNowRelaxed();
-  if (!timestamp_expiry_) {
-    timestamp_expiry_ = GetTimestampExpiry();
-  }
+  TimePoint new_timepoint = Clock::now();
   if (last_resolved_tuning_ != Tuning::kAuto &&
-      IsTimestampRecent(last_resolved_timestamp_, new_timestamp,
-                        timestamp_expiry_)) {
+      (new_timepoint - last_resolved_timepoint_) < expiry_duration_) {
     return last_resolved_tuning_;
   }
-  last_resolved_timestamp_ = new_timestamp;
+  last_resolved_timepoint_ = new_timepoint;
   last_resolved_tuning_ = ResolveNow();
   return last_resolved_tuning_;
 }

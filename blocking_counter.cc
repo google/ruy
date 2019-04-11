@@ -8,7 +8,7 @@
 
 namespace ruy {
 
-static constexpr float kBlockingCounterMaxBusyWaitSeconds = 2e-3f;
+static constexpr double kBlockingCounterMaxBusyWaitSeconds = 2e-3;
 
 void BlockingCounter::Reset(std::size_t initial_count) {
   std::size_t old_count_value = count_.load(std::memory_order_relaxed);
@@ -26,12 +26,11 @@ bool BlockingCounter::DecrementCount() {
 
 void BlockingCounter::Wait() {
   // Busy-wait until the count value is 0.
-  const std::int64_t wait_duration = static_cast<std::int64_t>(
-      TimeFrequency() * kBlockingCounterMaxBusyWaitSeconds);
-  std::int64_t wait_end = TimeNowRelaxed() + wait_duration;
-
+  const Duration wait_duration =
+      DurationFromSeconds(kBlockingCounterMaxBusyWaitSeconds);
+  TimePoint wait_start = Clock::now();
   while (count_.load(std::memory_order_acquire)) {
-    if (TimeNowRelaxed() > wait_end) {
+    if (Clock::now() - wait_start > wait_duration) {
       // If we are unlucky, the blocking thread (that calls DecrementCount)
       // and the blocked thread (here, calling Wait) may be scheduled on
       // the same CPU, so the busy-waiting of the present thread may prevent
@@ -40,8 +39,8 @@ void BlockingCounter::Wait() {
       // might be higher than that of the blocking thread, so just yielding
       // wouldn't allow the blocking thread to resume. So we sleep for
       // a substantial amount of time in that case. Notice that we only
-      // do so after having busy-waited for kMaxBusyWaitNOPs, which is
-      // typically several milliseconds, so sleeping 1 more millisecond
+      // do so after having busy-waited for kBlockingCounterMaxBusyWaitSeconds,
+      // which is typically >= 1 millisecond, so sleeping 1 more millisecond
       // isn't terrible at that point.
       //
       // How this is mitigated in practice:
@@ -53,8 +52,8 @@ void BlockingCounter::Wait() {
       // which is why gemmlowp's default is to use only 1 thread, and
       // applications may override that if they know that they can count on
       // using more than that.
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-      wait_end = TimeNowRelaxed() + wait_duration;
+      std::this_thread::sleep_for(DurationFromSeconds(1e-3));
+      wait_start = Clock::now();
     }
   }
 }

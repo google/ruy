@@ -7,6 +7,7 @@
 
 #include "block_map.h"
 #include "check_macros.h"
+#include "common.h"
 #include "time.h"
 
 namespace ruy {
@@ -15,17 +16,17 @@ namespace ruy {
 
 struct BlockTraceEntry {
   std::uint32_t thread_id = 0;
-  std::int64_t time_reserved = 0;
-  std::int64_t time_computed_coords = 0;
-  std::int64_t time_packed_lhs = 0;
-  std::int64_t time_packed_rhs = 0;
-  std::int64_t time_finished = 0;
+  TimePoint time_reserved;
+  TimePoint time_computed_coords;
+  TimePoint time_packed_lhs;
+  TimePoint time_packed_rhs;
+  TimePoint time_finished;
 };
 
 struct ThreadTraceEntry {
-  std::int64_t time_start = 0;
-  std::int64_t time_loop_start = 0;
-  std::int64_t time_end = 0;
+  TimePoint time_start;
+  TimePoint time_loop_start;
+  TimePoint time_end;
 };
 
 struct Trace {
@@ -47,20 +48,15 @@ struct Trace {
     if (thread_count > thread_entries.size()) {
       thread_entries.resize(thread_count);
     }
-    memset(block_entries.data(), 0,
-           sizeof(block_entries[0]) * block_entries.size());
-    memset(thread_entries.data(), 0,
-           sizeof(thread_entries[0]) * thread_entries.size());
     life_stage = LifeStage::kRecordingBlockAndThreadFields;
   }
   BlockMap block_map;
   int thread_count = 0;
   std::vector<BlockTraceEntry> block_entries;
   std::vector<ThreadTraceEntry> thread_entries;
-  std::int64_t time_start = 0;
-  std::int64_t time_execute = 0;
-  std::int64_t time_end = 0;
-  double frequency = 0;
+  TimePoint time_start;
+  TimePoint time_execute;
+  TimePoint time_end;
   LifeStage life_stage = LifeStage::kInitial;
 };
 
@@ -80,19 +76,20 @@ struct ProcessedTrace {
     Event event = Event::kNone;
     std::uint32_t thread_id = 0;
     std::uint32_t block_id = 0;
-    std::int64_t time = 0;
+    TimePoint time;
   };
 
   BlockMap block_map;
   int thread_count = 0;
-  std::int64_t time_start = 0;
-  std::int64_t time_execute = 0;
-  std::int64_t time_end = 0;
-  double frequency = 0;
+  TimePoint time_start;
+  TimePoint time_execute;
+  TimePoint time_end;
   std::vector<Entry> entries;
   void Add(Event event, std::uint32_t thread_id, std::uint32_t block_id,
-           std::int64_t time) {
-    if (!time) {
+           TimePoint time) {
+    // If the time point is still in its default-constructed state,
+    // that means we didn't record it.
+    if (!time.time_since_epoch().count()) {
       return;
     }
     Entry entry;
@@ -105,7 +102,6 @@ struct ProcessedTrace {
   void Process(const Trace& trace) {
     thread_count = trace.thread_count;
     block_map = trace.block_map;
-    frequency = trace.frequency;
     time_start = trace.time_start;
     time_execute = trace.time_execute;
     time_end = trace.time_end;
@@ -145,20 +141,20 @@ struct ProcessedTrace {
     fprintf(trace_file, "num_blocks:%d\n", NumBlocks(block_map));
     fprintf(trace_file, "rows:%d\n", block_map.rows);
     fprintf(trace_file, "cols:%d\n", block_map.cols);
-    fprintf(trace_file, "frequency:%g\n", frequency);
-    fprintf(trace_file, "Execute: %ld\n", time_execute - time_start);
+    fprintf(trace_file, "Execute: %.9f\n",
+            ToSeconds(time_execute - time_start));
     for (const Entry& entry : entries) {
-      std::int64_t time = entry.time - time_start;
+      double time = ToSeconds(entry.time - time_start);
       switch (entry.event) {
         case Event::kThreadStart:
-          fprintf(trace_file, "ThreadStart: %ld, %d\n", time, entry.thread_id);
+          fprintf(trace_file, "ThreadStart: %.9f, %d\n", time, entry.thread_id);
           break;
         case Event::kThreadLoopStart:
-          fprintf(trace_file, "ThreadLoopStart: %ld, %d\n", time,
+          fprintf(trace_file, "ThreadLoopStart: %.9f, %d\n", time,
                   entry.thread_id);
           break;
         case Event::kThreadEnd:
-          fprintf(trace_file, "ThreadEnd: %ld, %d\n", time, entry.thread_id);
+          fprintf(trace_file, "ThreadEnd: %.9f, %d\n", time, entry.thread_id);
           break;
         case Event::kBlockReserved: {
           std::uint16_t block_r, block_c;
@@ -166,32 +162,32 @@ struct ProcessedTrace {
           GetBlockByIndex(block_map, entry.block_id, &block_r, &block_c);
           GetBlockMatrixCoords(block_map, block_r, block_c, &start_r, &start_c,
                                &end_r, &end_c);
-          fprintf(trace_file, "BlockReserved: %ld, %d, %d, %d, %d, %d, %d\n",
+          fprintf(trace_file, "BlockReserved: %.9f, %d, %d, %d, %d, %d, %d\n",
                   time, entry.thread_id, entry.block_id, start_r, start_c,
                   end_r, end_c);
           break;
         }
         case Event::kBlockComputedCoords:
-          fprintf(trace_file, "BlockComputedCoords: %ld, %d, %d\n", time,
+          fprintf(trace_file, "BlockComputedCoords: %.9f, %d, %d\n", time,
                   entry.thread_id, entry.block_id);
           break;
         case Event::kBlockPackedLhs:
-          fprintf(trace_file, "BlockPackedLhs: %ld, %d, %d\n", time,
+          fprintf(trace_file, "BlockPackedLhs: %.9f, %d, %d\n", time,
                   entry.thread_id, entry.block_id);
           break;
         case Event::kBlockPackedRhs:
-          fprintf(trace_file, "BlockPackedRhs: %ld, %d, %d\n", time,
+          fprintf(trace_file, "BlockPackedRhs: %.9f, %d, %d\n", time,
                   entry.thread_id, entry.block_id);
           break;
         case Event::kBlockFinished:
-          fprintf(trace_file, "BlockFinished: %ld, %d, %d\n", time,
+          fprintf(trace_file, "BlockFinished: %.9f, %d, %d\n", time,
                   entry.thread_id, entry.block_id);
           break;
         default:
           RUY_CHECK(false);
       }
     }
-    fprintf(trace_file, "End: %ld\n", time_end - time_start);
+    fprintf(trace_file, "End: %.9f\n", ToSeconds(time_end - time_start));
     if (trace_filename) {
       fclose(trace_file);
     }
@@ -204,7 +200,7 @@ void DumpTrace(const Trace& trace) {
   processed_trace.Dump();
 }
 
-Trace* GetTraceOrNull(TracingContext* tracing, int rows, int depth, int cols) {
+Trace* NewTraceOrNull(TracingContext* tracing, int rows, int depth, int cols) {
   if (!tracing->initialized) {
     tracing->initialized = true;
     tracing->enabled = getenv("RUY_TRACE");
@@ -233,9 +229,10 @@ Trace* GetTraceOrNull(TracingContext* tracing, int rows, int depth, int cols) {
   if (tracing->filter_shape_cols && cols != tracing->filter_shape_cols) {
     return nullptr;
   }
-  if (!tracing->trace) {
-    tracing->trace = new Trace;
-  }
+  // Delete any existing trace.
+  delete tracing->trace;
+  // Create a new one.
+  tracing->trace = new Trace;
   return tracing->trace;
 }
 
@@ -250,9 +247,10 @@ void TraceRecordThreadStart(std::uint32_t thread_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->block_entries[thread_id].thread_id = thread_id;
-    trace->block_entries[thread_id].time_reserved =
-        trace->thread_entries[thread_id].time_start = TimeNowBarrier();
+    relaxed_atomic_store(&trace->block_entries[thread_id].thread_id, thread_id);
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->block_entries[thread_id].time_reserved, now);
+    relaxed_atomic_store(&trace->thread_entries[thread_id].time_start, now);
   }
 }
 
@@ -260,7 +258,9 @@ void TraceRecordThreadLoopStart(std::uint32_t thread_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->thread_entries[thread_id].time_loop_start = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->thread_entries[thread_id].time_loop_start,
+                         now);
   }
 }
 
@@ -272,8 +272,10 @@ void TraceRecordBlockReserved(std::uint32_t thread_id, std::uint32_t block_id,
     // This is typically called on the next block id just obtained by atomic
     // increment; this may be out of range.
     if (block_id < trace->block_entries.size()) {
-      trace->block_entries[block_id].thread_id = thread_id;
-      trace->block_entries[block_id].time_reserved = TimeNowBarrier();
+      relaxed_atomic_store(&trace->block_entries[block_id].thread_id,
+                           thread_id);
+      TimePoint now = Clock::now();
+      relaxed_atomic_store(&trace->block_entries[block_id].time_reserved, now);
     }
   }
 }
@@ -282,7 +284,9 @@ void TraceRecordBlockCoordsComputed(std::uint32_t block_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->block_entries[block_id].time_computed_coords = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->block_entries[block_id].time_computed_coords,
+                         now);
   }
 }
 
@@ -290,7 +294,8 @@ void TraceRecordBlockPackedLhs(std::uint32_t block_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->block_entries[block_id].time_packed_lhs = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->block_entries[block_id].time_packed_lhs, now);
   }
 }
 
@@ -298,7 +303,8 @@ void TraceRecordBlockPackedRhs(std::uint32_t block_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->block_entries[block_id].time_packed_rhs = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->block_entries[block_id].time_packed_rhs, now);
   }
 }
 
@@ -306,7 +312,8 @@ void TraceRecordBlockFinished(std::uint32_t block_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->block_entries[block_id].time_finished = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->block_entries[block_id].time_finished, now);
   }
 }
 
@@ -314,7 +321,8 @@ void TraceRecordThreadEnd(std::uint32_t thread_id, Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->thread_entries[thread_id].time_end = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->thread_entries[thread_id].time_end, now);
   }
 }
 
@@ -322,11 +330,8 @@ void TraceRecordStart(Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage == Trace::LifeStage::kInitial ||
                trace->life_stage == Trace::LifeStage::kComplete);
-    trace->time_start = 0;
-    trace->time_execute = 0;
-    trace->time_end = 0;
-    trace->frequency = 0;
-    trace->time_start = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->time_start, now);
     trace->life_stage = Trace::LifeStage::kRecordingRootFields;
   }
 }
@@ -334,7 +339,8 @@ void TraceRecordStart(Trace* trace) {
 void TraceRecordExecute(Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage == Trace::LifeStage::kRecordingRootFields);
-    trace->time_execute = TimeNowBarrier();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->time_execute, now);
   }
 }
 
@@ -342,8 +348,8 @@ void TraceRecordEnd(Trace* trace) {
   if (trace) {
     RUY_DCHECK(trace->life_stage ==
                Trace::LifeStage::kRecordingBlockAndThreadFields);
-    trace->time_end = TimeNowBarrier();
-    trace->frequency = TimeFrequency();
+    TimePoint now = Clock::now();
+    relaxed_atomic_store(&trace->time_end, now);
     trace->life_stage = Trace::LifeStage::kComplete;
   }
 }

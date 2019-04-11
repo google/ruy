@@ -59,6 +59,8 @@
 
 #include <cstdint>
 
+#include "time.h"
+
 namespace ruy {
 
 enum class Tuning {
@@ -83,7 +85,7 @@ enum class Tuning {
 // has to expose a class, TuningResolver, not just a function.
 class TuningResolver {
  public:
-  TuningResolver() {}
+  TuningResolver();
 
   // Allows the user to specify an explicit Tuning value, bypassing auto
   // detection; or to specify Tuning::kAuto, reverting to auto detection.
@@ -124,10 +126,10 @@ class TuningResolver {
   Tuning unresolved_tuning_ = Tuning::kAuto;
   // Cached last resolved tuning.
   Tuning last_resolved_tuning_ = Tuning::kAuto;
-  // Timestamp of cached last resolved tuning, for invalidation purposes.
-  std::uint64_t last_resolved_timestamp_ = 0;
+  // Timepoint of cached last resolved tuning, for invalidation purposes.
+  TimePoint last_resolved_timepoint_;
   // Cached last resolved tunings that are older than this age are invalid.
-  std::uint64_t timestamp_expiry_ = 0;
+  const Duration expiry_duration_;
 };
 
 }  // namespace ruy

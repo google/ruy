@@ -26,7 +26,7 @@ struct TracingContext {
 
 void DumpTrace(const Trace& trace);
 
-Trace* GetTraceOrNull(TracingContext* context, int rows, int depth, int cols);
+Trace* NewTraceOrNull(TracingContext* context, int rows, int depth, int cols);
 void TraceRecordThreadStart(std::uint32_t thread_id, Trace* trace);
 void TraceRecordThreadLoopStart(std::uint32_t thread_id, Trace* trace);
 void TraceRecordBlockReserved(std::uint32_t thread_id, std::uint32_t block_id,
@@ -46,8 +46,7 @@ void TraceStartRecordingBlockAndThreadFields(const BlockMap& block_map,
 
 struct TracingContext {};
 
-inline Trace* GetTraceOrNull(TracingContext*, int, int, int) { return nullptr; }
-
+inline Trace* NewTraceOrNull(TracingContext*, int, int, int) { return nullptr; }
 inline void TraceRecordThreadStart(std::uint32_t, Trace*) {}
 inline void TraceRecordThreadLoopStart(std::uint32_t, Trace*) {}
 inline void TraceRecordBlockReserved(std::uint32_t, std::uint32_t, Trace*) {}
