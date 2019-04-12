@@ -85,6 +85,7 @@ inline int FlatSize(const Layout& layout) {
   return layout.stride * outerdim;
 }
 
+// TODO(b/130417400) add a unit test
 inline int Offset(const Layout& layout, int row, int col) {
   // TODO(benoitjacob)  - should check this but this make the _slow tests take
   // 5x longer.  Find a mitigation like in Eigen with an 'internal' variant
@@ -93,14 +94,21 @@ inline int Offset(const Layout& layout, int row, int col) {
   // RUY_DCHECK_GE(col, 0);
   // RUY_DCHECK_LT(row, layout.rows);
   // RUY_DCHECK_LT(col, layout.cols);
-  int row_stride = layout.order == Order::kColMajor ? 1 : layout.stride;
-  int col_stride = layout.order == Order::kRowMajor ? 1 : layout.stride;
   if (IsLinear(layout)) {
+    int row_stride = layout.order == Order::kColMajor ? 1 : layout.stride;
+    int col_stride = layout.order == Order::kRowMajor ? 1 : layout.stride;
     return row * row_stride + col * col_stride;
   } else {
+    RUY_DCHECK(is_pot(layout.kernel.rows));
+    RUY_DCHECK(is_pot(layout.kernel.cols));
     int row_outer = row & ~(layout.kernel.rows - 1);
     int col_outer = col & ~(layout.kernel.cols - 1);
-    int offset_outer = row_outer * row_stride + col_outer * col_stride;
+    int row_stride_outer =
+        layout.order == Order::kColMajor ? layout.kernel.cols : layout.stride;
+    int col_stride_outer =
+        layout.order == Order::kRowMajor ? layout.kernel.rows : layout.stride;
+    int offset_outer =
+        row_outer * row_stride_outer + col_outer * col_stride_outer;
     int row_inner = row - row_outer;
     int col_inner = col - col_outer;
     int row_stride_inner =

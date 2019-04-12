@@ -15,6 +15,10 @@ inline int ceil_log2(int n) {
   return n == 1 ? 0 : floor_log2(n - 1) + 1;
 }
 
+inline bool is_pot(int value) {
+  return (value > 0) && ((value & (value - 1)) == 0);
+}
+
 inline int round_down_pot(int value) { return 1 << floor_log2(value); }
 
 inline int round_up_pot(int value) { return 1 << ceil_log2(value); }

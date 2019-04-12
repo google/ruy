@@ -53,33 +53,20 @@ struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
     gemmlowp::ScopedProfilingLabel label("Pack (generic)");
     RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
     SumsType* sums = packed_matrix->sums.get();
-    SumsType* sums_ptr = sums ? sums + start_col : nullptr;
-    for (int block_col = start_col; block_col < end_col;
-         block_col += FixedKernelLayout::kCols) {
-      for (int c = 0; c < FixedKernelLayout::kCols; c++) {
-        int col = block_col + c;
-        SumsType accum = 0;
-        for (int block_row = 0; block_row < packed_matrix->layout.rows;
-             block_row += FixedKernelLayout::kRows) {
-          for (int r = 0; r < FixedKernelLayout::kRows; r++) {
-            int row = block_row + r;
-            PackedScalar packed_val;
-            if (col < src_matrix.layout.cols && row < src_matrix.layout.rows) {
-              packed_val = Pack<PackedScalar>(Element(src_matrix, row, col));
-            } else {
-              packed_val = packed_matrix->zero_point;
-            }
-            accum += packed_val;
-            PackedScalar* block_ptr = packed_matrix->data.get() +
-                                      FixedKernelLayout::kCols * block_row +
-                                      packed_matrix->layout.stride * block_col;
-            relaxed_atomic_store(block_ptr + FixedKernelLayout::kRows * c + r,
-                                 packed_val);
-          }
+    for (int col = start_col; col < end_col; col++) {
+      SumsType accum = 0;
+      for (int row = 0; row < packed_matrix->layout.rows; row++) {
+        PackedScalar packed_val;
+        if (col < src_matrix.layout.cols && row < src_matrix.layout.rows) {
+          packed_val = Pack<PackedScalar>(Element(src_matrix, row, col));
+        } else {
+          packed_val = packed_matrix->zero_point;
         }
-        if (sums) {
-          relaxed_atomic_store(sums_ptr++, accum);
-        }
+        accum += packed_val;
+        relaxed_atomic_store(ElementPtr(packed_matrix, row, col), packed_val);
+      }
+      if (sums) {
+        relaxed_atomic_store(sums + col, accum);
       }
     }
   }
@@ -182,7 +169,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
 };
 
 template <typename Scalar>
-struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kRowMajor, 4, 8>,
+struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
                 Scalar, std::int8_t, std::int32_t> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
@@ -259,7 +246,7 @@ void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
                           float* packed_ptr, int start_col, int end_col);
 
 template <>
-struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 4, 8>, float,
+struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 1, 8>, float,
                 float, float> {
   static void Run(Tuning tuning, const Matrix<float>& src_matrix,
                   Matrix<float>* packed_matrix, int start_col, int end_col) {
