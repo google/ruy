@@ -199,8 +199,8 @@ void GetBlockMatrixCoords(const BlockMap& block_map, std::uint16_t block_r,
 
   RUY_DCHECK_LE(ec, block_map.cols);
   RUY_DCHECK_LE(er, block_map.rows);
-  RUY_DCHECK_LE(sc, ec);
-  RUY_DCHECK_LE(sr, er);
+  RUY_DCHECK_LT(sc, ec);
+  RUY_DCHECK_LT(sr, er);
   RUY_DCHECK_GE(sc, 0);
   RUY_DCHECK_GE(sr, 0);
 }

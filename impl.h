@@ -104,8 +104,17 @@ struct TrMulTask final : Task {
                          &end_r, &end_c);
     TraceRecordBlockCoordsComputed(n, trace);
     while (n < num_blocks) {
+      // Get index of next block to handle
       next_n = atomic_n->fetch_add(1, std::memory_order_relaxed);
+      // If we actually got a next block to handle (not already at end)
       if (next_n < num_blocks) {
+        // Get coords of that next block to handle
+        // TODO(benoitjacob): is this whole next_* business worth it?
+        // The idea was to have more independent things to do in parallel
+        // (Pack+Kernel on current block while we resolve next block atomic
+        // index and coords) but we don't seem to be actually taking advantage
+        // of this unless the compiler is doing a really good code-reordering
+        // job here, which is made unlikely by the conditional enclosing this.
         GetBlockByIndex(block_map, next_n, &next_block_r, &next_block_c);
         TraceRecordBlockReserved(thread_id, next_n, trace);
         GetBlockMatrixCoords(block_map, next_block_r, next_block_c,
@@ -113,28 +122,37 @@ struct TrMulTask final : Task {
                              &next_end_c);
         TraceRecordBlockCoordsComputed(next_n, trace);
       }
-      if (start_r < end_r && start_c < end_c) {
-        if (local_lhs_packed && !local_lhs_packed[block_r]) {
-          if (!lhs_packed[block_r].load(std::memory_order_acquire)) {
-            Pack<ThePath, LhsKernelLayout>(tuning, lhs, packed_lhs, start_r,
-                                           end_r);
-            TraceRecordBlockPackedLhs(n, trace);
-            local_lhs_packed[block_r] = true;
-            lhs_packed[block_r].store(true, std::memory_order_release);
-          }
+      // Maybe pack the current LHS block, if not already packed.
+      // Note that if two threads concurrently hit the same LHS block to pack,
+      // we allow them to concurrently pack it, writing the same packed matrix
+      // data to the same location. That is considered worth it to avoid
+      // having one thread blocked on another one. Avoiding that is considered
+      // important especially on mobile, where there can be large speed
+      // discrepancy between threads, e.g. if different threads are scheduled
+      // on CPU cores of different types (big/little), different clock speed,
+      // different contention with other processes.
+      if (local_lhs_packed && !local_lhs_packed[block_r]) {
+        if (!lhs_packed[block_r].load(std::memory_order_acquire)) {
+          Pack<ThePath, LhsKernelLayout>(tuning, lhs, packed_lhs, start_r,
+                                         end_r);
+          TraceRecordBlockPackedLhs(n, trace);
+          local_lhs_packed[block_r] = true;
+          lhs_packed[block_r].store(true, std::memory_order_release);
         }
-        if (local_rhs_packed && !local_rhs_packed[block_c]) {
-          if (!rhs_packed[block_c].load(std::memory_order_acquire)) {
-            Pack<ThePath, RhsKernelLayout>(tuning, rhs, packed_rhs, start_c,
-                                           end_c);
-            TraceRecordBlockPackedRhs(n, trace);
-            local_rhs_packed[block_c] = true;
-            rhs_packed[block_c].store(true, std::memory_order_release);
-          }
-        }
-        RunKernel(kernel, *packed_lhs, *packed_rhs, spec, start_r, start_c,
-                  end_r, end_c, result);
       }
+      // Maybe pack the current RHS block. Same comments as above for LHS.
+      if (local_rhs_packed && !local_rhs_packed[block_c]) {
+        if (!rhs_packed[block_c].load(std::memory_order_acquire)) {
+          Pack<ThePath, RhsKernelLayout>(tuning, rhs, packed_rhs, start_c,
+                                         end_c);
+          TraceRecordBlockPackedRhs(n, trace);
+          local_rhs_packed[block_c] = true;
+          rhs_packed[block_c].store(true, std::memory_order_release);
+        }
+      }
+      // Actually do matrix multiplication work
+      RunKernel(kernel, *packed_lhs, *packed_rhs, spec, start_r, start_c, end_r,
+                end_c, result);
       TraceRecordBlockFinished(n, trace);
       n = next_n;
       block_r = next_block_r;
