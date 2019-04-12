@@ -49,6 +49,8 @@ namespace detail {
 template <typename T>
 class ConstCheckingPtr final {
  public:
+  using element_type = T;
+
   // Convenience methods. Most `set` calls go through these.
   void operator=(T* ptr) { set(ptr); }
   void operator=(const T* ptr) { set(ptr); }

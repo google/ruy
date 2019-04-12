@@ -56,27 +56,15 @@ struct TrMulTask final : Task {
     std::uint16_t num_blocks_of_cols = NumBlocksOfCols(block_map);
     std::uint32_t num_blocks = NumBlocks(block_map);
 
-    Allocator::Handle<bool> local_lhs_packed_handle;
-    Allocator::Handle<bool> local_rhs_packed_handle;
-
-    if (lhs_packed) {
-      Reserve(local_allocator, num_blocks_of_rows, &local_lhs_packed_handle);
-    }
-    if (rhs_packed) {
-      Reserve(local_allocator, num_blocks_of_cols, &local_rhs_packed_handle);
-    }
-
-    local_allocator->Commit();
-
     bool* local_lhs_packed = nullptr;
     bool* local_rhs_packed = nullptr;
 
     if (lhs_packed) {
-      local_lhs_packed = local_allocator->GetPointer(local_lhs_packed_handle);
+      local_allocator->Allocate(num_blocks_of_rows, &local_lhs_packed);
       memset(local_lhs_packed, 0, num_blocks_of_rows * sizeof(bool));
     }
     if (rhs_packed) {
-      local_rhs_packed = local_allocator->GetPointer(local_rhs_packed_handle);
+      local_allocator->Allocate(num_blocks_of_cols, &local_rhs_packed);
       memset(local_rhs_packed, 0, num_blocks_of_cols * sizeof(bool));
     }
 
@@ -163,7 +151,7 @@ struct TrMulTask final : Task {
       end_c = next_end_c;
     }
 
-    local_allocator->Decommit();
+    local_allocator->FreeAll();
 
     TraceRecordThreadEnd(thread_id, trace);
   }
@@ -189,7 +177,6 @@ struct TrMulTask final : Task {
 template <typename FixedKernelLayout, typename Scalar, typename PackedScalar>
 void CreatePackedMatrix(Tuning tuning, const Matrix<Scalar>& src,
                         Allocator* allocator,
-                        Allocator::Handle<PackedScalar>* packed_data_handle,
                         Matrix<PackedScalar>* packed) {
   packed->zero_point = src.zero_point - SymmetricZeroPoint<Scalar>() +
                        SymmetricZeroPoint<PackedScalar>();
@@ -217,7 +204,7 @@ void CreatePackedMatrix(Tuning tuning, const Matrix<Scalar>& src,
   } else {
     packed->layout.stride = innersize;
   }
-  Reserve(allocator, outersize * packed->layout.stride, packed_data_handle);
+  allocator->Allocate(outersize * packed->layout.stride, &packed->data);
 }
 
 inline int GetThreadCount(Context* context, int rows, int cols, int depth) {
@@ -299,38 +286,18 @@ struct TrMulImpl {
     const bool rhs_use_packing_sums =
         Pack<PackedLhsScalar>(lhs.zero_point) != 0;
 
-    // Allocator handles.
-    Allocator::Handle<LhsSumsType> lhs_sums_handle;
-    Allocator::Handle<RhsSumsType> rhs_sums_handle;
-    Allocator::Handle<PackedLhsScalar> lhs_packed_data_handle;
-    Allocator::Handle<PackedRhsScalar> rhs_packed_data_handle;
-
-    // Allocator reservations.
-    CreatePackedMatrix<LhsKernelLayout>(tuning, lhs, allocator,
-                                        &lhs_packed_data_handle, &packed_lhs);
-    CreatePackedMatrix<RhsKernelLayout>(tuning, rhs, allocator,
-                                        &rhs_packed_data_handle, &packed_rhs);
+    // Allocate the packed matrices.
+    CreatePackedMatrix<LhsKernelLayout>(tuning, lhs, allocator, &packed_lhs);
+    CreatePackedMatrix<RhsKernelLayout>(tuning, rhs, allocator, &packed_rhs);
     if (lhs_use_packing_sums) {
-      Reserve(allocator, rows_rounded_up, &lhs_sums_handle);
+      allocator->Allocate(rows_rounded_up, &packed_lhs.sums);
     }
     if (rhs_use_packing_sums) {
-      Reserve(allocator, cols_rounded_up, &rhs_sums_handle);
+      allocator->Allocate(cols_rounded_up, &packed_rhs.sums);
     }
 
     if (loop_structure == LoopStructure::kSimple) {
       gemmlowp::ScopedProfilingLabel label_simple("TrMulImpl, simple loop");
-
-      allocator->Commit();
-
-      // Get pointers from the allocator.
-      packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
-      packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
-      if (lhs_use_packing_sums) {
-        packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
-      }
-      if (rhs_use_packing_sums) {
-        packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
-      }
 
       Pack<ThePath, LhsKernelLayout>(tuning, lhs, &packed_lhs, 0,
                                      rows_rounded_up);
@@ -341,7 +308,7 @@ struct TrMulImpl {
       RunKernel(kernel, packed_lhs, packed_rhs, spec, 0, 0, rows_rounded_up,
                 cols_rounded_up, dst);
 
-      allocator->Decommit();
+      allocator->FreeAll();
       return;
     }
 
@@ -367,37 +334,19 @@ struct TrMulImpl {
       per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
     }
 
-    // Allocator handles.
-    Allocator::Handle<std::atomic<bool>> lhs_packed_handle;
-    Allocator::Handle<std::atomic<bool>> rhs_packed_handle;
-    Allocator::Handle<std::atomic<std::uint32_t>> atomic_n_handle;
+    // Allocate memory.
+    std::atomic<bool>* lhs_packed;
+    allocator->Allocate(num_blocks_of_rows, &lhs_packed);
+    std::atomic<bool>* rhs_packed;
+    allocator->Allocate(num_blocks_of_cols, &rhs_packed);
+    std::atomic<std::uint32_t>* atomic_n;
+    allocator->Allocate(1, &atomic_n);
     using TaskType = TrMulTask<ThePath, LhsScalar, RhsScalar, PackedLhsScalar,
                                PackedRhsScalar, DstScalar, Spec>;
-    Allocator::Handle<TaskType> tasks_buffer_handle;
-    Allocator::Handle<Task*> tasks_ptrs_handle;
-
-    // Allocator reservations.
-    Reserve(allocator, num_blocks_of_rows, &lhs_packed_handle);
-    Reserve(allocator, num_blocks_of_cols, &rhs_packed_handle);
-    Reserve(allocator, 1, &atomic_n_handle);
-    Reserve(allocator, thread_count, &tasks_buffer_handle);
-    Reserve(allocator, thread_count, &tasks_ptrs_handle);
-
-    allocator->Commit();
-
-    // Get pointers from the allocator.
-    packed_lhs.data = allocator->GetPointer(lhs_packed_data_handle);
-    packed_rhs.data = allocator->GetPointer(rhs_packed_data_handle);
-    if (lhs_use_packing_sums) {
-      packed_lhs.sums = allocator->GetPointer(lhs_sums_handle);
-    }
-    if (rhs_use_packing_sums) {
-      packed_rhs.sums = allocator->GetPointer(rhs_sums_handle);
-    }
-    std::atomic<bool>* lhs_packed = allocator->GetPointer(lhs_packed_handle);
-    std::atomic<bool>* rhs_packed = allocator->GetPointer(rhs_packed_handle);
-    std::atomic<std::uint32_t>* atomic_n =
-        allocator->GetPointer(atomic_n_handle);
+    TaskType* tasks;
+    allocator->Allocate(thread_count, &tasks);
+    Task** tasks_ptrs;
+    allocator->Allocate(thread_count, &tasks_ptrs);
 
     // Initialize allocated data.
     for (int i = 0; i < num_blocks_of_rows; i++) {
@@ -407,9 +356,6 @@ struct TrMulImpl {
       rhs_packed[i].store(false, std::memory_order_release);
     }
     atomic_n->store(thread_count);
-
-    TaskType* tasks = allocator->GetPointer(tasks_buffer_handle);
-    Task** tasks_ptrs = allocator->GetPointer(tasks_ptrs_handle);
 
     for (int i = 0; i < thread_count; i++) {
       tasks_ptrs[i] = static_cast<Task*>(tasks + i);
@@ -433,7 +379,7 @@ struct TrMulImpl {
 
     TraceRecordEnd(trace);
 
-    allocator->Decommit();
+    allocator->FreeAll();
   }
 };
 
