@@ -69,6 +69,12 @@ void CheckOffsetsInKernelParams8bit(const Params&) {
   static_assert(offsetof(Params, depth) == RUY_OFFSET_DEPTH, "");
 }
 
+// Fast-int8-trick kernel, similar to this production gemmlowp kernel:
+// NEON_64bit_GEMM_Int8Operands_AccumTwoWithin16Bits
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L2296
+//
+// Relevant target CPUs for this kernel include ARM Cortex-A73 and Cortex-A75,
+// since these are 64-bit, out-of-order and without dotprod support.
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeon, optimized for out-of-order cores)");
@@ -92,18 +98,21 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
   //
   //                                      int8 RHS 16x4 block
   //                           /-----------------------------------------\
-    //                           |v4.b[0]          ...           v7.b[0]   |
+  //                           |v4.b[0]          ...           v7.b[0]   |
   //                           |  ...                            ...     |
   //                           |v4.b[15]         ...           v7.b[15]  |
   //                           \-----------------------------------------/
-  //    int8 LHS 8x4 block
+  //    int8 LHS 4x16 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0] ... v0.b[15] |  |v16.4s           ...           v28.4s    |
+  //  |v0.b[0] ... v0.b[15] |  |v16.4s           ...           v28.4s    |
   //  |v1.b[0] ... v1.b[15] |  |v17.4s           ...           v29.4s    |
   //  |v2.b[0] ... v2.b[15] |  |v18.4s           ...           v30.4s    |
   //  |v3.b[0] ... v3.b[15] |  |v19.4s           ...           v31.4s    |
   //  \---------------------/  \-----------------------------------------/
   //                                  int32 accumulators 4x4 block
+  //
+  // No attempt had been made so far at implementing the RUY_OPT_MAX_STREAMING
+  // optimization for this kernel.
   asm volatile(
 #define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
 
@@ -960,6 +969,15 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
+// Variant of the above Kernel8bitNeonOutOfOrder, tuned for in-order CPUs.
+// Specifically here, the relevant in-order CPUs are ARM Cortex-A53 and
+// the original Cortex-A55, since these are 64-bit and do not support dotprod.
+//
+// While this kernel does not have a direct equivalent in gemmlowp, it was
+// developed based on insights that David Mansell at ARM shared with their
+// contribution of gemmlowp kernels tuned for Cortex-A53, with very helpful
+// comments. Specifically, see this comment about tuning for Cortex-A53:
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4215
 void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeon, optimized for in-order cores)");
@@ -983,13 +1001,13 @@ void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
   //
   //                                      int8 RHS 16x4 block
   //                           /-----------------------------------------\
-    //                           |v4.b[0]          ...           v7.b[0]   |
+  //                           |v4.b[0]          ...           v7.b[0]   |
   //                           |  ...                            ...     |
   //                           |v4.b[15]         ...           v7.b[15]  |
   //                           \-----------------------------------------/
-  //    int8 LHS 8x4 block
+  //    int8 LHS 4x16 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0] ... v0.b[15] |  |v16.4s           ...           v28.4s    |
+  //  |v0.b[0] ... v0.b[15] |  |v16.4s           ...           v28.4s    |
   //  |v1.b[0] ... v1.b[15] |  |v17.4s           ...           v29.4s    |
   //  |v2.b[0] ... v2.b[15] |  |v18.4s           ...           v30.4s    |
   //  |v3.b[0] ... v3.b[15] |  |v19.4s           ...           v31.4s    |
@@ -1894,6 +1912,20 @@ void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
+// Kernel taking advantage of the optional dotprod instruction.
+// This is very similar to (and directly inspired by) this gemmlowp kernel
+// which was contributed by David Mansell at ARM:
+// NEON_64bit_GEMM_Uint8Operands_Uint32Accumulators_dotproduct
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L3391
+//
+// Besides the ruy-ification, the main difference here is that we use a 8x8
+// instead of 12x8 width, so as to stick to power-of-two widths. This slightly
+// narrower kernel layout is still wide enough to achieve high performance
+// although we haven't actually performed a real comparison to know exactly
+// how this compares to ARM's aforementioned kernel.
+//
+// Relevant target CPUs for this kernel include ARM Cortex-A76,
+// since these are 64-bit, out-of-order and with dotprod support.
 void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeonDotprod, optimized for out-of-order cores)");
@@ -1918,13 +1950,13 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
   //
   //                                      int8 RHS 4x8 block
   //                           /-----------------------------------------\
-    //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
+  //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
   //                           |  ...                              ...   |
   //                           |v2.b[3] ... v2.b[15] v3.b[3] ... v3.b[15]|
   //                           \-----------------------------------------/
   //    int8 LHS 8x4 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
+  //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
   //  |  ...          ...   |  |  ...                              ...   |
   //  |v0.b[12] ... v0.b[15]|  |v16.s[3]           ...           v30.s[3]|
   //  |v1.b[0]  ... v1.b[3] |  |v17.s[0]           ...           v31.s[0]|
@@ -3070,6 +3102,15 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
+// Variant of the above Kernel8bitNeonDotprodOutOfOrder, tuned for in-order
+// CPUs. Specifically here, the relevant in-order CPUs are ARM Cortex-A55r1,
+// since these are 64-bit and support dotprod.
+//
+// While this kernel does not have a direct equivalent in gemmlowp, it was
+// developed based on insights that David Mansell at ARM shared with their
+// contribution of gemmlowp kernels tuned for Cortex-A55r1, with very helpful
+// comments. Specifically, see this comment about tuning for Cortex-A55r1:
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4412
 void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeonDotprod, optimized for in-order cores)");
@@ -3088,19 +3129,18 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
   // The asm kernel below has the following NEON register allocation:
   //
   // v16 -- v31 are int32 accumulators.
-  // During accumulation, v0 -- v15 are used to load int8 data from LHS and
-  // RHS. At least v0 and v1 are used to load a 8x4 block of LHS, and v2 and
-  // v3 are used to load a 4x8 block of RHS, like this:
+  // During accumulation, v0 -- v3 are used to load int8 data from LHS and
+  // RHS.
   //
   //                                      int8 RHS 4x8 block
   //                           /-----------------------------------------\
-    //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
+  //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
   //                           |  ...                              ...   |
   //                           |v2.b[3] ... v2.b[15] v3.b[3] ... v3.b[15]|
   //                           \-----------------------------------------/
   //    int8 LHS 8x4 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
+  //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
   //  |  ...          ...   |  |  ...                              ...   |
   //  |v0.b[12] ... v0.b[15]|  |v16.s[3]           ...           v30.s[3]|
   //  |v1.b[0]  ... v1.b[3] |  |v17.s[0]           ...           v31.s[0]|
@@ -3109,13 +3149,11 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
   //  \---------------------/  \-----------------------------------------/
   //                                  int32 accumulators 8x8 block
   //
-  // In the RUY_OPT_MAX_STREAMING part of the kernel, this elementary step
-  // is repeated 4 times, using 4x more registers for LHS and RHS, so that
-  // is where instead of using v0 -- v3 for LHS and RHS, we use v0 -- v15.
+  // There is no RUY_OPT_MAX_STREAMING 4x-unrolled part in this kernel because
+  // we did not observe a benefit of such partial unrolling on in-order CPUs.
   //
-  // Outside of the RUY_OPT_MAX_STREAMING part of the kernel, v4 -- v7 are
-  // unused, and v8 -- v15 are used for loading parameters used for the
-  // post-accumulation part of the kernel.
+  // v4 -- v7 are unused, and v8 -- v15 are used for loading parameters used for
+  // the post-accumulation part of the kernel.
   asm volatile(
 #define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
 
@@ -4139,6 +4177,15 @@ void CheckOffsetsInKernelParamsFloat(const Params&) {
   static_assert(offsetof(Params, flags) == RUY_OFFSET_FLAGS, "");
 }
 
+// Just a plain float kernel; good enough for out-of-order cores.
+// The closest to it in the gemmlowp collection would be
+// NEON_64bit_GEMM_Float32_WithScalar,
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L3925
+//
+// Besides ruy-ification, the main nuance here is that we stick to a 8x8
+// width instead of the wider 12x8 that the register space permits and that
+// the aforementioned gemmlowp kernel uses.  Ruy likes powers of two for now
+// and we don't have evidence that going beyond 8x8 is needed.
 void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
   CheckOffsetsInKernelParamsFloat(params);
   gemmlowp::ScopedProfilingLabel label(
@@ -4155,27 +4202,25 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
 
   // The asm kernel below has the following NEON register allocation:
   //
-  // v16 -- v31 are int32 accumulators.
-  // During accumulation, v0 -- v15 are used to load int8 data from LHS and
-  // RHS. At least v0 and v1 are used to load a 8x4 block of LHS, and v2 and
-  // v3 are used to load a 4x8 block of RHS, like this:
+  // v16 -- v31 are accumulators.
+  // During accumulation, v0 -- v15 are used to load data from LHS and RHS.
+  // At least v0 and v1 are used to load a 8x1 block of LHS, and v2 and
+  // v3 are used to load a 1x8 block of RHS, like this:
   //
-  //                                      int8 RHS 4x8 block
+  //                                          RHS 1x8 block
   //                           /-----------------------------------------\
-    //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
-  //                           |  ...                              ...   |
-  //                           |v2.b[3] ... v2.b[15] v3.b[3] ... v3.b[15]|
+  //                           |v2.s[0] ... v2.s[3]   v3.s[0] ... v3.s[3]|
   //                           \-----------------------------------------/
-  //    int8 LHS 8x4 block
+  //        LHS 8x1 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
-  //  |  ...          ...   |  |  ...                              ...   |
-  //  |v0.b[12] ... v0.b[15]|  |v16.s[3]           ...           v30.s[3]|
-  //  |v1.b[0]  ... v1.b[3] |  |v17.s[0]           ...           v31.s[0]|
-  //  |  ...         ...    |  |  ...                              ...   |
-  //  |v1.b[12] ... v1.b[15]|  |v17.s[3]           ...           v31.s[3]|
+  //  |        v0.s[0]      |  |v16.s[0]           ...           v30.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v0.s[3]      |  |v16.s[3]           ...           v30.s[3]|
+  //  |        v1.s[0]      |  |v17.s[0]           ...           v31.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v1.s[3]      |  |v17.s[3]           ...           v31.s[3]|
   //  \---------------------/  \-----------------------------------------/
-  //                                  int32 accumulators 8x8 block
+  //                                      accumulators 8x8 block
   //
   // In the RUY_OPT_MAX_STREAMING part of the kernel, this elementary step
   // is repeated 4 times, using 4x more registers for LHS and RHS, so that
@@ -4727,6 +4772,19 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
+// Variant of KernelFloatNeonOutOfOrder tuned for in-order CPUs that do not
+// support dotprod (while dotprod by itself is not relevant to floating-point,
+// this additional bit of information that we have about the target happens to
+// be useful here).
+//
+// So a typical target CPU here would be ARM Cortex-A53 or the original
+// Cortex-A55.
+//
+// This kernel is similar to and inspired by gemmlowp's
+// NEON_64bit_GEMM_Float32_WithScalar_A53.
+// which was contributed by David Mansell with very helpful
+// comments. Specifically, see this comment about tuning for Cortex-A53:
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4215
 void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeon, optimized for in-order cores)");
@@ -4744,35 +4802,29 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
 
   // The asm kernel below has the following NEON register allocation:
   //
-  // v16 -- v31 are int32 accumulators.
-  // During accumulation, v0 -- v15 are used to load int8 data from LHS and
-  // RHS. At least v0 and v1 are used to load a 8x4 block of LHS, and v2 and
-  // v3 are used to load a 4x8 block of RHS, like this:
+  // v16 -- v31 are accumulators.
+  // During accumulation, v0 -- v3 are used to load data from LHS and RHS.
   //
-  //                                      int8 RHS 4x8 block
+  //                                          RHS 1x8 block
   //                           /-----------------------------------------\
-    //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
-  //                           |  ...                              ...   |
-  //                           |v2.b[3] ... v2.b[15] v3.b[3] ... v3.b[15]|
+  //                           |v2.s[0] ... v2.s[3]   v3.s[0] ... v3.s[3]|
   //                           \-----------------------------------------/
-  //    int8 LHS 8x4 block
+  //        LHS 8x1 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
-  //  |  ...          ...   |  |  ...                              ...   |
-  //  |v0.b[12] ... v0.b[15]|  |v16.s[3]           ...           v30.s[3]|
-  //  |v1.b[0]  ... v1.b[3] |  |v17.s[0]           ...           v31.s[0]|
-  //  |  ...         ...    |  |  ...                              ...   |
-  //  |v1.b[12] ... v1.b[15]|  |v17.s[3]           ...           v31.s[3]|
+  //  |        v0.s[0]      |  |v16.s[0]           ...           v30.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v0.s[3]      |  |v16.s[3]           ...           v30.s[3]|
+  //  |        v1.s[0]      |  |v17.s[0]           ...           v31.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v1.s[3]      |  |v17.s[3]           ...           v31.s[3]|
   //  \---------------------/  \-----------------------------------------/
-  //                                  int32 accumulators 8x8 block
+  //                                      accumulators 8x8 block
   //
-  // In the RUY_OPT_MAX_STREAMING part of the kernel, this elementary step
-  // is repeated 4 times, using 4x more registers for LHS and RHS, so that
-  // is where instead of using v0 -- v3 for LHS and RHS, we use v0 -- v15.
+  // There is no RUY_OPT_MAX_STREAMING 4x-unrolled part in this kernel because
+  // we did not observe a benefit of such partial unrolling on in-order CPUs.
   //
-  // Outside of the RUY_OPT_MAX_STREAMING part of the kernel, v4 -- v7 are
-  // unused, and v8 -- v15 are used for loading parameters used for the
-  // post-accumulation part of the kernel.
+  // v4 -- v7 are unused, and v8 -- v15 are used for floading parameters used
+  // for the post-accumulation part of the kernel.
   asm volatile(
 #define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
 
@@ -5167,6 +5219,18 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
+// Variant of KernelFloatNeonInOrder tuned for in-order CPUs that do
+// support dotprod (while dotprod by itself is not relevant to floating-point,
+// this additional bit of information that we have about the target happens to
+// be useful here).
+//
+// So a typical target CPU here would be ARM Cortex-A55r1.
+//
+// This kernel is similar to and inspired by gemmlowp's
+// NEON_64bit_GEMM_Float32_WithScalar_A55r1.
+// which was contributed by David Mansell with very helpful
+// comments. Specifically, see this comment about tuning for Cortex-A55r1:
+// https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4412
 void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
   gemmlowp::ScopedProfilingLabel label(
       "Kernel (kNeonDotprod, optimized for in-order cores)");
@@ -5184,35 +5248,29 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
 
   // The asm kernel below has the following NEON register allocation:
   //
-  // v16 -- v31 are int32 accumulators.
-  // During accumulation, v0 -- v15 are used to load int8 data from LHS and
-  // RHS. At least v0 and v1 are used to load a 8x4 block of LHS, and v2 and
-  // v3 are used to load a 4x8 block of RHS, like this:
+  // v16 -- v31 are accumulators.
+  // During accumulation, v0 -- v3 are used to load data from LHS and RHS.
   //
-  //                                      int8 RHS 4x8 block
+  //                                          RHS 1x8 block
   //                           /-----------------------------------------\
-    //                           |v2.b[0] ... v2.b[12] v3.b[0] ... v3.b[12]|
-  //                           |  ...                              ...   |
-  //                           |v2.b[3] ... v2.b[15] v3.b[3] ... v3.b[15]|
+  //                           |v2.s[0] ... v2.s[3]   v3.s[0] ... v3.s[3]|
   //                           \-----------------------------------------/
-  //    int8 LHS 8x4 block
+  //        LHS 8x1 block
   //  /---------------------\  /-----------------------------------------\
-    //  |v0.b[0]  ... v0.b[3] |  |v16.s[0]           ...           v30.s[0]|
-  //  |  ...          ...   |  |  ...                              ...   |
-  //  |v0.b[12] ... v0.b[15]|  |v16.s[3]           ...           v30.s[3]|
-  //  |v1.b[0]  ... v1.b[3] |  |v17.s[0]           ...           v31.s[0]|
-  //  |  ...         ...    |  |  ...                              ...   |
-  //  |v1.b[12] ... v1.b[15]|  |v17.s[3]           ...           v31.s[3]|
+  //  |        v0.s[0]      |  |v16.s[0]           ...           v30.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v0.s[3]      |  |v16.s[3]           ...           v30.s[3]|
+  //  |        v1.s[0]      |  |v17.s[0]           ...           v31.s[0]|
+  //  |         ...         |  |  ...                              ...   |
+  //  |        v1.s[3]      |  |v17.s[3]           ...           v31.s[3]|
   //  \---------------------/  \-----------------------------------------/
-  //                                  int32 accumulators 8x8 block
+  //                                      accumulators 8x8 block
   //
-  // In the RUY_OPT_MAX_STREAMING part of the kernel, this elementary step
-  // is repeated 4 times, using 4x more registers for LHS and RHS, so that
-  // is where instead of using v0 -- v3 for LHS and RHS, we use v0 -- v15.
+  // There is no RUY_OPT_MAX_STREAMING 4x-unrolled part in this kernel because
+  // we did not observe a benefit of such partial unrolling on in-order CPUs.
   //
-  // Outside of the RUY_OPT_MAX_STREAMING part of the kernel, v4 -- v7 are
-  // unused, and v8 -- v15 are used for loading parameters used for the
-  // post-accumulation part of the kernel.
+  // v4 -- v7 are unused, and v8 -- v15 are used for floading parameters used
+  // for the post-accumulation part of the kernel.
   asm volatile(
 #define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
 
