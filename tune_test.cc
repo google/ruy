@@ -1,6 +1,7 @@
 #include "tune.h"
 
-#include <cstdlib>
+#include <chrono>  // NOLINT(build/c++11)
+#include <thread>  // NOLINT(build/c++11)
 
 #include "testing/base/public/gunit.h"
 
@@ -12,7 +13,7 @@ TEST(TuneTest, TuneTest) {
   ASSERT_FALSE(tuning_resolver.Resolve() == Tuning::kAuto);
   // 1 second is likely higher than TuningResolver's internal cache expiry,
   // exercising the logic invalidating earlier tuning resolutions.
-  sleep(1);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
   ASSERT_FALSE(tuning_resolver.Resolve() == Tuning::kAuto);
 
   tuning_resolver.SetTuning(Tuning::kAuto);
@@ -21,7 +22,7 @@ TEST(TuneTest, TuneTest) {
     tuning_resolver.SetTuning(tuning);
     ASSERT_TRUE(tuning_resolver.Resolve() == tuning);
     // See above comment about 1 second.
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     ASSERT_TRUE(tuning_resolver.Resolve() == tuning);
   }
 }

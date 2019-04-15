@@ -1,11 +1,17 @@
 // Self-contained tool used to tune the tune code --- see the
 // threshold ratios used in tune.cc.
 
-#include <unistd.h>
-
+#include <chrono>  // NOLINT(build/c++11)
 #include <cstdio>
+#include <thread>  // NOLINT(build/c++11)
 
 #include "tune.h"
+
+#ifdef _WIN32
+#define getpid() 0
+#else
+#include <unistd.h>
+#endif
 
 namespace ruy {
 
@@ -30,6 +36,6 @@ int main() {
            eval, eval < threshold ? '<' : '>', threshold,
            eval < threshold ? "in-order" : "out-of-order");
     fflush(stdout);
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }

@@ -16,6 +16,7 @@
 #include "testing/base/public/gunit.h"
 #include "pmu.h"
 #include "ruy.h"
+#include "time.h"
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
 #define EIGEN_USE_THREADS
@@ -235,10 +236,13 @@ struct UniformRandomDistribution {
       : dist(RandomRangeBounds<Scalar>::GetMinBound(range),
              RandomRangeBounds<Scalar>::GetMaxBound(range)) {}
   Scalar Get() { return dist(global_random_engine()); }
-  using StdDistType =
-      typename std::conditional<std::is_floating_point<Scalar>::value,
-                                std::uniform_real_distribution<Scalar>,
-                                std::uniform_int_distribution<Scalar>>::type;
+  // std::uniform_int_distribution is specified not to support char types,
+  // only short and wider types. MSVC actually generates an error on
+  // std::uniform_int_distribution<std::int8_t>.
+  using StdDistType = typename std::conditional<
+      std::is_floating_point<Scalar>::value,
+      std::uniform_real_distribution<Scalar>,
+      std::uniform_int_distribution<std::int32_t>>::type;
   StdDistType dist;
 };
 
@@ -462,6 +466,13 @@ Context& GlobalContext() {
   return context;
 }
 
+#if defined __has_feature && __has_feature(thread_sanitizer)
+#define RUY_TSAN
+#endif
+#if defined __has_feature && __has_feature(address_sanitizer)
+#define RUY_ASAN
+#endif
+
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename Spec>
 void EvalRuy(Path path, Tuning tuning, const Matrix<LhsScalar>& lhs,
@@ -483,10 +494,8 @@ void EvalRuy(Path path, Tuning tuning, const Matrix<LhsScalar>& lhs,
   } else if (expected_outcome == ExpectedOutcome::kDeath) {
     // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
     // Report a bug?
-#ifndef NDEBUG
-    if (!__has_feature(thread_sanitizer) && !__has_feature(address_sanitizer)) {
-      ASSERT_DEATH(Mul<kAllPaths>(lhs, rhs, spec, &GlobalContext(), dst), "");
-    }
+#if (!defined NDEBUG) && (!defined RUY_ASAN) && (!defined RUY_TSAN)
+    ASSERT_DEATH(Mul<kAllPaths>(lhs, rhs, spec, &GlobalContext(), dst), "");
 #endif
   } else {
     RUY_CHECK(false);
@@ -1581,12 +1590,6 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalResult(
   }
 }
 
-double current_time() {
-  timespec t;
-  clock_gettime(CLOCK_MONOTONIC, &t);
-  return t.tv_sec + 1e-9 * t.tv_nsec;
-}
-
 using f32 = float;
 using f64 = double;
 using u8 = std::uint8_t;
@@ -1702,11 +1705,11 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
     if (record_pmu && repeat == kRepeats - 1) {
       pmu_events.StartRecording();
     }
-    double time_start = current_time();
-    double t = time_start;
+    TimePoint time_start = Clock::now();
+    TimePoint t = time_start;
     int iters = 0;
     int iters_at_a_time = 1;
-    while (t - time_start < kBenchmarkMinSecs) {
+    while (ToSeconds(t - time_start) < kBenchmarkMinSecs) {
       for (int i = 0; i < iters_at_a_time; i++) {
         if (cold) {
           lhs.matrix.data =
@@ -1725,9 +1728,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
         iters++;
       }
       iters_at_a_time *= 2;
-      t = current_time();
+      t = Clock::now();
     }
-    latency = std::min(latency, (t - time_start) / iters);
+    latency = std::min(latency, ToSeconds(t - time_start) / iters);
     if (record_pmu && repeat == kRepeats - 1) {
       pmu_events.StopRecording();
       const float normalization_factor =

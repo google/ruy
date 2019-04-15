@@ -16,10 +16,10 @@
 namespace ruy {
 
 // Linux-specific. Not ARM-specific.
+#ifdef __linux__
 class PerfEvent {
  public:
   void Start(std::uint32_t type, std::uint64_t config) {
-#ifdef __linux__
     perf_event_attr pe;
     memset(&pe, 0, sizeof(pe));
     pe.size = sizeof(pe);
@@ -35,15 +35,12 @@ class PerfEvent {
     }
     ioctl(fd_, PERF_EVENT_IOC_RESET, 0);
     ioctl(fd_, PERF_EVENT_IOC_ENABLE, 0);
-#endif
   }
 
   void Stop() {
-#ifdef __linux__
     ioctl(fd_, PERF_EVENT_IOC_DISABLE, 0);
     read(fd_, &count_, sizeof(count_));
     close(fd_);
-#endif
   }
 
   std::int64_t Count() const { return count_; }
@@ -52,6 +49,16 @@ class PerfEvent {
   std::int64_t count_ = -1;
   int fd_ = -1;
 };
+#else
+// Placeholder implementation to at least compile outside of linux.
+#define PERF_TYPE_RAW 0
+class PerfEvent {
+ public:
+  void Start(std::uint32_t, std::uint64_t) {}
+  void Stop() {}
+  std::int64_t Count() const { return 0; }
+};
+#endif
 
 // ARM-specific. Query ARM PMU counters as Linux perf events using
 // PERF_TYPE_RAW.

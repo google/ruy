@@ -3,11 +3,17 @@ Allows to specialize the ruy BUILD to availability of external libraries
 """
 
 def ruy_test_ext_defines():
-    return ["RUY_TEST_EXTERNAL_PATHS"]
+    return select({
+        "//tools/cc_target_os:windows": [],
+        "//conditions:default": ["RUY_TEST_EXTERNAL_PATHS"],
+    })
 
 def ruy_test_ext_deps():
-    return [
-        "//third_party/eigen3",
-        "//third_party/gemmlowp",
-        "//third_party/lapack:blas",
-    ]
+    return select({
+        "//tools/cc_target_os:windows": [],
+        "//conditions:default": [
+            "//third_party/eigen3",
+            "//third_party/gemmlowp",
+            "//third_party/lapack:blas",
+        ],
+    })

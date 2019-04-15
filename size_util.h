@@ -3,11 +3,21 @@
 
 #include "check_macros.h"
 
+#ifdef _WIN32
+#include <intrin.h>
+#endif
+
 namespace ruy {
 
 inline int floor_log2(int n) {
   RUY_DCHECK_GE(n, 1);
+#ifdef _WIN32
+  unsigned long result;
+  _BitScanReverse(&result, n);
+  return result;
+#else
   return 31 - __builtin_clz(n);
+#endif
 }
 
 inline int ceil_log2(int n) {
