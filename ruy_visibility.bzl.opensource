@@ -3,4 +3,6 @@ Control of ruy visibility
 """
 
 def ruy_visibility():
-    return []
+    return [
+        "//third_party/tensorflow/lite/kernels:__subpackages__",
+    ]
