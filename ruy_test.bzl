@@ -18,8 +18,8 @@ def ruy_test(name, srcs, lhs_rhs_accum_dst):
                 "-DRUY_TEST_DSTSCALAR=%s" % dst,
             ],
             deps = [
-                "//third_party/tensorflow/lite/experimental/ruy:test_lib",
-                "//testing/base/public:gunit_main",
+                ":test_lib",
+                "@com_google_googletest//:gtest_main",
             ],
         )
 
@@ -36,7 +36,7 @@ def ruy_benchmark(name, srcs, lhs_rhs_accum_dst):
                 "-DRUY_TEST_DSTSCALAR=%s" % dst,
             ],
             deps = [
-                "//third_party/tensorflow/lite/experimental/ruy:test_lib",
+                ":test_lib",
                 "//third_party/gemmlowp:profiler",
             ],
         )
@@ -56,7 +56,7 @@ def ruy_benchmark_opt_sets(name, opt_sets, srcs, lhs_rhs_accum_dst):
                     "-DRUY_OPT_SET=0x%s" % opt_set,
                 ],
                 deps = [
-                    "//third_party/tensorflow/lite/experimental/ruy:test_lib",
+                    ":test_lib",
                     "//third_party/gemmlowp:profiler",
                 ],
             )
