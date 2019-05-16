@@ -20,12 +20,7 @@ limitations under the License.
 
 #include <functional>
 
-#include "context.h"
 #include "dispatch.h"
-#include "matrix.h"
-#include "path.h"
-#include "spec.h"
-#include "tune.h"
 
 namespace ruy {
 
