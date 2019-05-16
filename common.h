@@ -23,6 +23,9 @@ limitations under the License.
 #include <type_traits>
 
 #include "check_macros.h"
+#include "matrix.h"
+#include "opt_set.h"
+#include "path.h"
 
 #ifdef __aarch64__
 #include <arm_neon.h>

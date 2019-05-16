@@ -36,8 +36,9 @@ limitations under the License.
 #include <limits>
 
 #include "third_party/gemmlowp/profiling/instrumentation.h"
-#include "kernel.h"
-#include "pack.h"
+#include "common.h"
+#include "context.h"
+#include "matrix.h"
 #include "spec.h"
 #include "trmul.h"
 

@@ -22,7 +22,6 @@ limitations under the License.
 #include "block_map.h"
 #include "common.h"
 #include "opt_set.h"
-#include "spec.h"
 #include "thread_pool.h"
 #include "trace.h"
 

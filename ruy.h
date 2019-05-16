@@ -18,7 +18,10 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_H_
 
+#include "context.h"
 #include "dispatch.h"
+#include "matrix.h"
+#include "spec.h"
 
 namespace ruy {
 
