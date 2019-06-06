@@ -16,8 +16,10 @@ limitations under the License.
 #include "trace.h"
 
 #include <algorithm>
+#include <cerrno>
 #include <cstdint>
 #include <cstdio>
+#include <string>
 #include <vector>
 
 #include "block_map.h"
