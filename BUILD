@@ -15,7 +15,7 @@ package(
 cc_library(
     name = "check_macros",
     hdrs = ["check_macros.h"],
-    deps = ["//third_party/tensorflow/lite/kernels/internal:types"],
+    deps = ["//third_party/tensorflow/lite/kernels/internal:compatibility"],
 )
 
 cc_library(
