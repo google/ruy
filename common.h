@@ -27,7 +27,7 @@ limitations under the License.
 #include "opt_set.h"
 #include "path.h"
 
-#if ((defined RUY_NEON_64) || (defined RUY_NEON_32))
+#ifdef __aarch64__
 #include <arm_neon.h>
 #endif
 
