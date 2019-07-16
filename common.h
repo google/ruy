@@ -26,8 +26,9 @@ limitations under the License.
 #include "matrix.h"
 #include "opt_set.h"
 #include "path.h"
+#include "platform.h"
 
-#if ((defined RUY_NEON_64) || (defined RUY_NEON_32))
+#if (RUY_PLATFORM(NEON_64) || RUY_PLATFORM(NEON_32))
 #include <arm_neon.h>
 #endif
 
