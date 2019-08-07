@@ -16,19 +16,15 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_KERNEL_X86_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_KERNEL_X86_H_
 
-#include <cstddef>
 #include <cstdint>
 
-#include "third_party/gemmlowp/fixedpoint/fixedpoint.h"
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "common.h"
 #include "internal_matrix.h"
 #include "kernel_common.h"
+#include "matrix.h"
 #include "opt_set.h"
 #include "path.h"
 #include "platform.h"
-#include "side_pair.h"
-#include "size_util.h"
 #include "spec.h"
 #include "tune.h"
 

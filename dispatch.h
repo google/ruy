@@ -33,16 +33,28 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_DISPATCH_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_DISPATCH_H_
 
-#include <limits>
+#include <algorithm>
+#include <cstdint>
+#include <limits>  // IWYU pragma: keep
+#include <type_traits>
 
 #include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "check_macros.h"
 #include "common.h"
 #include "context.h"
+#include "internal_matrix.h"
 #include "kernel.h"
+#include "kernel_common.h"
 #include "matrix.h"
+#include "opt_set.h"
 #include "pack.h"
+#include "pack_common.h"
+#include "path.h"
+#include "side_pair.h"
+#include "size_util.h"
 #include "spec.h"
 #include "trmul.h"
+#include "trmul_params.h"
 
 namespace ruy {
 

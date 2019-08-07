@@ -21,6 +21,7 @@ limitations under the License.
 #include "context.h"
 #include "dispatch.h"
 #include "matrix.h"
+#include "path.h"
 #include "spec.h"
 
 namespace ruy {

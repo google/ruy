@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "kernel.h"
+#include "opt_set.h"
 #include "platform.h"
 
 namespace ruy {

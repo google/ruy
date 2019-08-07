@@ -84,12 +84,16 @@ limitations under the License.
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_PACK_X86_H_
 
 #include <cstdint>
+#include <type_traits>
 
 #include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "check_macros.h"
 #include "common.h"
 #include "internal_matrix.h"
+#include "matrix.h"
 #include "opt_set.h"
 #include "pack_common.h"
+#include "path.h"
 #include "platform.h"
 #include "tune.h"
 

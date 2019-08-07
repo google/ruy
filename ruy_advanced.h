@@ -16,7 +16,14 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_ADVANCED_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_ADVANCED_H_
 
+#include <cstddef>
+#include <functional>
+
+#include "context.h"
+#include "matrix.h"
+#include "path.h"
 #include "prepack.h"
+#include "side_pair.h"
 
 namespace ruy {
 

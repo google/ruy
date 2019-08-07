@@ -15,17 +15,26 @@ limitations under the License.
 
 #include "trmul.h"
 
+#include <atomic>
+#include <cstdint>
 #include <cstring>
+#include <memory>
+#include <vector>
 
 #include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "allocator.h"
 #include "block_map.h"
+#include "check_macros.h"
 #include "common.h"
+#include "internal_matrix.h"
+#include "matrix.h"
 #include "opt_set.h"
 #include "side_pair.h"
+#include "size_util.h"
 #include "spec.h"
 #include "thread_pool.h"
 #include "trace.h"
+#include "tune.h"
 
 namespace ruy {
 

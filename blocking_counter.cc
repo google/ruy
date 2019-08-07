@@ -15,9 +15,6 @@ limitations under the License.
 
 #include "blocking_counter.h"
 
-#include <condition_variable>  // NOLINT(build/c++11)
-#include <mutex>               // NOLINT(build/c++11)
-
 #include "check_macros.h"
 #include "wait.h"
 

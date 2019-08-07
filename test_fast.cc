@@ -15,6 +15,8 @@ limitations under the License.
 
 // This test contains cheap test cases, completes in a few seconds.
 
+#include <vector>
+
 #include "test.h"
 
 namespace ruy {

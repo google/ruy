@@ -13,13 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <algorithm>
+#include <cstdint>
+
 #include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "kernel.h"
+#include "opt_set.h"
 #include "platform.h"
 
 #if RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
-#include <immintrin.h>
+#include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {

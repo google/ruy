@@ -24,6 +24,7 @@ limitations under the License.
 #include "common.h"
 #include "internal_matrix.h"
 #include "kernel_common.h"
+#include "matrix.h"
 #include "opt_set.h"
 #include "path.h"
 #include "platform.h"

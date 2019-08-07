@@ -16,13 +16,16 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_KERNEL_COMMON_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_KERNEL_COMMON_H_
 
-#include <cstddef>
+#include <algorithm>
 #include <cstdint>
+#include <type_traits>
 
 #include "third_party/gemmlowp/fixedpoint/fixedpoint.h"
 #include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "check_macros.h"
 #include "common.h"
 #include "internal_matrix.h"
+#include "matrix.h"
 #include "opt_set.h"
 #include "path.h"
 #include "platform.h"

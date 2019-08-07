@@ -16,12 +16,10 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_TRACE_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_TRACE_H_
 
-#include <algorithm>
 #include <cstdint>
-#include <cstdio>
-#include <vector>
 
 #include "block_map.h"
+#include "side_pair.h"
 
 namespace ruy {
 

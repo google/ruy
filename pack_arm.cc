@@ -12,7 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#include <cstdint>
 
+#include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "common.h"
+#include "opt_set.h"
 #include "pack.h"
 #include "platform.h"
 

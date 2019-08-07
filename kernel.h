@@ -18,6 +18,7 @@ limitations under the License.
 
 #include "platform.h"
 
+// IWYU pragma: begin_exports
 #if RUY_PLATFORM(NEON)
 #include "kernel_arm.h"
 #elif RUY_PLATFORM(AVX512)
@@ -25,5 +26,6 @@ limitations under the License.
 #else
 #include "kernel_common.h"
 #endif
+// IWYU pragma: end_exports
 
 #endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_KERNEL_H_

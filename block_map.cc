@@ -15,6 +15,9 @@ limitations under the License.
 
 #include "block_map.h"
 
+#include <algorithm>
+#include <cstdint>
+
 #include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "opt_set.h"

@@ -18,10 +18,12 @@ limitations under the License.
 #include <atomic>
 #include <chrono>              // NOLINT(build/c++11)
 #include <condition_variable>  // NOLINT(build/c++11)
+#include <cstdint>
+#include <cstdlib>
+#include <memory>
 #include <mutex>               // NOLINT(build/c++11)
 #include <thread>              // NOLINT(build/c++11)
 
-#include "blocking_counter.h"
 #include "check_macros.h"
 #include "wait.h"
 

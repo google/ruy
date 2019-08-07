@@ -18,14 +18,20 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_PREPACK_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_PREPACK_H_
 
+#include <cstddef>
 #include <functional>
 
+#include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "check_macros.h"
 #include "context.h"
 #include "dispatch.h"
+#include "internal_matrix.h"
 #include "matrix.h"
 #include "path.h"
 #include "side_pair.h"
 #include "spec.h"
+#include "trmul.h"
+#include "trmul_params.h"
 #include "tune.h"
 
 namespace ruy {

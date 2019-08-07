@@ -15,8 +15,6 @@ limitations under the License.
 
 #include "allocator.h"
 
-#include <cstdlib>
-
 #include "testing/base/public/gunit.h"
 
 namespace ruy {

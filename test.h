@@ -16,23 +16,33 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_TEST_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_TEST_H_
 
+#include <math.h>
+
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 #include <ctime>
-#include <initializer_list>
 #include <iostream>
+#include <iterator>
 #include <limits>
+#include <memory>
 #include <random>
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
-#include "testing/base/public/gunit.h"
+#include "testing/base/public/gunit.h"  // IWYU pragma: export
+#include "matrix.h"  // IWYU pragma: export
 #include "platform.h"
 #include "pmu.h"
 #include "ruy.h"
 #include "ruy_advanced.h"
+#include "spec.h"  // IWYU pragma: export
 #include "time.h"
 
 #ifdef RUY_TEST_EXTERNAL_PATHS

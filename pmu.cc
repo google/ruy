@@ -15,6 +15,8 @@ limitations under the License.
 
 #include "pmu.h"
 
+#include <syscall.h>
+
 #include "check_macros.h"
 
 #ifdef __linux__
@@ -22,6 +24,7 @@ limitations under the License.
 #include <linux/perf_event.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
 #include <cstdio>
 #endif
 

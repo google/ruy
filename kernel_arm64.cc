@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <cstdint>
+
 #include "third_party/gemmlowp/profiling/instrumentation.h"
+#include "common.h"
 #include "kernel.h"
+#include "opt_set.h"
 #include "platform.h"
 
 namespace ruy {

@@ -15,11 +15,7 @@ limitations under the License.
 
 #include "wait.h"
 
-#include <condition_variable>  // NOLINT(build/c++11)
-#include <functional>
-#include <mutex>  // NOLINT(build/c++11)
-
-#include "time.h"
+#include <chrono>  // NOLINT(build/c++11)
 
 namespace ruy {
 

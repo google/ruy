@@ -90,9 +90,12 @@ limitations under the License.
 #ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_INTERNAL_MATRIX_H_
 #define TENSORFLOW_LITE_EXPERIMENTAL_RUY_INTERNAL_MATRIX_H_
 
+#include <cstddef>
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
+#include "check_macros.h"
 #include "common.h"
 #include "matrix.h"
 #include "size_util.h"
