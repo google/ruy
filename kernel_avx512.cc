@@ -18,6 +18,10 @@ limitations under the License.
 #include "kernel.h"
 #include "platform.h"
 
+#if RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#include <immintrin.h>
+#endif
+
 namespace ruy {
 
 #if RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
