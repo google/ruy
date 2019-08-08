@@ -15,14 +15,13 @@ limitations under the License.
 
 #include "pmu.h"
 
-#include <syscall.h>
-
 #include "check_macros.h"
 
 #ifdef __linux__
 #include <asm/unistd.h>
 #include <linux/perf_event.h>
 #include <sys/ioctl.h>
+#include <syscall.h>
 #include <unistd.h>
 
 #include <cstdio>
