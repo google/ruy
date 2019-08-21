@@ -15,8 +15,8 @@ limitations under the License.
 
 // Temporary dotprod-detection code until we can rely on getauxval.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_DOTPROD_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_DOTPROD_H_
+#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_ARM_H_
+#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_ARM_H_
 
 namespace ruy {
 
@@ -26,4 +26,4 @@ bool DetectDotprod();
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_DOTPROD_H_
+#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_DETECT_ARM_H_

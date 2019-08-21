@@ -16,7 +16,8 @@ limitations under the License.
 #include "context.h"
 
 #include "check_macros.h"
-#include "detect_dotprod.h"
+#include "detect_arm.h"
+#include "detect_x86.h"
 
 namespace ruy {
 
@@ -41,9 +42,27 @@ Path Context::GetRuntimeEnabledPaths() {
   // Now selectively disable paths that aren't supported on this machine.
   if ((runtime_enabled_paths_ & Path::kNeonDotprod) != Path::kNone) {
     if (!DetectDotprod()) {
-      runtime_enabled_paths_ = runtime_enabled_paths_ ^ Path::kNeonDotprod;
+      runtime_enabled_paths_ = runtime_enabled_paths_ & ~Path::kNeonDotprod;
       // Sanity check.
       RUY_DCHECK((runtime_enabled_paths_ & Path::kNeonDotprod) == Path::kNone);
+    }
+  }
+#endif
+
+#if RUY_PLATFORM(X86)
+  if ((runtime_enabled_paths_ & Path::kAvx2) != Path::kNone) {
+    if (!DetectCpuAvx2()) {
+      runtime_enabled_paths_ = runtime_enabled_paths_ & ~Path::kAvx2;
+      // Sanity check.
+      RUY_DCHECK((runtime_enabled_paths_ & Path::kAvx2) == Path::kNone);
+    }
+  }
+
+  if ((runtime_enabled_paths_ & Path::kAvx512) != Path::kNone) {
+    if (!DetectCpuAvx512()) {
+      runtime_enabled_paths_ = runtime_enabled_paths_ & ~Path::kAvx512;
+      // Sanity check.
+      RUY_DCHECK((runtime_enabled_paths_ & Path::kAvx512) == Path::kNone);
     }
   }
 #endif
