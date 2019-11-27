@@ -753,6 +753,10 @@ ruy_benchmark(
         ("u8", "u8", "i32", "i16"),
         ("i8", "i8", "i32", "i32"),
     ],
+    deps = [
+        "//third_party/gemmlowp:profiler",  # Note also tagged as req_dep.
+        ":test_lib",
+    ],
 )
 
 ruy_test(
@@ -770,6 +774,10 @@ ruy_test(
         ("i8", "i8", "i32", "i32"),
         ("i8", "u8", "i32", "i32"),
     ],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":test_lib",
+    ],
 )
 
 ruy_test(
@@ -784,6 +792,10 @@ ruy_test(
         ("i8", "i8", "i32", "i32"),
     ],
     tags = ["slow"],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":test_lib",
+    ],
 )
 
 ruy_test(
@@ -794,6 +806,10 @@ ruy_test(
         ("f32", "f32", "f32", "f32"),
         ("u8", "u8", "i32", "u8"),
         ("u8", "u8", "i32", "i16"),
+    ],
+    deps = [
+        "@com_google_googletest//:gtest_main",
+        ":test_lib",
     ],
 )
 
@@ -817,5 +833,9 @@ ruy_benchmark_opt_sets(
         "1ff",
         "3ff",
         "7ff",
+    ],
+    deps = [
+        "//third_party/gemmlowp:profiler",  # Note also tagged as req_dep.
+        ":test_lib",
     ],
 )
