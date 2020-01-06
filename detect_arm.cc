@@ -42,7 +42,7 @@ limitations under the License.
 
 #include "detect_arm.h"
 
-#ifdef __linux__
+#if defined __linux__ && defined __aarch64__
 #include <sys/auxv.h>
 #endif
 
