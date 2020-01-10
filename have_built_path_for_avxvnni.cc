@@ -13,20 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_HAVE_BUILT_PATH_FOR_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_HAVE_BUILT_PATH_FOR_H_
-
-#include "platform.h"
+#include "have_built_path_for.h"
+#include "opt_set.h"
 
 namespace ruy {
 
 #if RUY_PLATFORM(X86)
-bool HaveBuiltPathForSse42();
-bool HaveBuiltPathForAvx2();
-bool HaveBuiltPathForAvx512();
-bool HaveBuiltPathForAvxVnni();
+// IMPORTANT:
+// These patterns must match those in the pack and kernel cc files.
+#if !(RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_ASM))
+
+bool HaveBuiltPathForAvxVnni() { return false; }
+
+#else  // RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+
+// TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
+// Optimization is not finished. In particular the dimensions of the kernel
+// blocks can be changed as desired.
+//
+bool HaveBuiltPathForAvxVnni() { return true; }
+
+#endif  // RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_ASM)
 #endif  // RUY_PLATFORM(X86)
 
 }  // namespace ruy
-
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_HAVE_BUILT_PATH_FOR_H_
