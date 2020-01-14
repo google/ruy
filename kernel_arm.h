@@ -19,7 +19,6 @@ limitations under the License.
 #include <cstddef>
 #include <cstdint>
 
-#include "third_party/gemmlowp/fixedpoint/fixedpoint.h"
 #include "common.h"
 #include "internal_matrix.h"
 #include "kernel_common.h"

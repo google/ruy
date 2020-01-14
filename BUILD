@@ -361,7 +361,6 @@ cc_library(
         ":size_util",
         ":spec",
         ":tune",
-        "//third_party/gemmlowp:fixedpoint",
         "//profiler:instrumentation",
     ],
 )
@@ -664,7 +663,6 @@ cc_library(
         ":size_util",
         ":spec",
         ":tune",
-        "//third_party/gemmlowp:fixedpoint",
         "//profiler:instrumentation",
     ],
 )
