@@ -16,13 +16,13 @@ limitations under the License.
 #include <cstdint>
 #include <cstring>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "matrix.h"
 #include "opt_set.h"
 #include "pack.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 
 #if RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
 #include <immintrin.h>  // IWYU pragma: keep
@@ -603,7 +603,7 @@ void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
                     const std::int8_t* zerobuf, int src_stride,
                     int remaining_src_cols, int src_rows,
                     std::int8_t* packed_ptr, std::int32_t* sums_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvx512 8bit");
+  profiler::ScopeLabel label("Pack kAvx512 8bit");
 
   using Layout = PackImpl8bitAvx512::Layout;
   constexpr int kHalfBlockOffset = 32;
@@ -666,7 +666,7 @@ void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
 
 void PackFloatAvx512(const float* src_ptr, const float* zerobuf, int src_stride,
                      int remaining_src_cols, int src_rows, float* packed_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvx512 float");
+  profiler::ScopeLabel label("Pack kAvx512 float");
   float trailing_buf[7 * 16];
   if (remaining_src_cols > 8) {
     HalfPackFloatAvx512(src_ptr, zerobuf, src_stride, remaining_src_cols,

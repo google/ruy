@@ -16,13 +16,13 @@ limitations under the License.
 #include <cstdint>
 #include <cstring>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "matrix.h"
 #include "opt_set.h"
 #include "pack.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 
 #if RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
 #include <immintrin.h>  // IWYU pragma: keep
@@ -402,7 +402,7 @@ void Pack8bitAvxVnni(const std::int8_t* src_ptr, std::int8_t input_xor,
                      const std::int8_t* zerobuf, int src_stride,
                      int remaining_src_cols, int src_rows,
                      std::int8_t* packed_ptr, std::int32_t* sums_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvxVnni 8bit (UNFINISHED)");
+  profiler::ScopeLabel label("Pack kAvxVnni 8bit (UNFINISHED)");
 
   // Each packed block is 4*16, and there are normally 8. The trailing block is
   // only slightly shorter.
@@ -451,7 +451,7 @@ void Pack8bitAvxVnni(const std::int8_t* src_ptr, std::int8_t input_xor,
 void PackFloatAvxVnni(const float* src_ptr, const float* zerobuf,
                       int src_stride, int remaining_src_cols, int src_rows,
                       float* packed_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvxVnni float (UNFINISHED)");
+  profiler::ScopeLabel label("Pack kAvxVnni float (UNFINISHED)");
   float trailing_buf[7 * 16];
   if (remaining_src_cols > 8) {
     HalfPackFloatAvxVnni(src_ptr, zerobuf, src_stride, remaining_src_cols,

@@ -16,13 +16,13 @@ limitations under the License.
 #include <cstdint>
 #include <cstring>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "matrix.h"
 #include "opt_set.h"
 #include "pack.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 
 #if RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
 #include <immintrin.h>  // IWYU pragma: keep
@@ -756,7 +756,7 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
                   const std::int8_t* zerobuf, int src_stride,
                   int remaining_src_cols, int src_rows, std::int8_t* packed_ptr,
                   std::int32_t* sums_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvx2 8bit");
+  profiler::ScopeLabel label("Pack kAvx2 8bit");
 
   using Layout = PackImpl8bitAvx2::Layout;
   RUY_DCHECK_EQ(Layout::kCols, 8);
@@ -793,7 +793,7 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
 
 void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
                    int remaining_src_cols, int src_rows, float* packed_ptr) {
-  gemmlowp::ScopedProfilingLabel label("Pack kAvx2 float");
+  profiler::ScopeLabel label("Pack kAvx2 float");
   static constexpr int kPackCols = 8;  // Source cols packed together.
   static constexpr int kPackRows = 8;  // Short input is padded.
   float trailing_buf[(kPackRows - 1) * kPackCols];

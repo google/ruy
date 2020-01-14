@@ -87,7 +87,6 @@ limitations under the License.
 #include <cstring>
 #include <type_traits>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "common.h"
 #include "internal_matrix.h"
@@ -96,6 +95,7 @@ limitations under the License.
 #include "pack_common.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 #include "tune.h"
 
 namespace ruy {
@@ -125,7 +125,7 @@ struct PackImpl<Path::kSse42, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (SSE 4.2 8-bit)");
+    profiler::ScopeLabel label("Pack (SSE 4.2 8-bit)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -168,7 +168,7 @@ struct PackImpl<Path::kSse42, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
   static void Run(Tuning, const Matrix<float>& src_matrix,
                   PackedMatrix<float>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (SSE 4.2 float)");
+    profiler::ScopeLabel label("Pack (SSE 4.2 float)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -212,7 +212,7 @@ struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX2 8-bit)");
+    profiler::ScopeLabel label("Pack (AVX2 8-bit)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -251,7 +251,7 @@ struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
   static void Run(Tuning, const Matrix<float>& src_matrix,
                   PackedMatrix<float>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX2 float)");
+    profiler::ScopeLabel label("Pack (AVX2 float)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -297,7 +297,7 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX-512 8-bit)");
+    profiler::ScopeLabel label("Pack (AVX-512 8-bit)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -336,7 +336,7 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
   static void Run(Tuning, const Matrix<float>& src_matrix,
                   PackedMatrix<float>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX-512 float)");
+    profiler::ScopeLabel label("Pack (AVX-512 float)");
     using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -386,7 +386,7 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX-512 8-bit)");
+    profiler::ScopeLabel label("Pack (AVX-512 8-bit)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -430,7 +430,7 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kRowMajor, 1, 16>,
   static void Run(Tuning, const Matrix<float>& src_matrix,
                   PackedMatrix<float>* packed_matrix, int start_col,
                   int end_col) {
-    gemmlowp::ScopedProfilingLabel label("Pack (AVX-512 float)");
+    profiler::ScopeLabel label("Pack (AVX-512 float)");
 
     using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
     RUY_DCHECK(IsColMajor(src_matrix.layout));

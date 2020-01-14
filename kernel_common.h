@@ -21,7 +21,6 @@ limitations under the License.
 #include <type_traits>
 
 #include "third_party/gemmlowp/fixedpoint/fixedpoint.h"
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "common.h"
 #include "internal_matrix.h"
@@ -29,6 +28,7 @@ limitations under the License.
 #include "opt_set.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 #include "side_pair.h"
 #include "size_util.h"
 #include "spec.h"
@@ -174,7 +174,7 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
     RUY_DCHECK_LE(clamped_end_col, dst->layout.cols);
     RUY_DCHECK_LE(clamped_end_col, end_col);
     RUY_DCHECK_LE(end_col - clamped_end_col, RhsLayout::kCols);
-    gemmlowp::ScopedProfilingLabel label("Kernel (Standard Cpp)");
+    profiler::ScopeLabel label("Kernel (Standard Cpp)");
     const int depth = lhs.layout.rows;
     for (int i = start_row; i < clamped_end_row; i++) {
       for (int j = start_col; j < clamped_end_col; j++) {

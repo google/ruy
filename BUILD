@@ -118,7 +118,7 @@ cc_library(
         ":opt_set",
         ":platform",
         ":time",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -196,7 +196,7 @@ cc_library(
         ":path",
         ":side_pair",
         ":size_util",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -362,7 +362,7 @@ cc_library(
         ":spec",
         ":tune",
         "//third_party/gemmlowp:fixedpoint",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -384,7 +384,7 @@ cc_library(
         ":path",
         ":platform",
         ":tune",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -400,7 +400,7 @@ cc_library(
         ":kernel_common",
         ":opt_set",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -415,7 +415,7 @@ cc_library(
         ":opt_set",
         ":pack_common",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -435,7 +435,7 @@ cc_library(
         ":kernel_common",
         ":opt_set",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -452,7 +452,7 @@ cc_library(
         ":pack_common",
         ":path",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -488,7 +488,7 @@ cc_library(
         ":kernel_common",
         ":opt_set",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -505,7 +505,7 @@ cc_library(
         ":pack_common",
         ":path",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -545,7 +545,7 @@ cc_library(
         ":kernel_common",
         ":opt_set",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -562,7 +562,7 @@ cc_library(
         ":pack_common",
         ":path",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -602,7 +602,7 @@ cc_library(
         ":kernel_common",
         ":opt_set",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -619,7 +619,7 @@ cc_library(
         ":pack_common",
         ":path",
         ":platform",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -665,7 +665,7 @@ cc_library(
         ":spec",
         ":tune",
         "//third_party/gemmlowp:fixedpoint",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -691,7 +691,7 @@ cc_library(
         ":path",
         ":platform",
         ":tune",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -777,7 +777,7 @@ cc_library(
         ":trace",
         ":trmul_params",
         ":tune",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -811,7 +811,7 @@ cc_library(
         ":trmul",
         ":trmul_params",
         ":tune",
-        "//third_party/gemmlowp:profiler",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -859,6 +859,7 @@ cc_library(
         ":time",
         "@com_google_googletest//:gtest",
         ":platform",
+        "//profiler:profiler",
     ] + ruy_test_ext_deps(),
 )
 
@@ -875,8 +876,8 @@ ruy_benchmark(
         ("i8", "i8", "i32", "i32"),
     ],
     deps = [
-        "//third_party/gemmlowp:profiler",  # Note also tagged as req_dep.
         ":test_lib",
+        "//profiler:instrumentation",
     ],
 )
 
@@ -956,7 +957,7 @@ ruy_benchmark_opt_sets(
         "7ff",
     ],
     deps = [
-        "//third_party/gemmlowp:profiler",  # Note also tagged as req_dep.
         ":test_lib",
+        "//profiler:instrumentation",
     ],
 )

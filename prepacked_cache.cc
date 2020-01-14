@@ -15,8 +15,8 @@ limitations under the License.
 
 #include "prepacked_cache.h"
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "matrix.h"
+#include "profiler/instrumentation.h"
 
 namespace ruy {
 
@@ -51,7 +51,7 @@ void PrepackedCache::EjectOne() {
   TimePoint oldest_time = CacheNow();
   auto oldest = cache_.begin();
   {
-    gemmlowp::ScopedProfilingLabel label("PepackedCacheEjection");
+    profiler::ScopeLabel label("PepackedCacheEjection");
     for (auto itr = cache_.begin(); itr != cache_.end(); ++itr) {
       if (itr->second.second < oldest_time) {
         oldest_time = itr->second.second;

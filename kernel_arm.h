@@ -20,7 +20,6 @@ limitations under the License.
 #include <cstdint>
 
 #include "third_party/gemmlowp/fixedpoint/fixedpoint.h"
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "common.h"
 #include "internal_matrix.h"
 #include "kernel_common.h"
@@ -28,6 +27,7 @@ limitations under the License.
 #include "opt_set.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 #include "side_pair.h"
 #include "size_util.h"
 #include "spec.h"

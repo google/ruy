@@ -38,7 +38,6 @@ limitations under the License.
 #include <limits>  // IWYU pragma: keep
 #include <type_traits>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "common.h"
 #include "context.h"
@@ -50,6 +49,7 @@ limitations under the License.
 #include "pack.h"
 #include "pack_common.h"
 #include "path.h"
+#include "profiler/instrumentation.h"
 #include "side_pair.h"
 #include "size_util.h"
 #include "spec.h"
@@ -336,7 +336,7 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename Spec>
 void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                   const Spec& spec, Matrix<DstScalar>* dst) {
-  gemmlowp::ScopedProfilingLabel label("ReferenceMul");
+  profiler::ScopeLabel label("ReferenceMul");
   for (int i = 0; i < lhs.layout.rows; i++) {
     for (int j = 0; j < rhs.layout.cols; j++) {
       using AccumScalar = typename Spec::AccumScalar;
@@ -428,7 +428,10 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
                 "CompiledPaths must be a subset of ruy::kAllPaths");
 
-  gemmlowp::ScopedProfilingLabel label("Mul");
+  profiler::ScopeLabel mul_label("Mul");
+  profiler::ScopeLabel shape_specific_label("matmul shape: %dx%dx%d",
+                                            lhs.layout.rows, lhs.layout.cols,
+                                            rhs.layout.cols);
 
   EnforceLayoutSupport<Spec>(lhs.layout, rhs.layout, dst->layout);
   EnforceZeroPointSupport<Spec>(lhs.zero_point, rhs.zero_point,

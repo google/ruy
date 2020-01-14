@@ -21,7 +21,6 @@ limitations under the License.
 #include <memory>
 #include <vector>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "allocator.h"
 #include "block_map.h"
 #include "check_macros.h"
@@ -29,6 +28,7 @@ limitations under the License.
 #include "internal_matrix.h"
 #include "matrix.h"
 #include "opt_set.h"
+#include "profiler/instrumentation.h"
 #include "side_pair.h"
 #include "size_util.h"
 #include "spec.h"
@@ -275,7 +275,10 @@ LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
 }  // namespace
 
 void TrMul(TrMulParams* params, Context* context) {
-  gemmlowp::ScopedProfilingLabel label("TrMul");
+  profiler::ScopeLabel label(
+      "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
+      static_cast<int>(params->path), context->max_num_threads,
+      params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
   PMatrix& packed_lhs = params->packed[Side::kLhs];
   PMatrix& packed_rhs = params->packed[Side::kRhs];
@@ -304,7 +307,7 @@ void TrMul(TrMulParams* params, Context* context) {
   // of this function is just an optimized, but functionally equivalent,
   // version of that.
   if (loop_structure == LoopStructure::kSimple) {
-    gemmlowp::ScopedProfilingLabel label_simple("TrMulImpl, simple loop");
+    profiler::ScopeLabel label_simple("TrMulImpl, simple loop");
     Tuning tuning = context->GetMainThreadTuning();
 
     const SidePair<int> origin{0, 0};
@@ -321,7 +324,7 @@ void TrMul(TrMulParams* params, Context* context) {
     return;
   }
 
-  gemmlowp::ScopedProfilingLabel label_general("TrMulImpl, general case");
+  profiler::ScopeLabel label_general("TrMulImpl, general case");
 
   auto* trace = NewTraceOrNull(&context->tracing, rows, depth, cols);
   TraceRecordStart(trace);

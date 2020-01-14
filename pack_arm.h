@@ -86,7 +86,6 @@ limitations under the License.
 #include <cstdint>
 #include <type_traits>
 
-#include "third_party/gemmlowp/profiling/instrumentation.h"
 #include "check_macros.h"
 #include "common.h"
 #include "internal_matrix.h"
@@ -95,6 +94,7 @@ limitations under the License.
 #include "pack_common.h"
 #include "path.h"
 #include "platform.h"
+#include "profiler/instrumentation.h"
 #include "tune.h"
 
 namespace ruy {
