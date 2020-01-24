@@ -27,10 +27,10 @@ limitations under the License.
 #include "path.h"
 #include "platform.h"
 
-#if RUY_OPT_ENABLED(RUY_OPT_PREFETCH)
-#define RUY_PREFETCH(X) X
+#if RUY_OPT_ENABLED(RUY_OPT_PREFETCH_LOAD)
+#define RUY_PREFETCH_LOAD(X) X
 #else
-#define RUY_PREFETCH(X)
+#define RUY_PREFETCH_LOAD(X)
 #endif
 
 #define RUY_STR(s) RUY_STR_UNEXPANDED(s)
