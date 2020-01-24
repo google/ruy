@@ -953,6 +953,7 @@ ruy_benchmark_opt_sets(
         "1ff",
         "3ff",
         "7ff",
+        "fff",
     ],
     deps = [
         ":test_lib",
