@@ -30,8 +30,8 @@ limitations under the License.
 //
 // This file also performs some checking of invariants to catch user errors.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_DISPATCH_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_DISPATCH_H_
+#ifndef RUY_RUY_DISPATCH_H_
+#define RUY_RUY_DISPATCH_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -479,4 +479,4 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_DISPATCH_H_
+#endif  // RUY_RUY_DISPATCH_H_

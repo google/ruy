@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_PARAMS_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_PARAMS_H_
+#ifndef RUY_RUY_TRMUL_PARAMS_H_
+#define RUY_RUY_TRMUL_PARAMS_H_
 
 #include "ruy/internal_matrix.h"
 #include "ruy/side_pair.h"
@@ -64,4 +64,4 @@ struct TrMulParams {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_PARAMS_H_
+#endif  // RUY_RUY_TRMUL_PARAMS_H_

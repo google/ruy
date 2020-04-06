@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PROFILER_TREEVIEW_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PROFILER_TREEVIEW_H_
+#ifndef RUY_RUY_PROFILER_TREEVIEW_H_
+#define RUY_RUY_PROFILER_TREEVIEW_H_
 
 #ifdef RUY_PROFILER
 
@@ -127,4 +127,4 @@ void CollapseNodesMatchingFormatted(const TreeView& treeview_in, int depth,
 
 #endif  // RUY_PROFILER
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PROFILER_TREEVIEW_H_
+#endif  // RUY_RUY_PROFILER_TREEVIEW_H_

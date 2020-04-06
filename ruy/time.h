@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TIME_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TIME_H_
+#ifndef RUY_RUY_TIME_H_
+#define RUY_RUY_TIME_H_
 
 #include <chrono>  // NOLINT(build/c++11)
 #include <cstdint>  // IWYU pragma: keep
@@ -78,4 +78,4 @@ inline TimePoint CoarseNow() {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TIME_H_
+#endif  // RUY_RUY_TIME_H_

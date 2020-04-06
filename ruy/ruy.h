@@ -15,8 +15,8 @@ limitations under the License.
 
 // This is the only Ruy header that users should #include.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_RUY_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_RUY_H_
+#ifndef RUY_RUY_RUY_H_
+#define RUY_RUY_RUY_H_
 
 #include "ruy/context.h"
 #include "ruy/dispatch.h"
@@ -39,4 +39,4 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_RUY_H_
+#endif  // RUY_RUY_RUY_H_

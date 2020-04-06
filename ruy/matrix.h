@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_MATRIX_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_MATRIX_H_
+#ifndef RUY_RUY_MATRIX_H_
+#define RUY_RUY_MATRIX_H_
 
 #include <cstddef>
 #include <cstdint>  // IWYU pragma: keep
@@ -179,4 +179,4 @@ constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kRows;
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_MATRIX_H_
+#endif  // RUY_RUY_MATRIX_H_

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_X86_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_X86_H_
+#ifndef RUY_RUY_KERNEL_X86_H_
+#define RUY_RUY_KERNEL_X86_H_
 
 #include <cstdint>
 
@@ -219,4 +219,4 @@ struct Kernel<Path::kAvxVnni, float, float, float, BasicSpec<float, float>> {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_X86_H_
+#endif  // RUY_RUY_KERNEL_X86_H_

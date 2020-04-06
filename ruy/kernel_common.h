@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_COMMON_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_COMMON_H_
+#ifndef RUY_RUY_KERNEL_COMMON_H_
+#define RUY_RUY_KERNEL_COMMON_H_
 
 #include <algorithm>
 #include <cstdint>
@@ -478,4 +478,4 @@ struct KernelParamsFloat {};
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_KERNEL_COMMON_H_
+#endif  // RUY_RUY_KERNEL_COMMON_H_

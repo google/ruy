@@ -69,8 +69,8 @@ limitations under the License.
 //    nano-benchmark.
 //  * Maybe using getcpu in conjunction with the nano-benchmark to cache
 //    per-CPU-id nano-benchmark results.
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TUNE_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TUNE_H_
+#ifndef RUY_RUY_TUNE_H_
+#define RUY_RUY_TUNE_H_
 
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
@@ -160,4 +160,4 @@ class TuningResolver {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TUNE_H_
+#endif  // RUY_RUY_TUNE_H_

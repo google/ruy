@@ -15,8 +15,8 @@ limitations under the License.
 
 // Implementation of low-level pre-packing API.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PREPACK_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PREPACK_H_
+#ifndef RUY_RUY_PREPACK_H_
+#define RUY_RUY_PREPACK_H_
 
 #include <cstddef>
 #include <functional>
@@ -105,4 +105,4 @@ void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PREPACK_H_
+#endif  // RUY_RUY_PREPACK_H_

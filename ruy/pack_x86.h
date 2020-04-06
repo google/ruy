@@ -80,8 +80,8 @@ limitations under the License.
 // column sums for quantization (and never row sums, since the LHS is
 // transposed).
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_X86_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_X86_H_
+#ifndef RUY_RUY_PACK_X86_H_
+#define RUY_RUY_PACK_X86_H_
 
 #include <cstdint>
 #include <cstring>
@@ -458,4 +458,4 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kRowMajor, 1, 16>,
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_X86_H_
+#endif  // RUY_RUY_PACK_X86_H_

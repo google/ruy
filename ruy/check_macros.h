@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CHECK_MACROS_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CHECK_MACROS_H_
+#ifndef RUY_RUY_CHECK_MACROS_H_
+#define RUY_RUY_CHECK_MACROS_H_
 
 #include <cstdio>
 #include <cstdlib>
@@ -135,4 +135,4 @@ inline void Failure(const char* file, int line, const char* macro,
 }  // end namespace check_macros
 }  // end namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CHECK_MACROS_H_
+#endif  // RUY_RUY_CHECK_MACROS_H_

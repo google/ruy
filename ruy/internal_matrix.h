@@ -87,8 +87,8 @@ limitations under the License.
 // exists is so that PMatrix is not exposed to users -- we prefer to keep the
 // internal matrix types hidden, even from "advanced" users.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_INTERNAL_MATRIX_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_INTERNAL_MATRIX_H_
+#ifndef RUY_RUY_INTERNAL_MATRIX_H_
+#define RUY_RUY_INTERNAL_MATRIX_H_
 
 #include <cstddef>
 #include <cstdint>
@@ -385,4 +385,4 @@ KernelLayout ToKernelLayout() {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_INTERNAL_MATRIX_H_
+#endif  // RUY_RUY_INTERNAL_MATRIX_H_

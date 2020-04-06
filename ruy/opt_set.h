@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_OPT_SET_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_OPT_SET_H_
+#ifndef RUY_RUY_OPT_SET_H_
+#define RUY_RUY_OPT_SET_H_
 
 // RUY_OPT_SET is a compile-time API that Ruy provides for enabling/disabling
 // certain optimizations. It should be used by defining that macro on the
@@ -48,4 +48,4 @@ limitations under the License.
 
 #define RUY_OPT_ENABLED(ruy_opt) ((RUY_OPT_SET & ruy_opt) != 0)
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_OPT_SET_H_
+#endif  // RUY_RUY_OPT_SET_H_

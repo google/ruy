@@ -15,8 +15,8 @@ limitations under the License.
 
 // Miscellaneous helpers internal library.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_COMMON_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_COMMON_H_
+#ifndef RUY_RUY_COMMON_H_
+#define RUY_RUY_COMMON_H_
 
 #include <limits>
 #include <type_traits>
@@ -70,4 +70,4 @@ Scalar SymmetricZeroPoint() {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_COMMON_H_
+#endif  // RUY_RUY_COMMON_H_

@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_BLOCK_MAP_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_BLOCK_MAP_H_
+#ifndef RUY_RUY_BLOCK_MAP_H_
+#define RUY_RUY_BLOCK_MAP_H_
 
 #include "ruy/path.h"
 #include "ruy/side_pair.h"
@@ -158,4 +158,4 @@ inline int NumBlocks(const BlockMap& block_map) {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_BLOCK_MAP_H_
+#endif  // RUY_RUY_BLOCK_MAP_H_

@@ -80,8 +80,8 @@ limitations under the License.
 // column sums for quantization (and never row sums, since the LHS is
 // transposed).
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_H_
+#ifndef RUY_RUY_PACK_H_
+#define RUY_RUY_PACK_H_
 
 #include "ruy/platform.h"
 
@@ -95,4 +95,4 @@ limitations under the License.
 #endif
 // IWYU pragma: end_exports
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_H_
+#endif  // RUY_RUY_PACK_H_

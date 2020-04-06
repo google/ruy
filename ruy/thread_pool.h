@@ -16,8 +16,8 @@ limitations under the License.
 // This file is a fork of gemmlowp's multi_thread_gemm.h, under Apache 2.0
 // license.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_THREAD_POOL_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_THREAD_POOL_H_
+#ifndef RUY_RUY_THREAD_POOL_H_
+#define RUY_RUY_THREAD_POOL_H_
 
 #include <vector>
 
@@ -99,4 +99,4 @@ class ThreadPool {
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_THREAD_POOL_H_
+#endif  // RUY_RUY_THREAD_POOL_H_

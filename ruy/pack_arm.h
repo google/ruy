@@ -80,8 +80,8 @@ limitations under the License.
 // column sums for quantization (and never row sums, since the LHS is
 // transposed).
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_ARM_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_ARM_H_
+#ifndef RUY_RUY_PACK_ARM_H_
+#define RUY_RUY_PACK_ARM_H_
 
 #include <cstdint>
 #include <type_traits>
@@ -494,4 +494,4 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_PACK_ARM_H_
+#endif  // RUY_RUY_PACK_ARM_H_

@@ -23,8 +23,8 @@ limitations under the License.
 // That is why TrMul is nicer to implement, allowing for a more symmetric
 // treatment of LHS and RHS.
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_H_
+#ifndef RUY_RUY_TRMUL_H_
+#define RUY_RUY_TRMUL_H_
 
 #include "ruy/context.h"
 #include "ruy/trmul_params.h"
@@ -35,4 +35,4 @@ void TrMul(TrMulParams* params, Context* context);
 
 }  // namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_TRMUL_H_
+#endif  // RUY_RUY_TRMUL_H_

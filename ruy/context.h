@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CONTEXT_H_
-#define TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CONTEXT_H_
+#ifndef RUY_RUY_CONTEXT_H_
+#define RUY_RUY_CONTEXT_H_
 
 #include <cstddef>
 #include <memory>
@@ -106,4 +106,4 @@ struct Context final {
 
 }  // end namespace ruy
 
-#endif  // TENSORFLOW_LITE_EXPERIMENTAL_RUY_RUY_CONTEXT_H_
+#endif  // RUY_RUY_CONTEXT_H_
