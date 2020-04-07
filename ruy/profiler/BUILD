@@ -1,7 +1,6 @@
 # A minimalistic profiler sampling pseudo-stacks
 
 package(
-    default_visibility = ["//visibility:public"],
     licenses = ["notice"],  # Apache 2.0
 )
 
@@ -26,6 +25,7 @@ cc_library(
         ":ruy_profiler": ["RUY_PROFILER"],
         "//conditions:default": [],
     }),
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -38,6 +38,7 @@ cc_library(
         "profiler.h",
         "treeview.h",
     ],
+    visibility = ["//visibility:public"],
     deps = [":instrumentation"],
 )
 

@@ -5,7 +5,6 @@ load(":ruy_test_ext.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 
 package(
-    default_visibility = ["//visibility:public"],
     licenses = ["notice"],  # Apache 2.0
 )
 
@@ -29,7 +28,6 @@ config_setting(
     values = {
         "compilation_mode": "opt",
     },
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -249,6 +247,7 @@ cc_library(
         "thread_pool.h",
     ],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [
         ":blocking_counter",
         ":check_macros",
@@ -265,6 +264,7 @@ cc_library(
         "detect_arm.h",
     ],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -285,6 +285,7 @@ cc_library(
     name = "path",
     hdrs = ["path.h"],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [
         ":platform",
         ":size_util",
@@ -322,6 +323,7 @@ cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [":check_macros"],
 )
 
@@ -329,6 +331,7 @@ cc_library(
     name = "spec",
     hdrs = ["spec.h"],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [
         ":cpu_cache_size",
         ":matrix",
@@ -738,6 +741,7 @@ cc_library(
         "context.h",
     ],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [
         ":allocator",
         ":check_macros",
@@ -812,6 +816,7 @@ cc_library(
         "ruy_advanced.h",
     ],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [
         ":check_macros",
         ":common",
