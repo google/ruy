@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+// Public header for some advanced usage patterns.
+
 #ifndef RUY_RUY_RUY_ADVANCED_H_
 #define RUY_RUY_RUY_ADVANCED_H_
 

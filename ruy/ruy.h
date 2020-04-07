@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// This is the only Ruy header that users should #include.
+// This is the main Ruy public header (see also ruy_advanced.h).
 
 #ifndef RUY_RUY_RUY_H_
 #define RUY_RUY_RUY_H_
