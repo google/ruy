@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <thread>  // NOLINT(build/c++11)
 
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
 #include "ruy/ruy.h"
 #include "ruy/time.h"
 

@@ -36,7 +36,7 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
-#include "testing/base/public/gunit.h"  // IWYU pragma: export
+#include "gtest/gtest.h"  // IWYU pragma: export
 #include "ruy/matrix.h"  // IWYU pragma: export
 #include "ruy/platform.h"
 #include "ruy/pmu.h"

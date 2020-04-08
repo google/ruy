@@ -20,7 +20,7 @@ limitations under the License.
 #include <mutex>               // NOLINT(build/c++11)
 #include <thread>              // NOLINT(build/c++11)
 
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
 #include "ruy/platform.h"
 
 namespace ruy {

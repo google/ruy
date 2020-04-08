@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
 
 namespace {
 

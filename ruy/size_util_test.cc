@@ -19,7 +19,7 @@ limitations under the License.
 #include <cstdint>
 #include <limits>
 
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
 
 namespace ruy {
 namespace {

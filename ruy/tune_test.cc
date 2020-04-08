@@ -18,7 +18,7 @@ limitations under the License.
 #include <chrono>  // NOLINT(build/c++11)
 #include <thread>  // NOLINT(build/c++11)
 
-#include "testing/base/public/gunit.h"
+#include "gtest/gtest.h"
 
 namespace ruy {
 namespace {
