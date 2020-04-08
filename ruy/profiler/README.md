@@ -35,7 +35,7 @@ measure how much time is spent in this function.
 ...
 
 void SomeFunction() {
-  ruy::profiling::ScopeLabel function_label("SomeFunction");
+  ruy::profiler::ScopeLabel function_label("SomeFunction");
   ... do something ...
 }
 ```
@@ -44,7 +44,7 @@ A `ScopeLabel` may however have any scope, for instance:
 
 ```c++
 if (some_case) {
-  ruy::profiling::ScopeLabel extra_work_label("Some more work");
+  ruy::profiler::ScopeLabel extra_work_label("Some more work");
   ... do some more work ...
 }
 ```
@@ -58,7 +58,7 @@ have up to 4 parameters, of type `int`. For example:
 
 ```c++
 void SomeFunction(int size) {
-  ruy::profiling::ScopeLabel function_label("SomeFunction (size=%d)", size);
+  ruy::profiler::ScopeLabel function_label("SomeFunction (size=%d)", size);
 
 ```
 
@@ -80,7 +80,7 @@ standard output by default. Example:
 
 ```c++
 void SomeProfiledBenchmark() {
-  ruy::profiling::ScopeProfile profile;
+  ruy::profiler::ScopeProfile profile;
 
   CallSomeInstrumentedCode();
 }
