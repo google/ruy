@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+// self-contained, minimal, CHECK/DCHECK macros similar to glog.
+
 #ifndef RUY_RUY_CHECK_MACROS_H_
 #define RUY_RUY_CHECK_MACROS_H_
 
