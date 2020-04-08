@@ -23,7 +23,6 @@ limitations under the License.
 #ifdef __linux__
 #include <sys/time.h>
 // IWYU pragma: no_include <type_traits>
-
 #include <ctime>
 #endif
 
