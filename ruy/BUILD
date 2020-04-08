@@ -1,8 +1,8 @@
 # Ruy is not BLAS
 
 load(":build_defs.bzl", "ruy_copts_avx2", "ruy_copts_avxvnni", "ruy_copts_base", "ruy_copts_skylake", "ruy_copts_sse42")
-load(":ruy_test_ext.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
-load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
+load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
+load(":ruy_test.oss.bzl", "ruy_benchmark", "ruy_test")
 
 package(
     licenses = ["notice"],  # Apache 2.0
