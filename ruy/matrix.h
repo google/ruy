@@ -138,9 +138,9 @@ inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
 // Ruy's advanced API.
 struct PrepackedMatrix {
   void* data = nullptr;
-  std::size_t data_size = 0;
+  int data_size = 0;
   void* sums = nullptr;
-  std::size_t sums_size = 0;
+  int sums_size = 0;
 };
 
 template <typename StreamType, typename Scalar>

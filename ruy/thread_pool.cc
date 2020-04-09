@@ -181,11 +181,13 @@ void ThreadPool::ExecuteImpl(int task_count, int stride, Task* tasks) {
 // If any new thread has to be created, this function waits for it to
 // be ready.
 void ThreadPool::CreateThreads(int threads_count) {
-  if (threads_.size() >= threads_count) {
+  RUY_DCHECK_GE(threads_count, 0);
+  unsigned int unsigned_threads_count = threads_count;
+  if (threads_.size() >= unsigned_threads_count) {
     return;
   }
   counter_to_decrement_when_ready_.Reset(threads_count - threads_.size());
-  while (threads_.size() < threads_count) {
+  while (threads_.size() < unsigned_threads_count) {
     threads_.push_back(new Thread(&counter_to_decrement_when_ready_));
   }
   counter_to_decrement_when_ready_.Wait();

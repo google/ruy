@@ -23,7 +23,7 @@ limitations under the License.
 // Simple allocator for allocating pre-packed matrices.
 class SimpleAllocator {
  public:
-  void* AllocateBytes(std::size_t num_bytes) {
+  void* AllocateBytes(int num_bytes) {
     char* p = new char[num_bytes];
     buffers_.emplace_back(p);
     return static_cast<void*>(p);
@@ -48,7 +48,7 @@ void ExamplePrepack(ruy::Context* context) {
   ruy::BasicSpec<float, float> spec;
 
   SimpleAllocator allocator;
-  auto alloc_fn = [&allocator](std::size_t num_bytes) -> void* {
+  auto alloc_fn = [&allocator](int num_bytes) -> void* {
     return allocator.AllocateBytes(num_bytes);
   };
 

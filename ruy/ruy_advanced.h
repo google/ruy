@@ -48,7 +48,7 @@ void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                    const Spec& spec, Context* context, Matrix<DstScalar>* dst,
                    PrepackedMatrix* prepacked_lhs,
                    PrepackedMatrix* prepacked_rhs,
-                   std::function<void*(std::size_t)> alloc_fn) {
+                   std::function<void*(int)> alloc_fn) {
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
   PrePackForMulInternal<CompiledPaths>(lhs, rhs, spec, context, dst, prepacked,
                                        alloc_fn);

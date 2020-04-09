@@ -395,7 +395,7 @@ void VerifyConsistentFields(const StorageMatrix<Scalar>& storage_matrix) {
   } else {
     RUY_CHECK_EQ(storage_matrix.matrix.data.get(), storage_matrix.data.data());
     RUY_CHECK_EQ(FlatSize(storage_matrix.matrix.layout),
-                 storage_matrix.data.size());
+                 static_cast<int>(storage_matrix.data.size()));
   }
 }
 
@@ -1607,7 +1607,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
         result->use_prepacked_lhs ? &result->prepacked_lhs : nullptr;
     PrepackedMatrix* prepacked_rhs_ptr =
         result->use_prepacked_rhs ? &result->prepacked_rhs : nullptr;
-    auto alloc_fn = [&result](std::size_t num_bytes) {
+    auto alloc_fn = [&result](int num_bytes) {
       return result->allocator.AllocateBytes(num_bytes);
     };
     // Use a dst with a null data pointer to check that the pre-packing
@@ -1778,7 +1778,7 @@ template <typename T>
 class RepeatedBuffer {
  public:
   RepeatedBuffer() = default;
-  void Init(const T* elems, std::size_t num_elems, int num_repeats) {
+  void Init(const T* elems, int num_elems, int num_repeats) {
     buffers_.clear();
     allocator_.FreeAll();
     for (int i = 0; i < num_repeats; i++) {
@@ -1995,7 +1995,7 @@ std::string DumpRegion(const Matrix<Scalar>& matrix, int center_row,
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::VerifyTestResults() const {
   const int depth = lhs.matrix.layout.cols;
-  for (int i = 0; i < results.size() - 1; i++) {
+  for (int i = 0; i < static_cast<int>(results.size()) - 1; i++) {
     if (!Agree(*results[i], *results[i + 1], depth)) {
       std::string paths_in_agreement;
       paths_in_agreement.append(PathName(*results[0]));
@@ -2014,13 +2014,13 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::VerifyTestResults() const {
                 << StatsAsString(error_analysis.stats_good) << std::endl;
       std::cerr << "Stats of the bad result matrix:  "
                 << StatsAsString(error_analysis.stats_bad) << std::endl;
-      if (error_analysis.error_rows.size() < rows) {
+      if (static_cast<int>(error_analysis.error_rows.size()) < rows) {
         std::cerr << "Rows containing errors: "
                   << Join(error_analysis.error_rows) << std::endl;
       } else {
         std::cerr << "Errors found in ALL rows." << std::endl;
       }
-      if (error_analysis.error_cols.size() < cols) {
+      if (static_cast<int>(error_analysis.error_cols.size()) < cols) {
         std::cerr << "Cols containing errors: "
                   << Join(error_analysis.error_cols) << std::endl;
       } else {

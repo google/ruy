@@ -40,7 +40,7 @@ CacheIterator PrepackedCache::FindAndUpdate(const CacheKey &key) {
 void PrepackedCache::Insert(const CacheKey &key,
                             const PrepackedMatrix &matrix) {
   // Calculate size of this new item.
-  const size_t size_bytes = matrix.data_size + matrix.sums_size;
+  const int size_bytes = matrix.data_size + matrix.sums_size;
 
   // While we are above the threshold of ejection, eject the LRU entry.
   while (!cache_.empty() &&

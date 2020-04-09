@@ -42,7 +42,7 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
                            const Matrix<RhsScalar>& rhs, const Spec& spec,
                            Context* context, Matrix<DstScalar>* dst,
                            SidePair<PrepackedMatrix*> prepacked,
-                           std::function<void*(std::size_t)> alloc_fn) {
+                           std::function<void*(int)> alloc_fn) {
   profiler::ScopeLabel label("PrePackForMul");
   Path the_path = context->GetPathToTake<CompiledPaths>();
   RUY_CHECK_NE(the_path, Path::kReference);

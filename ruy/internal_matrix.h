@@ -346,11 +346,11 @@ Scalar Element(const PackedMatrix<Scalar>& mat, int row, int col) {
 
 // Helpers for PMatrix.
 
-inline std::size_t DataSize(const PMatrix& packed) {
+inline int DataSize(const PMatrix& packed) {
   return FlatSize(packed.layout) * packed.data_type.size;
 }
 
-inline std::size_t SumsSize(const PMatrix& packed) {
+inline int SumsSize(const PMatrix& packed) {
   // Packed matrices are only relevant for Ruy's TrMul implementations. For
   // TrMul, the number of sums is always equal to the number of columns.
   return packed.layout.cols * packed.sums_type.size;

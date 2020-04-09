@@ -90,7 +90,7 @@ class PrepackedCache {
   using AlignedAllocator = detail::AlignedAllocator;
 
   explicit PrepackedCache(
-      int32_t ejection_threshold = kDefaultEjectionThresholdBytes)
+      int ejection_threshold = kDefaultEjectionThresholdBytes)
       : ejection_threshold_(ejection_threshold), cache_size_(0) {}
 
   // Looks for an entry with `key`. If found, update its time stamp.
@@ -121,8 +121,8 @@ class PrepackedCache {
   void DoInsert(const CacheKey &key, const PrepackedMatrix &matrix);
   detail::SystemBlockAllocator allocator_;
   std::map<CacheKey, MatrixWithTimeStamp> cache_;
-  const int32_t ejection_threshold_;
-  size_t cache_size_;
+  const int ejection_threshold_;
+  int cache_size_;
 };
 
 }  // namespace ruy

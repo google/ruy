@@ -132,7 +132,7 @@ void Benchmark() {
     shapes.push_back(shape);
   }
 
-  for (int i = 0; i < shapes.size(); i++) {
+  for (int i = 0; i < static_cast<int>(shapes.size()); i++) {
     const auto& shape = shapes[i];
     const auto& results = BenchmarkRCC<TestSetType>(shape);
     if (i == 0) {
