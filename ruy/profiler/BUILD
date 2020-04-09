@@ -1,5 +1,7 @@
 # A minimalistic profiler sampling pseudo-stacks
 
+load("//ruy:build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
+
 package(
     licenses = ["notice"],  # Apache 2.0
 )
@@ -25,6 +27,7 @@ cc_library(
         ":ruy_profiler": ["RUY_PROFILER"],
         "//conditions:default": [],
     }),
+    linkopts = ruy_linkopts_thread_standard_library(),
     visibility = ["//visibility:public"],
 )
 
@@ -38,6 +41,7 @@ cc_library(
         "profiler.h",
         "treeview.h",
     ],
+    linkopts = ruy_linkopts_thread_standard_library(),
     visibility = ["//visibility:public"],
     deps = [":instrumentation"],
 )
@@ -53,6 +57,7 @@ cc_library(
 cc_test(
     name = "test",
     srcs = ["test.cc"],
+    linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":profiler",
         ":test_instrumented_library",

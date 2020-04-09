@@ -1,6 +1,6 @@
 # Ruy is not BLAS
 
-load(":build_defs.oss.bzl", "ruy_copts_avx2", "ruy_copts_avxvnni", "ruy_copts_base", "ruy_copts_skylake", "ruy_copts_sse42")
+load(":build_defs.oss.bzl", "ruy_copts_avx2", "ruy_copts_avxvnni", "ruy_copts_base", "ruy_copts_skylake", "ruy_copts_sse42", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 
@@ -69,12 +69,14 @@ cc_library(
     srcs = ["wait.cc"],
     hdrs = ["wait.h"],
     copts = ruy_copts_base(),
+    linkopts = ruy_linkopts_thread_standard_library(),
     deps = [":time"],
 )
 
 cc_test(
     name = "wait_test",
     srcs = ["wait_test.cc"],
+    linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":platform",
         ":wait",
@@ -232,6 +234,7 @@ cc_library(
         "blocking_counter.h",
     ],
     copts = ruy_copts_base(),
+    linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":check_macros",
         ":wait",
@@ -247,6 +250,7 @@ cc_library(
         "thread_pool.h",
     ],
     copts = ruy_copts_base(),
+    linkopts = ruy_linkopts_thread_standard_library(),
     visibility = ["//visibility:public"],
     deps = [
         ":blocking_counter",
