@@ -18,6 +18,7 @@ limitations under the License.
 #include "ruy/profiler/treeview.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cstdio>
 #include <functional>
 #include <memory>
@@ -55,8 +56,9 @@ void AddStack(const detail::Stack& stack, TreeView::Node* node, int level) {
     }
   }
   if (!child_to_add_to) {
-    child_to_add_to = node->children.emplace_back(new TreeView::Node).get();
+    child_to_add_to = new TreeView::Node;
     child_to_add_to->label = stack.labels[level];
+    node->children.emplace_back(child_to_add_to);
   }
   AddStack(stack, child_to_add_to, level + 1);
 }
@@ -72,9 +74,10 @@ void AddOther(TreeView::Node* node) {
   }
   if (top_level_children_weight != 0 &&
       top_level_children_weight != node->weight) {
-    const auto& new_child = node->children.emplace_back(new TreeView::Node);
+    auto* new_child = new TreeView::Node;
     new_child->label = Label("[other]");
     new_child->weight = node->weight - top_level_children_weight;
+    node->children.emplace_back(new_child);
   }
 }
 
@@ -217,7 +220,8 @@ void CollapseNodesMatchingFunction(
     std::uint32_t id = thread_root_in.first;
     const auto& root_in = *thread_root_in.second;
     auto* root_out = new TreeView::Node;
-    treeview_out->mutable_thread_roots()->emplace(id, root_out);
+    treeview_out->mutable_thread_roots()->emplace(
+        id, std::unique_ptr<TreeView::Node>(root_out));
     CollapseSubnodesMatchingFunction(root_in, depth, match, root_out);
   }
 }

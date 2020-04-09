@@ -17,6 +17,8 @@ limitations under the License.
 
 #ifdef RUY_PROFILER
 
+#include <cstring>
+
 namespace ruy {
 namespace profiler {
 
