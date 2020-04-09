@@ -48,7 +48,7 @@ def ruy_linkopts_thread_standard_library():
     # on GCC being the compiler, but that does not seem to be easy to achieve
     # with Bazel. Instead we do the following, which is copied from
     # https://github.com/abseil/abseil-cpp/blob/1112609635037a32435de7aa70a9188dcb591458/absl/base/BUILD.bazel#L155
-    linkopts = select({
+    return select({
         "//ruy:windows": [],
         "//conditions:default": ["-pthread"],
     })
