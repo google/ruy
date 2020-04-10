@@ -32,9 +32,12 @@ CacheIterator PrepackedCache::FindAndUpdate(const CacheKey &key) {
     const TimePoint time = CacheNow();
     itr->second.second = time;
   }
-  // std::move() is required in the MSVC STL when NDEBUG is not set, and has no
-  // effect in libc++.
+#ifdef _MSC_VER
+  // std::move() is required in MSVC when NDEBUG is not set
   return std::move(itr);  // NOLINT
+#else
+  return itr;
+#endif
 }
 
 void PrepackedCache::Insert(const CacheKey &key,

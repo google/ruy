@@ -106,14 +106,6 @@ class ConstCheckingPtr final {
 // signed or unsigned.
 template <typename Scalar>
 struct Matrix final {
-  Matrix& operator=(const Matrix& other) {
-    data = other.data;
-    cacheable = other.cacheable;
-    layout = other.layout;
-    zero_point = other.zero_point;
-    return *this;
-  }
-
   // The underlying buffer wrapped by this matrix.
   detail::ConstCheckingPtr<Scalar> data;
   // The shape and data layout of this matrix.
