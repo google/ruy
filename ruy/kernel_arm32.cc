@@ -95,7 +95,7 @@ void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params) {
 
   //  Register layout in "q" registers:
   //                                    RHS 1x4 block
-  //                           /--------------------------\
+  //                           /--------------------------|
   //                           |q2.s[0] ...      q2.s[3]  |
   //                           \--------------------------/
   //        LHS 8x1 block
@@ -112,11 +112,11 @@ void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params) {
   // parameters used for the post-accumulation part of the kernel.
   // For completeness, here is the register layout in "d" registers:
   //                                    RHS 1x4 block
-  //                           /--------------------------\
+  //                           /--------------------------|
   //                           |d4[0]     ...       d5[1] |
   //                           \--------------------------/
   //        LHS 8x1 block
-  //  /---------------------\  /--------------------------\
+  //  /---------------------\  /--------------------------|
   //  |        d0[0]        |  | d6[0]    ...      d18[0] |
   //  |         ...         |  |  ...               ...   |
   //  |        d1[1]        |  | d7[1]             d19[1] |
@@ -611,13 +611,13 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
   // During accumulation, d0 -- d7 are used to load int8 data from LHS and
   // d8 -- d11 from RHS:
   //                                      int8 RHS 16x2 block
-  //                              /-----------------------------\
+  //                              /-----------------------------|
   //                              |d8.b[0-7]   .....  d10.b[0-7]|
   //                              |  ...                  ...   |
   //                              |d9.b[0-7]   .....  d11.b[0-7]|
   //                              \-----------------------------/
   //    int8 LHS 4x16 block
-  //  /------------------------\  /-----------------------------\
+  //  /------------------------\  /-----------------------------|
   //  |d0.b[0-7] ... d1.b[0-7] |  | q6         .....      q10   |
   //  |d2.b[0-7] ... d3.b[0-7] |  | q7         .....      q11   |
   //  (Reload d0, d1, d2, d3)
@@ -1591,7 +1591,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
   // During accumulation, d0 -- d7 are used to load int8 data from LHS and
   // d8 -- d11 from RHS:
   //                                            int8 RHS 16x1 block
-  //                                               /------------\
+  //                                               /------------|
   //                                               | d8.b[0]    |
   //                                               | ...        |
   //                                               | d8.b[7]    |
@@ -1600,7 +1600,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
   //                                               | d9.b[7]    |
   //                                               \------------/
   //    int8 LHS 4x16 block
-  //  /-----------------------------------------\  /------------\
+  //  /-----------------------------------------\  /------------|
   //  |d0.b[0] ... d0.b[7] d1.b[0] ... d1.b[7]  |  | q6         |
   //  |d2.b[0] ... d2.b[7] d3.b[0] ... d3.b[7]  |  | q7         |
   //  |d4.b[0] ... d4.b[7] d5.b[0] ... d5.b[7]  |  | q8         |
