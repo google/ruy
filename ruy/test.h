@@ -36,7 +36,7 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
-#include "gtest/gtest.h"  // IWYU pragma: export
+#include "ruy/gtest_wrapper.h"  // IWYU pragma: export
 #include "ruy/matrix.h"  // IWYU pragma: export
 #include "ruy/platform.h"
 #include "ruy/pmu.h"

@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 
-#include "gtest/gtest.h"
+#include "ruy/gtest_wrapper.h"
 
 namespace {
 

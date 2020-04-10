@@ -17,7 +17,7 @@ limitations under the License.
 #include <random>
 #include <thread>
 
-#include "gtest/gtest.h"
+#include "ruy/gtest_wrapper.h"
 #include "ruy/profiler/profiler.h"
 #include "ruy/profiler/test_instrumented_library.h"
 #include "ruy/profiler/treeview.h"

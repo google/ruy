@@ -18,7 +18,7 @@ limitations under the License.
 #include <chrono>  // NOLINT(build/c++11)
 #include <thread>  // NOLINT(build/c++11)
 
-#include "gtest/gtest.h"
+#include "ruy/gtest_wrapper.h"
 
 namespace ruy {
 namespace {

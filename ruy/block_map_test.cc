@@ -21,8 +21,8 @@ limitations under the License.
 #include <limits>
 #include <vector>
 
-#include "gtest/gtest.h"
 #include "ruy/cpu_cache_size.h"
+#include "ruy/gtest_wrapper.h"
 #include "ruy/path.h"
 #include "ruy/side_pair.h"
 

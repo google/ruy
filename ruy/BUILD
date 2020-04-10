@@ -37,6 +37,14 @@ cc_library(
 )
 
 cc_library(
+    name = "gtest_wrapper",
+    testonly = True,
+    hdrs = ["gtest_wrapper.h"],
+    visibility = [":__subpackages__"],
+    deps = ["@com_google_googletest//:gtest"],
+)
+
+cc_library(
     name = "check_macros",
     hdrs = ["check_macros.h"],
     copts = ruy_copts_base(),
@@ -48,7 +56,7 @@ cc_test(
     copts = ruy_copts_base(),
     deps = [
         ":check_macros",
-        "@com_google_googletest//:gtest",
+        ":gtest_wrapper",
     ],
 )
 
@@ -78,9 +86,9 @@ cc_test(
     srcs = ["wait_test.cc"],
     linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
+        ":gtest_wrapper",
         ":platform",
         ":wait",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -95,8 +103,8 @@ cc_test(
     name = "size_util_test",
     srcs = ["size_util_test.cc"],
     deps = [
+        ":gtest_wrapper",
         ":size_util",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -139,8 +147,8 @@ cc_test(
     name = "tune_test",
     srcs = ["tune_test.cc"],
     deps = [
+        ":gtest_wrapper",
         ":tune",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -148,10 +156,10 @@ cc_test(
     name = "prepacked_cache_test",
     srcs = ["prepacked_cache_test.cc"],
     deps = [
+        ":gtest_wrapper",
         ":prepacked_cache",
         ":ruy",
         ":time",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -183,7 +191,7 @@ cc_test(
     srcs = ["allocator_test.cc"],
     deps = [
         ":allocator",
-        "@com_google_googletest//:gtest",
+        ":gtest_wrapper",
     ],
 )
 
@@ -218,9 +226,9 @@ cc_test(
     deps = [
         ":block_map",
         ":cpu_cache_size",
+        ":gtest_wrapper",
         ":path",
         ":side_pair",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -765,9 +773,9 @@ cc_test(
     srcs = ["context_test.cc"],
     deps = [
         ":context",
+        ":gtest_wrapper",
         ":path",
         ":platform",
-        "@com_google_googletest//:gtest",
     ],
 )
 
@@ -883,7 +891,7 @@ cc_library(
         ":ruy",
         ":spec",
         ":time",
-        "@com_google_googletest//:gtest",
+        ":gtest_wrapper",
         ":platform",
         "//ruy/profiler:profiler",
     ] + ruy_test_ext_deps(),

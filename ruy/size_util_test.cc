@@ -19,7 +19,7 @@ limitations under the License.
 #include <cstdint>
 #include <limits>
 
-#include "gtest/gtest.h"
+#include "ruy/gtest_wrapper.h"
 
 namespace ruy {
 namespace {

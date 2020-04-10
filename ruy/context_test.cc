@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "ruy/context.h"
 
-#include "gtest/gtest.h"
+#include "ruy/gtest_wrapper.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
 

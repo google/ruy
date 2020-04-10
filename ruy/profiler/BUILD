@@ -61,6 +61,6 @@ cc_test(
     deps = [
         ":profiler",
         ":test_instrumented_library",
-        "@com_google_googletest//:gtest",
+        "//ruy:gtest_wrapper",
     ],
 )
