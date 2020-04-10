@@ -68,7 +68,7 @@ void SizeUtilTestValue(Integer value) {
 
 template <typename Integer>
 void SizeUtilTest() {
-  for (int exponent = 0; exponent < 8 * sizeof(Integer) - 1; exponent++) {
+  for (unsigned exponent = 0; exponent < 8 * sizeof(Integer) - 1; exponent++) {
     const Integer pot = static_cast<Integer>(1) << exponent;
     SizeUtilTestValue(pot - 1);
     SizeUtilTestValue(pot);
