@@ -10,7 +10,7 @@ package(
 
 config_setting(
     name = "windows",
-    values = {"cpu": "x64_windows"},
+    flag_values = {"//tools/cpp:cc_target_os": "windows"},
 )
 
 config_setting(

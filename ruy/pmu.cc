@@ -181,7 +181,7 @@ constexpr std::uint16_t L3D_CACHE_REFILL_RD = 0xA2;
 
 #pragma GCC diagnostic pop
 
-};  // namespace arm_pmuv3
+}  // namespace arm_pmuv3
 
 class PmuEventsPrivate {
  public:
