@@ -245,7 +245,7 @@ int GetMultithreadingScore(int block_size_log2, int rows, int cols,
 // Computes a 'cache locality score'.
 int GetCacheLocalityScore(int block_size_log2, int rows, int cols, int depth,
                           int kernel_rows_log2, int kernel_cols_log2,
-                          int lhs_scalar_size, int rhs_scalar_size, Path path,
+                          int lhs_scalar_size, int rhs_scalar_size,
                           int local_data_cache_size) {
   // In the narrow case (e.g. matrix*vector), each byte of the big operand
   // matrix (either LHS or RHS) is traversed only once, so any notion of data
@@ -318,9 +318,8 @@ int GetKernelAmortizationScore(int block_size_log2, int rows, int cols,
 
 void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
                   int kernel_cols, int lhs_scalar_size, int rhs_scalar_size,
-                  int tentative_thread_count, Path path,
-                  int local_data_cache_size, int shared_data_cache_size,
-                  BlockMap* block_map) {
+                  int tentative_thread_count, int local_data_cache_size,
+                  int shared_data_cache_size, BlockMap* block_map) {
   profiler::ScopeLabel label("MakeBlockMap");
 
 #ifdef RUY_MAKEBLOCKMAP_DEBUG
@@ -385,7 +384,7 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
         block_size_log2, rows, cols, tentative_thread_count);
     const int cache_locality_score = GetCacheLocalityScore(
         block_size_log2, rows, cols, depth, kernel_rows_log2, kernel_cols_log2,
-        lhs_scalar_size, rhs_scalar_size, path, local_data_cache_size);
+        lhs_scalar_size, rhs_scalar_size, local_data_cache_size);
     const int kernel_amortization_score = GetKernelAmortizationScore(
         block_size_log2, rows, cols, kernel_rows_log2, kernel_cols_log2);
     const int score =

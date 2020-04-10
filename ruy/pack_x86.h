@@ -122,7 +122,7 @@ struct PackImpl<Path::kSse42, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
+  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (SSE 4.2 8-bit)");
@@ -209,7 +209,7 @@ struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
+  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX2 8-bit)");
@@ -294,7 +294,7 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
+  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 8-bit)");
@@ -383,7 +383,7 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
+  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
                   PackedMatrix<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 8-bit)");

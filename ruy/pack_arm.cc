@@ -28,8 +28,8 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                             const void* src_ptr2, const void* src_ptr3,
                             int src_inc0, int src_inc1, int src_inc2,
                             int src_inc3, int src_rows, int src_zero_point,
-                            std::int8_t* packed_ptr, int start_col, int end_col,
-                            std::int32_t* sums_ptr, int input_xor) {
+                            std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+                            int input_xor) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
   asm volatile(
       // clang-format off
@@ -604,8 +604,8 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
                          const void* src_ptr2, const void* src_ptr3,
                          int src_inc0, int src_inc1, int src_inc2, int src_inc3,
                          int src_rows, int src_zero_point,
-                         std::int8_t* packed_ptr, int start_col, int end_col,
-                         std::int32_t* sums_ptr, int input_xor) {
+                         std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+                         int input_xor) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
   asm volatile(
           // clang-format off
@@ -793,8 +793,7 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
                                 const void* src_ptr2, const void* src_ptr3,
                                 int src_inc0, int src_inc1, int src_inc2,
                                 int src_inc3, int src_rows, int src_zero_point,
-                                std::int8_t* packed_ptr, int start_col,
-                                int end_col, std::int32_t* sums_ptr,
+                                std::int8_t* packed_ptr, std::int32_t* sums_ptr,
                                 int input_xor) {
   profiler::ScopeLabel label(
       "Pack (kNeonDotprod, optimized for in-order cores)");
@@ -1010,7 +1009,6 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                                    int src_inc0, int src_inc1, int src_inc2,
                                    int src_inc3, int src_rows,
                                    int src_zero_point, std::int8_t* packed_ptr,
-                                   int start_col, int end_col,
                                    std::int32_t* sums_ptr, int input_xor) {
   profiler::ScopeLabel label(
       "Pack (kNeonDotprod, optimized for out-of-order cores)");
@@ -1467,8 +1465,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
                              int src_inc0, int src_inc1, int src_inc2,
-                             int src_inc3, int src_rows, int src_zero_point,
-                             float* packed_ptr, int start_col, int end_col) {
+                             int src_inc3, int src_rows, float* packed_ptr) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
   asm volatile(
       // clang-format off
@@ -1601,8 +1598,7 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 #if RUY_PLATFORM(NEON_32) && RUY_OPT_ENABLED(RUY_OPT_ASM)
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
-                             int src_inc, int src_rows, int src_zero_point,
-                             float* packed_ptr, int start_col, int end_col,
+                             int src_inc, int src_rows, float* packed_ptr,
                              int output_stride) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
   asm volatile(
@@ -1783,8 +1779,7 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
                           const float* src_ptr2, const float* src_ptr3,
                           int src_inc0, int src_inc1, int src_inc2,
-                          int src_inc3, int src_rows, int src_zero_point,
-                          float* packed_ptr, int start_col, int end_col) {
+                          int src_inc3, int src_rows, float* packed_ptr) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
 
   asm volatile(

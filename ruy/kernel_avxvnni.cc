@@ -30,12 +30,12 @@ namespace ruy {
 
 #if !(RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
-void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>& params) {
+void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>& params) {
+void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }

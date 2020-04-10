@@ -50,7 +50,7 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, context, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
                                         the_path, &params);
 
   const SidePair<int> origin{0, 0};
@@ -89,7 +89,7 @@ void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, context, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
                                         the_path, &params);
 
   for (Side side : {Side::kLhs, Side::kRhs}) {

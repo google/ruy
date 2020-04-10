@@ -16,7 +16,6 @@ limitations under the License.
 #ifndef RUY_RUY_BLOCK_MAP_H_
 #define RUY_RUY_BLOCK_MAP_H_
 
-#include "ruy/path.h"
 #include "ruy/side_pair.h"
 
 namespace ruy {
@@ -115,9 +114,8 @@ BlockMapTraversalOrder GetTraversalOrder(int rows, int cols, int depth,
 // matrix multiplication with the given parameters.
 void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
                   int kernel_cols, int lhs_scalar_size, int rhs_scalar_size,
-                  int tentative_thread_count, Path path,
-                  int local_data_cache_size, int shared_data_cache_size,
-                  BlockMap* block_map);
+                  int tentative_thread_count, int local_data_cache_size,
+                  int shared_data_cache_size, BlockMap* block_map);
 
 // Maps an integer index to a block position in the grid.
 void GetBlockByIndex(const BlockMap& block_map, int index,

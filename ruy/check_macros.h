@@ -29,9 +29,7 @@ constexpr int kValueBufSize = 32;
 
 template <typename T, typename Enable = void>
 struct ToString {
-  static void Run(const T& value, char* buf) {
-    snprintf(buf, kValueBufSize, "(?)");
-  }
+  static void Run(const T&, char* buf) { snprintf(buf, kValueBufSize, "(?)"); }
 };
 
 template <>

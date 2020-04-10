@@ -39,7 +39,7 @@ void MakeBlockMapTuningTest(int rows, int cols, int depth, int kernel_rows,
                             int expected_rectangularness_log2) {
   BlockMap block_map;
   MakeBlockMap(rows, cols, depth, kernel_rows, kernel_cols, lhs_scalar_size,
-               rhs_scalar_size, tentative_thread_count, path,
+               rhs_scalar_size, tentative_thread_count,
                LocalDataCacheSize(path), SharedDataCacheSize(path), &block_map);
   EXPECT_EQ(block_map.num_blocks_base_log2, expected_num_blocks_base_log2);
   EXPECT_EQ(std::min(block_map.rectangularness_log2[Side::kLhs],

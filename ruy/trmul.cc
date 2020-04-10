@@ -338,9 +338,8 @@ void TrMul(TrMulParams* params, Context* context) {
   MakeBlockMap(packed_lhs.layout.cols, packed_rhs.layout.cols, depth,
                packed_lhs.layout.kernel.cols, packed_rhs.layout.kernel.cols,
                packed_lhs.data_type.size, packed_rhs.data_type.size,
-               tentative_thread_count, params->path,
-               params->local_data_cache_size, params->shared_data_cache_size,
-               &block_map);
+               tentative_thread_count, params->local_data_cache_size,
+               params->shared_data_cache_size, &block_map);
 
   // Initialize per-thread state.
   const int thread_count = block_map.thread_count;

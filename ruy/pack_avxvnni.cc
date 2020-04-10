@@ -32,17 +32,13 @@ namespace ruy {
 
 #if !(RUY_PLATFORM(AVX_VNNI) && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
-void Pack8bitAvxVnni(const std::int8_t* src_ptr, std::int8_t input_xor,
-                     const std::int8_t* zerobuf, int src_stride,
-                     int remaining_src_cols, int src_rows,
-                     std::int8_t* packed_ptr, std::int32_t* sums_ptr) {
+void Pack8bitAvxVnni(const std::int8_t*, std::int8_t, const std::int8_t*, int,
+                     int, int, std::int8_t*, std::int32_t*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void PackFloatAvxVnni(const float* src_ptr, const float* zerobuf,
-                      int src_stride, int remaining_src_cols, int src_rows,
-                      float* packed_ptr) {
+void PackFloatAvxVnni(const float*, const float*, int, int, int, float*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }

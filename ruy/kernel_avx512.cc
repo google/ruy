@@ -30,22 +30,22 @@ namespace ruy {
 
 #if !(RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
-void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
+void Kernel8bitAvx512(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
+void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
+void KernelFloatAvx512(const KernelParamsFloat<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& params) {
+void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }

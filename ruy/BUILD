@@ -206,7 +206,6 @@ cc_library(
     deps = [
         ":check_macros",
         ":opt_set",
-        ":path",
         ":side_pair",
         ":size_util",
         "//ruy/profiler:instrumentation",

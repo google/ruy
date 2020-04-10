@@ -305,7 +305,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename Spec>
 struct PathSearchCountdown<CompiledPaths, -1, LhsScalar, RhsScalar, DstScalar,
                            Spec> {
-  static void Search(Path the_path, TrMulParams* params) { RUY_DCHECK(false); }
+  static void Search(Path, TrMulParams*) { RUY_DCHECK(false); }
 };
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
@@ -320,7 +320,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename Spec>
 void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
                        const Matrix<RhsScalar>& rhs, const Spec& spec,
-                       Context* context, Matrix<DstScalar>* dst, Path the_path,
+                       Matrix<DstScalar>* dst, Path the_path,
                        TrMulParams* params) {
   // Fill in the fields we already know.
   params->src[Side::kLhs] = ToDMatrix(lhs);
@@ -377,8 +377,8 @@ template <>
 struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
             typename Spec>
-  static void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const Spec& spec, Matrix<DstScalar>* dst) {
+  static void Run(const Matrix<LhsScalar>&, const Matrix<RhsScalar>&,
+                  const Spec&, Matrix<DstScalar>*) {
     RUY_DCHECK(false);
   }
 };
@@ -470,7 +470,7 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, context, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
                                         the_path, &params);
   SidePair<bool> cacheable(lhs.cacheable, rhs.cacheable);
   HandlePrepackedCaching(&params, cacheable, context);

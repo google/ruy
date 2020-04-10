@@ -141,7 +141,7 @@ template <typename Spec>
 struct ApplyMultiplierImpl<Spec, false> {
   using AccumScalar = typename Spec::AccumScalar;
   using DstScalar = typename Spec::DstScalar;
-  static void Run(const Spec& spec, int row, AccumScalar* accum) {
+  static void Run(const Spec& spec, int, AccumScalar*) {
     RUY_DCHECK_EQ(spec.multiplier_fixedpoint, 0);
     RUY_DCHECK_EQ(spec.multiplier_exponent, 0);
   }
