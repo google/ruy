@@ -5,7 +5,7 @@
 # 2. Explicitly pass -O3 on optimization configs where just "-c opt" means "optimize for code size".
 
 def ruy_copts_base():
-    return select({
+    return ["-Wall", "-Wextra"] + select({
         "//ruy:armeabi-v7a": [
             "-mfpu=neon",
         ],

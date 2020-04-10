@@ -115,22 +115,25 @@ inline void Failure(const char* file, int line, const char* macro,
 #define RUY_CHECK_LT(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_LT, x, <, y)
 
 #ifdef NDEBUG
-#define RUY_DCHECK(condition)
-#define RUY_DCHECK_EQ(x, y)
-#define RUY_DCHECK_NE(x, y)
-#define RUY_DCHECK_GE(x, y)
-#define RUY_DCHECK_GT(x, y)
-#define RUY_DCHECK_LE(x, y)
-#define RUY_DCHECK_LT(x, y)
+#define RUY_DCHECK_IS_ENABLED false
 #else
-#define RUY_DCHECK(condition) RUY_CHECK(condition)
-#define RUY_DCHECK_EQ(x, y) RUY_CHECK_EQ(x, y)
-#define RUY_DCHECK_NE(x, y) RUY_CHECK_NE(x, y)
-#define RUY_DCHECK_GE(x, y) RUY_CHECK_GE(x, y)
-#define RUY_DCHECK_GT(x, y) RUY_CHECK_GT(x, y)
-#define RUY_DCHECK_LE(x, y) RUY_CHECK_LE(x, y)
-#define RUY_DCHECK_LT(x, y) RUY_CHECK_LT(x, y)
+#define RUY_DCHECK_IS_ENABLED true
 #endif
+
+#define RUY_DCHECK(condition) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK(condition)
+#define RUY_DCHECK_EQ(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_EQ(x, y)
+#define RUY_DCHECK_NE(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_NE(x, y)
+#define RUY_DCHECK_GE(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_GE(x, y)
+#define RUY_DCHECK_GT(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_GT(x, y)
+#define RUY_DCHECK_LE(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_LE(x, y)
+#define RUY_DCHECK_LT(x, y) \
+  if (RUY_DCHECK_IS_ENABLED) RUY_CHECK_LT(x, y)
 
 }  // end namespace check_macros
 }  // end namespace ruy

@@ -48,8 +48,11 @@ limitations under the License.
 #ifdef RUY_TEST_EXTERNAL_PATHS
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_CUSTOM_THREAD_POOL
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "third_party/eigen3/Eigen/Core"
 #include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
+#pragma GCC diagnostic pop
 #include "third_party/gemmlowp/public/gemmlowp.h"
 #include "third_party/lapack/blas.h"
 #endif
@@ -1350,7 +1353,7 @@ void AnalyzeTestError(const TestSetType& test_set, int first_bad_result_index,
 template <typename TestSetType>
 void ComputeReasonableMultiplier(
     const Matrix<typename TestSetType::LhsScalar>& lhs,
-    const Matrix<typename TestSetType::RhsScalar>& rhs, double* multiplier) {
+    const Matrix<typename TestSetType::RhsScalar>&, double* multiplier) {
   using LhsScalar = typename TestSetType::LhsScalar;
   using RhsScalar = typename TestSetType::RhsScalar;
   using DstScalar = typename TestSetType::DstScalar;
@@ -1572,6 +1575,7 @@ inline std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
     return {Tuning::kInOrder, Tuning::kOutOfOrder, Tuning::kAuto};
   }
 #endif
+  (void)path;
   return {Tuning::kAuto};
 }
 
@@ -1710,7 +1714,6 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalResult(
     EvalRuy(result);
   } else {
 #ifdef RUY_TEST_EXTERNAL_PATHS
-    using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
     EvalExternalPath(this, result);
 #endif
   }
