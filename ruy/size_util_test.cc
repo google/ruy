@@ -47,7 +47,7 @@ void SizeUtilTestValue(Integer value) {
   EXPECT_GE(round_down_pot(value), value >> 1);
   EXPECT_TRUE(is_pot(round_down_pot(value)));
 
-  if (ceil_log2(value) < 8 * sizeof(Integer) - 1) {
+  if (ceil_log2(value) < static_cast<int>(8 * sizeof(Integer) - 1)) {
     EXPECT_EQ(value >> ceil_log2(value), is_pot(value) ? 1 : 0);
     EXPECT_EQ(round_up_pot(value), static_cast<Integer>(1) << ceil_log2(value));
     EXPECT_GE(round_up_pot(value), value);
