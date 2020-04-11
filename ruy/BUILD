@@ -9,11 +9,6 @@ package(
 )
 
 config_setting(
-    name = "windows",
-    flag_values = {"//tools/cpp:cc_target_os": "windows"},
-)
-
-config_setting(
     name = "armeabi-v7a",
     values = {"cpu": "armeabi-v7a"},
 )
@@ -882,7 +877,7 @@ cc_library(
     # need defines, not copts, because it's controlling a header, test.h
     defines = ruy_test_ext_defines(),
     linkopts = select({
-        ":windows": [],
+        "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": ["-lm"],
     }),
     deps = [

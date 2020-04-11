@@ -186,8 +186,7 @@ void ThreadPool::CreateThreads(int threads_count) {
   if (threads_.size() >= unsigned_threads_count) {
     return;
   }
-  counter_to_decrement_when_ready_.Reset(threads_count -
-                                         static_cast<int>(threads_.size()));
+  counter_to_decrement_when_ready_.Reset(threads_count - threads_.size());
   while (threads_.size() < unsigned_threads_count) {
     threads_.push_back(new Thread(&counter_to_decrement_when_ready_));
   }

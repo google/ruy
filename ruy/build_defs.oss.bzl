@@ -5,7 +5,10 @@
 # 2. Explicitly pass -O3 on optimization configs where just "-c opt" means "optimize for code size".
 
 def ruy_copts_base():
-    return ["-Wall", "-Wextra"] + select({
+    return select({
+        "@bazel_tools//src/conditions:windows": [],
+        "//conditions:default": ["-Wall", "-Wextra"],
+    }) + select({
         "//ruy:armeabi-v7a": [
             "-mfpu=neon",
         ],
@@ -49,6 +52,6 @@ def ruy_linkopts_thread_standard_library():
     # with Bazel. Instead we do the following, which is copied from
     # https://github.com/abseil/abseil-cpp/blob/1112609635037a32435de7aa70a9188dcb591458/absl/base/BUILD.bazel#L155
     return select({
-        "//ruy:windows": [],
+        "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": ["-pthread"],
     })
