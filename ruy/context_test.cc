@@ -17,42 +17,29 @@ limitations under the License.
 
 #include "ruy/gtest_wrapper.h"
 #include "ruy/path.h"
-#include "ruy/platform.h"
+#include "ruy/prepacked_cache.h"
 
 namespace ruy {
 namespace {
 
-TEST(ContextTest, EnabledPathsGeneral) {
-  ruy::Context ruy_context;
-  const auto ruy_paths = ruy_context.GetRuntimeEnabledPaths();
-  const auto ruy_paths_repeat = ruy_context.GetRuntimeEnabledPaths();
-  ASSERT_EQ(ruy_paths, ruy_paths_repeat);
-  EXPECT_NE(ruy_paths, Path::kNone);
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kReference);
-  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kStandardCpp);
+TEST(ContextTest, ContextClassSanity) {
+  Context context;
+  EXPECT_EQ(context.get_last_taken_path(), Path::kNone);
+  EXPECT_EQ(context.get_explicit_tuning(), Tuning::kAuto);
+  EXPECT_EQ(&context.get_thread_pool(), context.mutable_thread_pool());
+  EXPECT_NE(context.mutable_thread_pool(), nullptr);
+  EXPECT_EQ(context.get_max_num_threads(), 1);
+  EXPECT_EQ(&context.get_tracing(), context.mutable_tracing());
+  EXPECT_EQ(context.get_cache_policy(), CachePolicy::kNoCache);
+  context.set_last_taken_path(Path::kStandardCpp);
+  context.set_explicit_tuning(Tuning::kOutOfOrder);
+  context.set_max_num_threads(2);
+  context.set_cache_policy(CachePolicy::kCacheLHSOnNarrowMul);
+  EXPECT_EQ(context.get_last_taken_path(), Path::kStandardCpp);
+  EXPECT_EQ(context.get_explicit_tuning(), Tuning::kOutOfOrder);
+  EXPECT_EQ(context.get_max_num_threads(), 2);
+  EXPECT_EQ(context.get_cache_policy(), CachePolicy::kCacheLHSOnNarrowMul);
 }
-
-#if RUY_PLATFORM(X86)
-TEST(ContextTest, EnabledPathsX86) {
-  ruy::Context ruy_context;
-  ruy_context.SetRuntimeEnabledPaths(Path::kSse42 | Path::kAvx2 |
-                                     Path::kAvx512 | Path::kAvxVnni);
-  const auto ruy_paths = ruy_context.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
-  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
-}
-#endif  // RUY_PLATFORM(X86)
-
-#if RUY_PLATFORM(ARM)
-TEST(ContextTest, EnabledPathsArm) {
-  ruy::Context ruy_context;
-  ruy_context.SetRuntimeEnabledPaths(Path::kNeon | Path::kNeonDotprod);
-  const auto ruy_paths = ruy_context.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
-  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
-  EXPECT_EQ(ruy_paths & Path::kNeon, Path::kNeon);
-}
-#endif  // RUY_PLATFORM(ARM)
 
 }  // namespace
 }  // namespace ruy

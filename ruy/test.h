@@ -606,13 +606,6 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
                               prepacked_rhs_ptr);
 }
 
-// When building for WAsm, ASSERT_DEATH is not defined.
-#ifdef ASSERT_DEATH
-#define RUY_ASSERT_DEATH(CONDITION, MESSAGE) ASSERT_DEATH(CONDITION, MESSAGE)
-#else
-#define RUY_ASSERT_DEATH(CONDITION, MESSAGE)
-#endif
-
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
   GlobalContext().explicit_tuning = result->tuning;
@@ -623,7 +616,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
   } else {
     GlobalContext().max_num_threads = 1 + global_random_engine()() % 8;
   }
-  GlobalContext().SetRuntimeEnabledPaths(result->path);
+  ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
   if (expected_outcome == ExpectedOutcome::kSuccess) {
     DoMul(result);
     RUY_CHECK_EQ(GlobalContext().last_taken_path, result->path);
@@ -1618,7 +1611,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
     // invocation doesn't write into it.
     Matrix<DstScalar> null_data_dst = result->storage_matrix.matrix;
     null_data_dst.data = nullptr;
-    GlobalContext().SetRuntimeEnabledPaths(result->path);
+    ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
     PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, spec, &GlobalContext(),
                              &null_data_dst, prepacked_lhs_ptr,
                              prepacked_rhs_ptr, alloc_fn);
@@ -1638,7 +1631,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
     // Use a dummy Context just to perform the resolution of specific runtime
     // enabled paths.
     Context context;
-    paths_bitfield = context.GetRuntimeEnabledPaths();
+    paths_bitfield = ContextInternal::GetRuntimeEnabledPaths(&context);
   }
 
   // Trim bits that don't correspond to a compiled path,

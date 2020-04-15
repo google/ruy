@@ -61,6 +61,34 @@ struct BasicSpec {
   using AccumScalar = tAccumScalar;
   // The destination scalar type.
   using DstScalar = tDstScalar;
+
+  const AccumScalar* get_bias() const { return bias; }
+  void set_bias(const AccumScalar* ptr) { bias = ptr; }
+  AccumScalar get_multiplier_fixedpoint() const {
+    return multiplier_fixedpoint;
+  }
+  void set_multiplier_fixedpoint(const AccumScalar value) {
+    multiplier_fixedpoint = value;
+  }
+  int get_multiplier_exponent() const { return multiplier_exponent; }
+  void set_multiplier_exponent(const int value) { multiplier_exponent = value; }
+  const AccumScalar* get_multiplier_fixedpoint_perchannel() const {
+    return multiplier_fixedpoint_perchannel;
+  }
+  void set_multiplier_fixedpoint_perchannel(const AccumScalar* ptr) {
+    multiplier_fixedpoint_perchannel = ptr;
+  }
+  const int* get_multiplier_exponent_perchannel() const {
+    return multiplier_exponent_perchannel;
+  }
+  void set_multiplier_exponent_perchannel(const int* ptr) {
+    multiplier_exponent_perchannel = ptr;
+  }
+  DstScalar get_clamp_min() const { return clamp_min; }
+  void set_clamp_min(const DstScalar value) { clamp_min = value; }
+  DstScalar get_clamp_max() const { return clamp_max; }
+  void set_clamp_max(const DstScalar value) { clamp_max = value; }
+
   // The bias vector data, if not null.
   const AccumScalar* bias = nullptr;
   // Only for non-floating-point cases. The fixed-point part (i.e. the mantissa)

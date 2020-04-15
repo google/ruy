@@ -30,7 +30,15 @@ limitations under the License.
 namespace ruy {
 
 // The state private to each Ruy thread.
+// TODO(b/154013439) move this structure to context_internal.h.
+// Have Context store raw PerThreadState* pointers so it doesn't need
+// a definition.
 struct PerThreadState {
+  const TuningResolver& get_tuning_resolver() const { return tuning_resolver; }
+  TuningResolver* mutable_tuning_resolver() { return &tuning_resolver; }
+  const Allocator& get_allocator() const { return allocator; }
+  Allocator* mutable_allocator() { return &allocator; }
+
   // Each thread may be running on a different microarchitecture. For example,
   // some threads may be on big cores, while others are on little cores. Thus,
   // it's best for the tuning to be per-thread.
@@ -45,63 +53,53 @@ struct PerThreadState {
 // enabled (typically based on which instruction sets are detected) and how
 // many threads to use.
 struct Context final {
+  Path get_last_taken_path() const { return last_taken_path; }
+  void set_last_taken_path(Path value) { last_taken_path = value; }
+  Tuning get_explicit_tuning() const { return explicit_tuning; }
+  void set_explicit_tuning(Tuning value) { explicit_tuning = value; }
+  // See comment on workers_pool: we wanted to rename it all along.
+  const ThreadPool& get_thread_pool() const { return workers_pool; }
+  ThreadPool* mutable_thread_pool() { return &workers_pool; }
+  int get_max_num_threads() const { return max_num_threads; }
+  void set_max_num_threads(int value) { max_num_threads = value; }
+  const TracingContext& get_tracing() const { return tracing; }
+  TracingContext* mutable_tracing() { return &tracing; }
+  CachePolicy get_cache_policy() const { return cache_policy; }
+  void set_cache_policy(CachePolicy value) { cache_policy = value; }
+
   Path last_taken_path = Path::kNone;
   Tuning explicit_tuning = Tuning::kAuto;
-  // TODO(benoitjacob) rename that thread_pool. Current name is gemmlowp legacy.
+  // TODO(b/154013439) rename that thread_pool. Current name is gemmlowp legacy.
+  // And make it a pointer so that context.h does not
+  // need to #include "thread_pool.h".
   ThreadPool workers_pool;
   int max_num_threads = 1;
-  // State for each thread in the thread pool. Entry 0 is the main thread.
-  std::vector<std::unique_ptr<PerThreadState>> per_thread_states;
+  // TODO(b/154013439) make `tracing` a pointer so that context.h does not
+  // need to #include "trace.h".
   TracingContext tracing;
   CachePolicy cache_policy = CachePolicy::kNoCache;
 
-  Allocator* GetMainAllocator() {
-    if (!main_allocator_) {
-      main_allocator_.reset(new Allocator);
-    }
-    return main_allocator_.get();
-  }
-
-  PrepackedCache* GetPrepackedCache() {
-    if (!prepacked_cache_) {
-      prepacked_cache_.reset(new PrepackedCache);
-    }
-    return prepacked_cache_.get();
-  }
-
   void ClearPrepackedCache() { prepacked_cache_ = nullptr; }
-
-  void EnsureNPerThreadStates(int thread_count) {
-    while (per_thread_states.size() < static_cast<std::size_t>(thread_count)) {
-      per_thread_states.emplace_back(new PerThreadState);
-    }
-  }
-
-  Tuning GetMainThreadTuning() {
-    EnsureNPerThreadStates(1);
-    TuningResolver* tuning_resolver = &per_thread_states[0]->tuning_resolver;
-    tuning_resolver->SetTuning(explicit_tuning);
-    return tuning_resolver->Resolve();
-  }
-
-  template <Path CompiledPaths>
-  Path GetPathToTake() {
-    last_taken_path =
-        GetMostSignificantPath(CompiledPaths & GetRuntimeEnabledPaths());
-    return last_taken_path;
-  }
-
-  void SetRuntimeEnabledPaths(Path paths);
-  Path GetRuntimeEnabledPaths();
 
  private:
   // Allocator for main thread work before invoking the threadpool.
   // Our simple Allocator does not allow reserving/allocating more blocks
   // while it's already in committed state, so the main thread needs both
   // this allocator, and its per-thread allocator.
+  // TODO(b/154013439) make that a raw Allocator* so that context.h does not
+  // need to #include "allocator.h"
   std::unique_ptr<Allocator> main_allocator_;
+  // TODO(b/154013439) make that a raw PrepackedCache* so that context.h does
+  // not need to #include "prepacked_cache.h"
   std::unique_ptr<PrepackedCache> prepacked_cache_;
   Path runtime_enabled_paths_ = Path::kNone;
+
+  // State for each thread in the thread pool. Entry 0 is the main thread.
+  // Only used internally in TrMul, so this doesn't have public accessors,
+  // instead we befriend TrMul.
+  std::vector<std::unique_ptr<PerThreadState>> per_thread_states;
+
+  friend class ContextInternal;
 };
 
 }  // end namespace ruy

@@ -23,39 +23,41 @@ limitations under the License.
 
 namespace ruy {
 
-// A Path is a choice of implementation path, e.g. between reference code
-// and optimized code, or between different optimized code paths using different
-// instruction sets.
+// A Path is an implementation path, typically corresponding to a SIMD
+// instruction set being targetted. For example, on the ARM architecture,
+// Path::kNeon means using NEON instructions, and Path::kNeonDotprod means
+// also using the newer NEON dot-product instructions.
 //
-// It's important that any symbol that depends on such implementation
-// details, is somehow templatized in such a Path, so that different Path values
-// yield different symbols, so we never have the situation where a symbols has
-// multiple inequivalent definitions based on which code paths are compiled.
-// That would be a violation of the ODR (One Definition Rule) which is Undefined
-// Behavior, and one of the most serious issues plaguing both Eigen and
-// gemmlowp.
+// Different Path enum values are defined on different CPU architectures,
+// corresponding to different SIMD ISA extensions available there.
 //
-// This enum is actually a bit-field: aside from kNone, all other values are
-// powers of two, thus are one bit each. We define bit-wise operators below
-// for this enum. Some places in Ruy accept a Path bit-field where multiple
-// Paths may be selected, while some other places require a single Path (i.e.
-// just one of the enum values here). Typically, user-facing parts of Ruy
-// accept arbitrary bit-fields, allowing the user to compile support for
-// multiple paths and to inform Ruy of all the paths that are to be enabled
-// at runtime; then, typically in dispatch.h, we internally pick one
-// specific path and from there on, internal Ruy code deals with only one
-// path.
+// There are two special Path's universally defined on all CPU architectures:
+// kReference and kStandardCpp. From a user's perspective, they are similar
+// in that both are slow, portable, standard-c++-only implementation paths.
+// They differ in that kStandardCpp is structurally similar to the actual
+// optimized Path's and exercises much of the same ruy code as they do, while
+// kReference is a special path bypassing most of ruy's code and implementing
+// the whole ruy::Mul as a very simple self-contained function.
 //
-// When a user selects a set of compiled paths, Ruy internally dispatches to the
-// "best" one, which typically means the newest optimized instructions for a
-// given base architecture (such as ARM). Higher values of this enum correspond
-// to "better" code paths within a given base architecture for which Ruy has
-// optimized code paths.
+// Path enum values are bits and may be OR-ed to form "sets of Paths".
+// Ruy entry points such as ruy::Mul either implicitly use such a set of Paths,
+// or allow passing an explicit one as a template parameter. The meaning of such
+// an OR-ed Path combination is "compile all of
+// these paths; which path is used will be determined at runtime". This is why
+// for most users, it is enough to call ruy::Mul(...), which will compile a
+// reasonable selection of paths for the target CPU architecture's various
+// SIMD ISA extensions, and let ruy determine at runtime which one to use.
+// Internally, after the actual path has been resolved, ruy's internal functions
+// templatized on a Path tend to require that to be a single bit.
 //
-// Values are reused across architectures.
-// Rationale: Scale better to N architectures, it is good to have small values
-// both for the compile-time logic to select paths, and when manually spelling
-// out Path values, such as when invoking a test or benchmark.
+// An element of ruy's internal design was to allow for code compiled for
+// multiple such paths to coexist without violating the C++ One Definition Rule
+// (ODR). This is achieved by having all ruy internal functions, whose
+// definition depends on a choice of Path, be templatized on a Path, so that
+// each path-specific specialization is a separate symbol. There is never
+// a need to compile ruy code with different compilation flags to enable
+// different SIMD extensions and dispatch at runtime between them, as this is
+// taken care of internally by ruy in an ODR-correct way.
 enum class Path : std::uint8_t {
   // This is a special null value, representing the absence of any path.
   kNone = 0,
@@ -69,7 +71,8 @@ enum class Path : std::uint8_t {
   // Standard C++ implementation of Ruy's architecture-specific parts.
   // Unlike Path::kReference, this path exercises most of Ruy's internal logic.
   //
-  // This is intended for testing/development.
+  // This is intended for testing/development, and as a fallback for when
+  // the SIMD ISA extensions required by other paths are unavailable at runtime.
   kStandardCpp = 0x2,
 
 #if RUY_PLATFORM(ARM)

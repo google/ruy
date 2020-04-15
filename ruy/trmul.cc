@@ -25,6 +25,7 @@ limitations under the License.
 #include "ruy/block_map.h"
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
+#include "ruy/context_internal.h"
 #include "ruy/internal_matrix.h"
 #include "ruy/matrix.h"
 #include "ruy/opt_set.h"
@@ -297,7 +298,7 @@ void TrMul(TrMulParams* params, Context* context) {
       tentative_thread_count, rows, cols, depth, lhs.data_type.size,
       rhs.data_type.size, params->local_data_cache_size,
       params->shared_data_cache_size);
-  Allocator* allocator = context->GetMainAllocator();
+  Allocator* allocator = ContextInternal::GetMainAllocator(context);
 
   // Allocate packed matrices
   for (Side side : {Side::kLhs, Side::kRhs}) {
@@ -312,7 +313,7 @@ void TrMul(TrMulParams* params, Context* context) {
   // version of that.
   if (loop_structure == LoopStructure::kSimple) {
     profiler::ScopeLabel label_simple("TrMulImpl, simple loop");
-    Tuning tuning = context->GetMainThreadTuning();
+    Tuning tuning = ContextInternal::GetMainThreadTuning(context);
 
     const SidePair<int> origin{0, 0};
     const SidePair<int> rounded_dims{packed_lhs.layout.cols,
@@ -344,8 +345,9 @@ void TrMul(TrMulParams* params, Context* context) {
   // Initialize per-thread state.
   const int thread_count = block_map.thread_count;
   const bool need_atomics = thread_count > 1;
-  context->EnsureNPerThreadStates(thread_count);
-  for (auto& per_thread_state : context->per_thread_states) {
+  const auto& per_thread_states =
+      ContextInternal::GetPerThreadStates(context, thread_count);
+  for (auto& per_thread_state : per_thread_states) {
     per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
   }
 
@@ -378,10 +380,10 @@ void TrMul(TrMulParams* params, Context* context) {
   atomic_block_id->store(thread_count);
 
   for (int i = 0; i < thread_count; i++) {
-    new (tasks + i) TrMulTask(params, block_map, atomic_block_id, i,
-                              need_atomics, packing_status,
-                              &context->per_thread_states[i]->tuning_resolver,
-                              &context->per_thread_states[i]->allocator, trace);
+    new (tasks + i)
+        TrMulTask(params, block_map, atomic_block_id, i, need_atomics,
+                  packing_status, &per_thread_states[i]->tuning_resolver,
+                  &per_thread_states[i]->allocator, trace);
   }
 
   // Do the computation.

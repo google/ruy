@@ -23,6 +23,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/context.h"
+#include "ruy/context_internal.h"
 #include "ruy/dispatch.h"
 #include "ruy/internal_matrix.h"
 #include "ruy/matrix.h"
@@ -44,7 +45,7 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
                            SidePair<PrepackedMatrix*> prepacked,
                            std::function<void*(int)> alloc_fn) {
   profiler::ScopeLabel label("PrePackForMul");
-  Path the_path = context->GetPathToTake<CompiledPaths>();
+  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
   Matrix<LhsScalar> transposed_lhs(lhs);
@@ -57,7 +58,7 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
   const SidePair<int> rounded_dims{params.packed[Side::kLhs].layout.cols,
                                    params.packed[Side::kRhs].layout.cols};
 
-  Tuning tuning = context->GetMainThreadTuning();
+  Tuning tuning = ContextInternal::GetMainThreadTuning(context);
   for (Side side : {Side::kLhs, Side::kRhs}) {
     if (prepacked[side]) {
       prepacked[side]->data_size = DataSize(params.packed[side]);
@@ -83,7 +84,7 @@ void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
   EnforceZeroPointSupport<Spec>(lhs.zero_point, rhs.zero_point,
                                 dst->zero_point);
 
-  Path the_path = context->GetPathToTake<CompiledPaths>();
+  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
   Matrix<LhsScalar> transposed_lhs(lhs);

@@ -151,6 +151,7 @@ cc_test(
     name = "prepacked_cache_test",
     srcs = ["prepacked_cache_test.cc"],
     deps = [
+        ":context_internal",
         ":gtest_wrapper",
         ":prepacked_cache",
         ":ruy",
@@ -333,6 +334,15 @@ cc_library(
     deps = [":check_macros"],
 )
 
+cc_test(
+    name = "matrix_test",
+    srcs = ["matrix_test.cc"],
+    deps = [
+        ":gtest_wrapper",
+        ":matrix",
+    ],
+)
+
 cc_library(
     name = "spec",
     hdrs = ["spec.h"],
@@ -341,6 +351,15 @@ cc_library(
     deps = [
         ":cpu_cache_size",
         ":matrix",
+    ],
+)
+
+cc_test(
+    name = "spec_test",
+    srcs = ["spec_test.cc"],
+    deps = [
+        ":gtest_wrapper",
+        ":spec",
     ],
 )
 
@@ -740,9 +759,6 @@ cc_library(
 
 cc_library(
     name = "context",
-    srcs = [
-        "context.cc",
-    ],
     hdrs = [
         "context.h",
     ],
@@ -768,6 +784,45 @@ cc_test(
     srcs = ["context_test.cc"],
     deps = [
         ":context",
+        ":context_internal",
+        ":gtest_wrapper",
+        ":path",
+        ":platform",
+        ":prepacked_cache",
+    ],
+)
+
+cc_library(
+    name = "context_internal",
+    srcs = [
+        "context_internal.cc",
+    ],
+    hdrs = [
+        "context_internal.h",
+    ],
+    copts = ruy_copts_base(),
+    deps = [
+        ":allocator",
+        ":check_macros",
+        ":context",
+        ":detect_arm",
+        ":detect_x86",
+        ":have_built_path_for",
+        ":path",
+        ":platform",
+        ":prepacked_cache",
+        ":thread_pool",
+        ":trace",
+        ":tune",
+    ],
+)
+
+cc_test(
+    name = "context_internal_test",
+    srcs = ["context_internal_test.cc"],
+    deps = [
+        ":context",
+        ":context_internal",
         ":gtest_wrapper",
         ":path",
         ":platform",
@@ -796,6 +851,7 @@ cc_library(
         ":check_macros",
         ":common",
         ":context",
+        ":context_internal",
         ":internal_matrix",
         ":matrix",
         ":opt_set",
@@ -827,6 +883,7 @@ cc_library(
         ":check_macros",
         ":common",
         ":context",
+        ":context_internal",
         ":internal_matrix",
         ":kernel",
         ":matrix",

@@ -30,23 +30,47 @@ enum class Order : std::uint8_t { kColMajor, kRowMajor };
 
 // Describes the shape and storage layout of a matrix.
 struct Layout final {
-  std::int32_t rows = 0;
-  std::int32_t cols = 0;
+  int get_rows() const { return rows; }
+  void set_rows(int val) { rows = val; }
+  int get_cols() const { return cols; }
+  void set_cols(int val) { cols = val; }
+  int get_stride() const { return stride; }
+  void set_stride(int val) { stride = val; }
+  Order get_order() const { return order; }
+  void set_order(Order val) { order = val; }
+
+  int rows = 0;
+  int cols = 0;
   // Stride is the offset between two adjacent matrix elements
   // in the non-contiguous direction.
-  std::int32_t stride = 0;
+  int stride = 0;
   Order order = Order::kColMajor;
 };
 
 namespace detail {
 
-// Thin wrapper around a pointer that tracks its constness dynamically.
+// Thin wrapper around a pointer with a constness model that works for the
+// purposes of the Matrix class.
 //
-// This is our take on the C++ problem of enforcing constness of data
-// wrapped in a containers class: it's not worth the hassle of trying to
-// make it fully work at compile-time.
-// Instead, we only enforce constness at runtime, and to make it
-// zero-overhead, we only enforce it in debug builds.
+// A typical conundrum of any C++ container class is what type constness should
+// encode at compile time constancy of the contained data?
+// `Matrix<const T>` or `const Matrix<T>`?
+// With either approach it is very difficult to achieve perfect
+// const-correctness that that can only be done with some combination of
+// inconvenient interface and c++ complexity/abstraction.
+//
+// Here we opt for something that's entirely tailored to the needs of the Ruy
+// interface. The only purpose of the Matrix class is to pass matrix data
+// pointers to ruy. There is an asymmetry here: the caller of ruy::Mul only
+// needs to `set` the data; ruy itself only needs to `get` the data. In the
+// caller's code, it's convenient to be able to just deal with `Matrix<T>`
+// without having to sprinkle `const` keywords in the right places, so we want
+// to track whether the data is constant in a way that's decoupled from the
+// constness of `this`, and we never want to have Matrix<const T>. Inside ruy
+// code, as input matrices are passed by const-reference and output matrices are
+// passed by pointer (to non-const), the constness of `this` is telling whether
+// the data is constant. See the `get` and `set` methods below and the comment
+// explaining the core logic that they encapsulate.
 template <typename T>
 class ConstCheckingPtr final {
  public:
@@ -86,6 +110,7 @@ class ConstCheckingPtr final {
   const T* get() const { return ptr_; }
 
  private:
+  // There's never a need for Matrix<const T>.
   static_assert(!std::is_const<T>::value, "");
   const T* ptr_ = nullptr;
 #ifndef NDEBUG
@@ -100,12 +125,32 @@ class ConstCheckingPtr final {
 
 }  // namespace detail
 
-// A Matrix is really what Eigen and gemmlowp would have called a 'matrix map':
-// it merely wraps existing data as a matrix. It doesn't own any buffer.
+// A Matrix merely wraps existing data as a matrix. It doesn't own any buffer.
+// The purpose of Matrix is only to be used in ruy's interface -- it's just
+// a structured way for the user to pass to ruy::Mul the matrix data pointers
+// together with other matrix parameters.
 // Scalar may be any floating-point or integral type. When integral, it may be
-// signed or unsigned.
+// signed or unsigned. It's never const: use Matrix<T> for both input and output
+// matrices, never use Matrix<const T>.
+// See the comments on detail::ConstCheckingPointer.
 template <typename Scalar>
 struct Matrix final {
+  static_assert(!std::is_const<Scalar>::value,
+                "Never use Matrix<const T>. Just use Matrix<T>. Constness of "
+                "the data is guarded by debug-only runtime assertions. See "
+                "detail::ConstCheckingPtr.");
+
+  Scalar* get_data() { return data.get(); }
+  const Scalar* get_data() const { return data.get(); }
+  void set_data(Scalar* ptr) { data.set(ptr); }
+  void set_data(const Scalar* ptr) { data.set(ptr); }
+  const Layout& get_layout() const { return layout; }
+  Layout* mutable_layout() { return &layout; }
+  Scalar get_zero_point() const { return zero_point; }
+  void set_zero_point(Scalar value) { zero_point = value; }
+  bool get_cacheable() const { return cacheable; }
+  void set_cacheable(bool value) { cacheable = value; }
+
   // The underlying buffer wrapped by this matrix.
   detail::ConstCheckingPtr<Scalar> data;
   // The shape and data layout of this matrix.
@@ -129,6 +174,15 @@ inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
 // Opaque data structure representing a pre-packed matrix, as obtained from
 // Ruy's advanced API.
 struct PrepackedMatrix {
+  void* get_data() const { return data; }
+  void set_data(void* ptr) { data = ptr; }
+  int get_data_size() const { return data_size; }
+  void set_data_size(int value) { data_size = value; }
+  void* get_sums() const { return sums; }
+  void set_sums(void* ptr) { sums = ptr; }
+  int get_sums_size() const { return sums_size; }
+  void set_sums_size(int value) { sums_size = value; }
+
   void* data = nullptr;
   int data_size = 0;
   void* sums = nullptr;

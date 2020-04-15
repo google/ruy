@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <thread>  // NOLINT(build/c++11)
 
+#include "ruy/context_internal.h"
 #include "ruy/gtest_wrapper.h"
 #include "ruy/ruy.h"
 #include "ruy/time.h"
@@ -138,7 +139,7 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
   // Create context and set the cache policy
   ruy::Context context;
   context.cache_policy = ruy::kCacheLHSOnNarrowMul;
-  PrepackedCache* cache = context.GetPrepackedCache();
+  PrepackedCache* cache = ContextInternal::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 
   const float lhs_data[] = {1, 2, 3, 4};
@@ -171,7 +172,7 @@ TEST(PrepackedCacheTest, TestClearCache) {
   // Create context and set the cache policy
   ruy::Context context;
   context.cache_policy = ruy::kCacheLHSOnNarrowMul;
-  PrepackedCache* cache = context.GetPrepackedCache();
+  PrepackedCache* cache = ContextInternal::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 
   const float lhs_data[] = {1, 2, 3, 4};
@@ -197,7 +198,7 @@ TEST(PrepackedCacheTest, TestClearCache) {
   // Clear the cache via the Context.
   context.ClearPrepackedCache();
   // Verify that the cache is now empty.
-  cache = context.GetPrepackedCache();
+  cache = ContextInternal::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 }
 

@@ -41,6 +41,7 @@ limitations under the License.
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
 #include "ruy/context.h"
+#include "ruy/context_internal.h"
 #include "ruy/internal_matrix.h"
 #include "ruy/kernel.h"
 #include "ruy/kernel_common.h"
@@ -395,7 +396,8 @@ inline void HandlePrepackedCaching(TrMulParams* params,
     if (!cacheable[Side::kLhs] || params->dst.layout.cols > 4) {
       return;
     }
-    PrepackedCache* prepacked_cache = context->GetPrepackedCache();
+    PrepackedCache* prepacked_cache =
+        ContextInternal::GetPrepackedCache(context);
     auto cache_key = std::make_pair(reinterpret_cast<void*>(params->run_kernel),
                                     params->src[Side::kLhs].data);
     auto it = prepacked_cache->FindAndUpdate(cache_key);
@@ -414,7 +416,7 @@ inline void HandlePrepackedCaching(TrMulParams* params,
     params->packed[Side::kLhs].data = prepacked_lhs.data;
     params->packed[Side::kLhs].sums = prepacked_lhs.sums;
     params->is_prepacked[Side::kLhs] = true;
-    Tuning tuning = context->GetMainThreadTuning();
+    Tuning tuning = ContextInternal::GetMainThreadTuning(context);
     params->RunPack(Side::kLhs, tuning, 0,
                     params->packed[Side::kLhs].layout.cols);
     prepacked_cache->Insert(cache_key, prepacked_lhs);
@@ -448,7 +450,7 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   //
   // Unfortunately, it is not a *static* constant, since it depends on runtime
   // detection of the available SIMD instructions.
-  Path the_path = context->GetPathToTake<CompiledPaths>();
+  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
 
   // Production code should probably never execute Path::kReference.
   // Path::kReference implements a Mul, not a TrMul like the rest of Ruy, so if

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// A wrapper around GTest that silences warnings.
+// Wrapper around GTest that works around warnings and inconsistencies.
 
 #ifndef THIRD_PARTY_RUY_RUY_GTEST_WRAPPER_H_
 #define THIRD_PARTY_RUY_RUY_GTEST_WRAPPER_H_
@@ -22,5 +22,12 @@ limitations under the License.
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include "gtest/gtest.h"  // IWYU pragma: export
 #pragma GCC diagnostic pop
+
+// When building for WAsm, ASSERT_DEATH is not defined.
+#ifdef ASSERT_DEATH
+#define RUY_ASSERT_DEATH(CONDITION, MESSAGE) ASSERT_DEATH(CONDITION, MESSAGE)
+#else
+#define RUY_ASSERT_DEATH(CONDITION, MESSAGE)
+#endif
 
 #endif  // THIRD_PARTY_RUY_RUY_GTEST_WRAPPER_H_
