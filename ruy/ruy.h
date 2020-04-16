@@ -70,20 +70,20 @@ namespace ruy {
 // each invocation to make an explicit decision here, there is no automatic
 // detection of the best number of threads to use in ruy.
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
+          typename MulParamsType>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const Spec& spec, Context* context, Matrix<DstScalar>* dst) {
-  DispatchMul<ruy::kAllPaths, LhsScalar, RhsScalar, DstScalar, Spec>(
+         const MulParamsType& spec, Context* context, Matrix<DstScalar>* dst) {
+  DispatchMul<ruy::kAllPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
       lhs, rhs, spec, context, dst);
 }
 
 // Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to
 // compile. See the comments in path.h for more details.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const Spec& spec, Context* context, Matrix<DstScalar>* dst) {
-  DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, Spec>(
+         const MulParamsType& spec, Context* context, Matrix<DstScalar>* dst) {
+  DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
       lhs, rhs, spec, context, dst);
 }
 

@@ -21,24 +21,24 @@ namespace ruy {
 
 template <typename AccumScalar, typename DstScalar,
           LoopStructure tLoopStructure>
-struct LoopStructureSpec : BasicSpec<AccumScalar, DstScalar> {
+struct LoopStructureMulParams : MulParams<AccumScalar, DstScalar> {
   static constexpr LoopStructure kLoopStructure = tLoopStructure;
 };
 
 template <typename AccumScalar, typename DstScalar,
           ZeroPointSupport tZeroPointSupport>
-struct ZeroPointSupportSpec : BasicSpec<AccumScalar, DstScalar> {
+struct ZeroPointSupportMulParams : MulParams<AccumScalar, DstScalar> {
   static constexpr ZeroPointSupport kZeroPointSupport = tZeroPointSupport;
 };
 
 template <typename AccumScalar, typename DstScalar>
-struct RCCSpec : BasicSpec<AccumScalar, DstScalar> {
+struct RCCMulParams : MulParams<AccumScalar, DstScalar> {
   static constexpr LayoutSupport kLayoutSupport = LayoutSupport::kRCC;
 };
 
 template <typename AccumScalar, typename DstScalar, typename LhsKernelLayout,
           typename RhsKernelLayout>
-struct StandardCppKernelLayoutSpec : BasicSpec<AccumScalar, DstScalar> {
+struct StandardCppKernelLayoutMulParams : MulParams<AccumScalar, DstScalar> {
   using StandardCppKernelLhsLayout = LhsKernelLayout;
   using StandardCppKernelRhsLayout = RhsKernelLayout;
   static int local_data_cache_size() { return 1; }
@@ -52,7 +52,8 @@ using DstScalar = RUY_TEST_DSTSCALAR;
 
 template <LoopStructure tLoopStructure>
 void TestLoopStructure() {
-  using SpecType = LoopStructureSpec<AccumScalar, DstScalar, tLoopStructure>;
+  using SpecType =
+      LoopStructureMulParams<AccumScalar, DstScalar, tLoopStructure>;
   using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
   for (int size = 1; size < 10; size++) {
     TestLinearAllOrders<TestSetType>(size, size, size);
@@ -64,10 +65,10 @@ void TestLoopStructure() {
 }
 
 TEST(TestSpecialSpecs, LoopStructure) {
-  static_assert(BasicSpec<std::uint8_t, std::int32_t>::kLoopStructure ==
+  static_assert(MulParams<std::uint8_t, std::int32_t>::kLoopStructure ==
                     LoopStructure::kAuto,
                 "");
-  static_assert(BasicSpec<float, float>::kLoopStructure == LoopStructure::kAuto,
+  static_assert(MulParams<float, float>::kLoopStructure == LoopStructure::kAuto,
                 "");
   TestLoopStructure<LoopStructure::kSimple>();
   TestLoopStructure<LoopStructure::kGeneral>();
@@ -78,7 +79,7 @@ void TestZeroPointSupport(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
                           DstScalar dst_zero_point,
                           ExpectedOutcome expected_outcome) {
   using SpecType =
-      ZeroPointSupportSpec<AccumScalar, DstScalar, tZeroPointSupport>;
+      ZeroPointSupportMulParams<AccumScalar, DstScalar, tZeroPointSupport>;
   using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
   TestSetType test_set;
   test_set.rows = 11;
@@ -126,8 +127,8 @@ TEST(TestSpecialSpecs, ZeroPointSupport) {
 }
 
 TEST(TestSpecialSpecs, RCC) {
-  using RCCSpec = RCCSpec<AccumScalar, DstScalar>;
-  using RCCTestSet = TestSet<LhsScalar, RhsScalar, RCCSpec>;
+  using RCCMulParams = RCCMulParams<AccumScalar, DstScalar>;
+  using RCCTestSet = TestSet<LhsScalar, RhsScalar, RCCMulParams>;
   TestRCC<RCCTestSet>(81, 93, 72);
   TestNonRCC<RCCTestSet>(81, 93, 72, ExpectedOutcome::kDeath);
 }
@@ -135,8 +136,8 @@ TEST(TestSpecialSpecs, RCC) {
 template <typename LhsKernelLayout, typename RhsKernelLayout>
 void TestStandardCppKernelLayout() {
   using SpecType =
-      StandardCppKernelLayoutSpec<AccumScalar, DstScalar, LhsKernelLayout,
-                                  RhsKernelLayout>;
+      StandardCppKernelLayoutMulParams<AccumScalar, DstScalar, LhsKernelLayout,
+                                       RhsKernelLayout>;
   using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
   for (int size = 1; size < 10; size++) {
     TestLinearAllOrders<TestSetType>(size, size, size);

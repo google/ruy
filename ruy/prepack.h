@@ -38,10 +38,11 @@ limitations under the License.
 namespace ruy {
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
-                           const Matrix<RhsScalar>& rhs, const Spec& spec,
-                           Context* context, Matrix<DstScalar>* dst,
+                           const Matrix<RhsScalar>& rhs,
+                           const MulParamsType& spec, Context* context,
+                           Matrix<DstScalar>* dst,
                            SidePair<PrepackedMatrix*> prepacked,
                            std::function<void*(int)> alloc_fn) {
   profiler::ScopeLabel label("PrePackForMul");
@@ -73,16 +74,17 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
-                              const Matrix<RhsScalar>& rhs, const Spec& spec,
-                              Context* context, Matrix<DstScalar>* dst,
+                              const Matrix<RhsScalar>& rhs,
+                              const MulParamsType& spec, Context* context,
+                              Matrix<DstScalar>* dst,
                               SidePair<PrepackedMatrix*> prepacked) {
   profiler::ScopeLabel label("MulWithPrepacked");
 
-  EnforceLayoutSupport<Spec>(lhs.layout, rhs.layout, dst->layout);
-  EnforceZeroPointSupport<Spec>(lhs.zero_point, rhs.zero_point,
-                                dst->zero_point);
+  EnforceLayoutSupport<MulParamsType>(lhs.layout, rhs.layout, dst->layout);
+  EnforceZeroPointSupport<MulParamsType>(lhs.zero_point, rhs.zero_point,
+                                         dst->zero_point);
 
   Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
   RUY_CHECK_NE(the_path, Path::kReference);

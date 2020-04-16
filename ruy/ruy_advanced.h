@@ -43,10 +43,10 @@ namespace ruy {
 // See example_prepack.cc for example usage.
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                   const Spec& spec, Context* context, Matrix<DstScalar>* dst,
-                   PrepackedMatrix* prepacked_lhs,
+                   const MulParamsType& spec, Context* context,
+                   Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
                    PrepackedMatrix* prepacked_rhs,
                    std::function<void*(int)> alloc_fn) {
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
@@ -55,9 +55,9 @@ void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void MulWithPrepacked(const Matrix<LhsScalar>& lhs,
-                      const Matrix<RhsScalar>& rhs, const Spec& spec,
+                      const Matrix<RhsScalar>& rhs, const MulParamsType& spec,
                       Context* context, Matrix<DstScalar>* dst,
                       PrepackedMatrix* prepacked_lhs,
                       PrepackedMatrix* prepacked_rhs) {

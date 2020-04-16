@@ -43,9 +43,9 @@ struct TrMulParams {
   // cache sizes when not runtime-detectable.
   Path path;
 
-  // See Spec::local_data_cache_size().
+  // See MulParamsType::local_data_cache_size().
   int local_data_cache_size = 0;
-  // See Spec::shared_data_cache_size().
+  // See MulParamsType::shared_data_cache_size().
   int shared_data_cache_size = 0;
 
   // Function pointers to type-erased entry points for kernels and packers.
@@ -58,7 +58,7 @@ struct TrMulParams {
   SidePair<PMatrix> packed;
   SidePair<bool> is_prepacked;
 
-  // Type-erased Spec.
+  // Type-erased MulParamsType.
   void* spec = nullptr;
 };
 

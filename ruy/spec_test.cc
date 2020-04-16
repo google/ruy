@@ -24,11 +24,12 @@ namespace ruy {
 namespace {
 
 TEST(SpecTest, SpecClassSanity) {
-  using Spec = BasicSpec<std::int32_t, std::int8_t>;
-  static_assert(std::is_same<Spec::AccumScalar, std::int32_t>::value, "");
-  static_assert(std::is_same<Spec::DstScalar, std::int8_t>::value, "");
+  using MulParamsType = MulParams<std::int32_t, std::int8_t>;
+  static_assert(std::is_same<MulParamsType::AccumScalar, std::int32_t>::value,
+                "");
+  static_assert(std::is_same<MulParamsType::DstScalar, std::int8_t>::value, "");
 
-  Spec spec;
+  MulParamsType spec;
   EXPECT_EQ(spec.get_bias(), nullptr);
   EXPECT_EQ(spec.get_multiplier_fixedpoint(), 0);
   EXPECT_EQ(spec.get_multiplier_exponent(), 0);

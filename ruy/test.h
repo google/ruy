@@ -467,13 +467,13 @@ struct TestSet final {
   using RhsScalar = tRhsScalar;
   using AccumScalar = typename SpecType::AccumScalar;
   using DstScalar = typename SpecType::DstScalar;
-  using Spec = SpecType;
+  using MulParamsType = SpecType;
   using TestResultType = TestResult<DstScalar>;
 
   void Run() {
     MakeZeroPoints();
     MakeLhsRhs();
-    MakeSpec();
+    MakeMulParams();
     MakeOtherParams();
     MakeResultPaths();
     MakePrepackedMatrices();
@@ -484,7 +484,7 @@ struct TestSet final {
  private:
   void MakeZeroPoints();
   void MakeLhsRhs();
-  void MakeSpec();
+  void MakeMulParams();
   void MakeResultPaths();
   void MakePrepackedMatrices();
   void MakeOtherParams();
@@ -503,7 +503,7 @@ struct TestSet final {
     kInitial,
     kHasZeroPoints,
     kHasLhsRhs,
-    kHasSpec,
+    kHasMulParams,
     kHasOtherParams,
     kHasResultPaths,
     kHasPrepackedMatrices,
@@ -537,7 +537,7 @@ struct TestSet final {
 
   StorageMatrix<LhsScalar> lhs;
   StorageMatrix<RhsScalar> rhs;
-  Spec spec;
+  MulParamsType spec;
   std::vector<AccumScalar> bias_data;
   std::vector<std::unique_ptr<TestResultType>> results;
 
@@ -674,9 +674,9 @@ inline gemmlowp::GemmContext& GlobalGemmlowpContext() {
 }
 
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename Spec>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const Spec& spec, int max_num_threads,
+                  const MulParamsType& spec, int max_num_threads,
                   Matrix<DstScalar>* dst) {
   static constexpr gemmlowp::MapOrder kGemmlowpLhsOrder =
       GemmlowpOrder<LhsOrder>::kValue;
@@ -771,9 +771,9 @@ inline constexpr int Mash(Order LhsOrder, Order RhsOrder, Order DstOrder) {
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
+          typename MulParamsType>
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const Spec& spec, int max_num_threads,
+                  const MulParamsType& spec, int max_num_threads,
                   Matrix<DstScalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
@@ -813,9 +813,10 @@ struct EigenOrder<Order::kRowMajor> {
 };
 
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename Spec>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-               const Spec& spec, int max_num_threads, Matrix<DstScalar>* dst) {
+               const MulParamsType& spec, int max_num_threads,
+               Matrix<DstScalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
   RUY_CHECK_EQ(dst->zero_point, 0);
@@ -870,9 +871,10 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
+          typename MulParamsType>
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-               const Spec& spec, int max_num_threads, Matrix<DstScalar>* dst) {
+               const MulParamsType& spec, int max_num_threads,
+               Matrix<DstScalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
 #define EVALEIGEN_CASE3(LHS, RHS, DST) \
@@ -898,9 +900,9 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 }
 
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename Scalar,
-          typename Spec>
+          typename MulParamsType>
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                     const Spec& spec, int max_num_threads,
+                     const MulParamsType& spec, int max_num_threads,
                      Matrix<Scalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
@@ -981,9 +983,9 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   }
 }
 
-template <typename Scalar, typename Spec>
+template <typename Scalar, typename MulParamsType>
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                     const Spec& spec, int max_num_threads,
+                     const MulParamsType& spec, int max_num_threads,
                      Matrix<Scalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
@@ -1035,9 +1037,10 @@ struct GenericBlasGemm<lapack::real> {
   }
 };
 
-template <typename Scalar, typename Spec>
+template <typename Scalar, typename MulParamsType>
 void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                  const Spec& spec, int max_num_threads, Matrix<Scalar>* dst) {
+                  const MulParamsType& spec, int max_num_threads,
+                  Matrix<Scalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
   RUY_CHECK_EQ(dst->zero_point, 0);
@@ -1437,10 +1440,10 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, false> {
   }
 };
 
-template <typename Spec>
-void MakeSpecClampFields(Spec* spec) {
-  using AccumScalar = typename Spec::AccumScalar;
-  using DstScalar = typename Spec::DstScalar;
+template <typename MulParamsType>
+void MakeSpecClampFields(MulParamsType* spec) {
+  using AccumScalar = typename MulParamsType::AccumScalar;
+  using DstScalar = typename MulParamsType::DstScalar;
 
   if (std::is_same<AccumScalar, std::int32_t>::value) {
     // Returning raw accumulators, clamping is not supported.
@@ -1491,7 +1494,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeLhsRhs() {
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeSpec() {
+void TestSet<LhsScalar, RhsScalar, SpecType>::MakeMulParams() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasLhsRhs);
 
   if (!getenv("BENCHMARK_ONLY_MATMUL") &&
@@ -1505,7 +1508,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeSpec() {
   }
   MakeSpecMultiplierFieldsImpl<TestSet>::Run(this);
   MakeSpecClampFields(&spec);
-  life_stage = LifeStage::kHasSpec;
+  life_stage = LifeStage::kHasMulParams;
 }
 
 inline int GetIntEnvVarOrZero(const char* name) {
@@ -1538,7 +1541,7 @@ inline bool GetBoolEnvVarOrFalse(const char* name) {
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::MakeOtherParams() {
-  RUY_CHECK_EQ(life_stage, LifeStage::kHasSpec);
+  RUY_CHECK_EQ(life_stage, LifeStage::kHasMulParams);
   if (max_num_threads == 0) {
     max_num_threads = GetIntEnvVarOrZero("THREADS");
   }

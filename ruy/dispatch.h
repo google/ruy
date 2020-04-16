@@ -59,13 +59,13 @@ limitations under the License.
 
 namespace ruy {
 
-// If the Spec's LayoutSupport covers only some special cases,
+// If the MulParamsType's LayoutSupport covers only some special cases,
 // this function enforces that the matrix multiplication at hand falls into
 // that special case.
-template <typename Spec>
+template <typename MulParamsType>
 void EnforceLayoutSupport(const Layout& lhs_layout, const Layout& rhs_layout,
                           const Layout& dst_layout) {
-  if (Spec::kLayoutSupport == LayoutSupport::kRCC) {
+  if (MulParamsType::kLayoutSupport == LayoutSupport::kRCC) {
     RUY_DCHECK(IsRowMajor(lhs_layout));
     RUY_DCHECK(IsColMajor(rhs_layout));
     RUY_DCHECK(IsColMajor(dst_layout));
@@ -77,24 +77,24 @@ bool IsSymmetricZeroPoint(Scalar zero_point) {
   return zero_point == SymmetricZeroPoint<Scalar>();
 }
 
-template <typename Spec, typename Scalar>
+template <typename MulParamsType, typename Scalar>
 void CheckZeroPoint(Scalar zero_point) {
   if (std::is_floating_point<Scalar>::value ||
-      Spec::kZeroPointSupport == ZeroPointSupport::kSymmetric) {
+      MulParamsType::kZeroPointSupport == ZeroPointSupport::kSymmetric) {
     RUY_DCHECK(IsSymmetricZeroPoint(zero_point));
   }
 }
 
-template <typename Spec, typename LhsScalar, typename RhsScalar,
+template <typename MulParamsType, typename LhsScalar, typename RhsScalar,
           typename DstScalar>
 void EnforceZeroPointSupport(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
                              DstScalar dst_zero_point) {
-  // If the Spec's ZeroPointSupport covers only some special cases,
+  // If the MulParamsType's ZeroPointSupport covers only some special cases,
   // this function enforces that the matrix multiplication at hand falls into
   // that special case.
-  CheckZeroPoint<Spec>(lhs_zero_point);
-  CheckZeroPoint<Spec>(rhs_zero_point);
-  CheckZeroPoint<Spec>(dst_zero_point);
+  CheckZeroPoint<MulParamsType>(lhs_zero_point);
+  CheckZeroPoint<MulParamsType>(rhs_zero_point);
+  CheckZeroPoint<MulParamsType>(dst_zero_point);
 
   // Guard against the case when both LHS and RHS zero_point's are equal to
   // the minimum representable value. In that case, padding with zero_point
@@ -108,10 +108,13 @@ void EnforceZeroPointSupport(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
              rhs_zero_point != std::numeric_limits<RhsScalar>::lowest());
 }
 
-template <typename Spec, typename DstScalar>
-void EnforceDstSpecSupport(const Spec& spec, DstScalar dst_zero_point) {
-  static_assert(std::is_same<typename Spec::DstScalar, DstScalar>::value, "");
-  if (!std::is_same<typename Spec::DstScalar, std::int32_t>::value) return;
+template <typename MulParamsType, typename DstScalar>
+void EnforceDstSpecSupport(const MulParamsType& spec,
+                           DstScalar dst_zero_point) {
+  static_assert(
+      std::is_same<typename MulParamsType::DstScalar, DstScalar>::value, "");
+  if (!std::is_same<typename MulParamsType::DstScalar, std::int32_t>::value)
+    return;
 
   // If user is looking for the raw accumulator, zero_point and all the other
   // dequantize fields don't make sense and should not be set.
@@ -168,7 +171,7 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
 }
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void PopulateTrMulParams(TrMulParams* params) {
   static_assert((ThePath & Path::kReference) == Path::kNone,
                 "Path::kReference should not do TrMul");
@@ -185,21 +188,21 @@ void PopulateTrMulParams(TrMulParams* params) {
 
   if (fallback_to_standard_cpp) {
     PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
-                        Spec>(params);
+                        MulParamsType>(params);
     return;
   }
 
   using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
   using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
-  using Kernel =
-      Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar, Spec>;
+  using Kernel = Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar,
+                        MulParamsType>;
   using LhsKernelLayout = typename Kernel::LhsLayout;
   using RhsKernelLayout = typename Kernel::RhsLayout;
 
   params->path = ThePath;
 
-  params->local_data_cache_size = Spec::local_data_cache_size();
-  params->shared_data_cache_size = Spec::shared_data_cache_size();
+  params->local_data_cache_size = MulParamsType::local_data_cache_size();
+  params->shared_data_cache_size = MulParamsType::shared_data_cache_size();
 
   CreatePackedMatrix<LhsScalar, PackedLhsScalar>(
       Side::kLhs, ToKernelLayout<LhsKernelLayout>(), params);
@@ -209,8 +212,8 @@ void PopulateTrMulParams(TrMulParams* params) {
       &RunPack<ThePath, LhsKernelLayout, LhsScalar, PackedLhsScalar>;
   params->run_pack[Side::kRhs] =
       &RunPack<ThePath, RhsKernelLayout, RhsScalar, PackedRhsScalar>;
-  params->run_kernel =
-      &RunKernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar, Spec>;
+  params->run_kernel = &RunKernel<ThePath, PackedLhsScalar, PackedRhsScalar,
+                                  DstScalar, MulParamsType>;
 
   return;
 }
@@ -259,68 +262,69 @@ void PopulateTrMulParams(TrMulParams* params) {
 // inner loops for paths that are not in CompiledPaths, since that can result in
 // bogus instantiations which cause a compile time failure.
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename Spec>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchCountdown;
 
 template <Path CompiledPaths, bool InCompiledPaths, int BitNumber,
           typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
+          typename MulParamsType>
 struct PathSearchOnlyCompiledPaths {
   static constexpr Path kCurrentPath = static_cast<Path>(1 << BitNumber);
   static void Search(Path the_path, TrMulParams* params) {
     if (kCurrentPath == the_path) {
-      PopulateTrMulParams<kCurrentPath, LhsScalar, RhsScalar, DstScalar, Spec>(
-          params);
+      PopulateTrMulParams<kCurrentPath, LhsScalar, RhsScalar, DstScalar,
+                          MulParamsType>(params);
       return;
     }
     PathSearchCountdown<CompiledPaths, BitNumber - 1, LhsScalar, RhsScalar,
-                        DstScalar, Spec>::Search(the_path, params);
+                        DstScalar, MulParamsType>::Search(the_path, params);
   }
 };
 
 // Skip this iteration if CompiledPaths doesn't contain the specified path.
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename Spec>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchOnlyCompiledPaths<CompiledPaths, false, BitNumber, LhsScalar,
-                                   RhsScalar, DstScalar, Spec> {
+                                   RhsScalar, DstScalar, MulParamsType> {
   static void Search(Path the_path, TrMulParams* params) {
     PathSearchCountdown<CompiledPaths, BitNumber - 1, LhsScalar, RhsScalar,
-                        DstScalar, Spec>::Search(the_path, params);
+                        DstScalar, MulParamsType>::Search(the_path, params);
   }
 };
 
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename Spec>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchCountdown {
   static constexpr Path kCurrentPath = static_cast<Path>(1 << BitNumber);
   static void Search(Path the_path, TrMulParams* params) {
     PathSearchOnlyCompiledPaths<
         CompiledPaths, (CompiledPaths & kCurrentPath) != Path::kNone, BitNumber,
-        LhsScalar, RhsScalar, DstScalar, Spec>::Search(the_path, params);
+        LhsScalar, RhsScalar, DstScalar, MulParamsType>::Search(the_path,
+                                                                params);
   }
 };
 
 // Termination of the countdown. If the counter reaches -1, then we haven't
 // found the specified path.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 struct PathSearchCountdown<CompiledPaths, -1, LhsScalar, RhsScalar, DstScalar,
-                           Spec> {
+                           MulParamsType> {
   static void Search(Path, TrMulParams*) { RUY_DCHECK(false); }
 };
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
   return PathSearchCountdown<CompiledPaths, 8 * sizeof(Path) - 1, LhsScalar,
-                             RhsScalar, DstScalar, Spec>::Search(the_path,
-                                                                 params);
+                             RhsScalar, DstScalar,
+                             MulParamsType>::Search(the_path, params);
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
-                       const Matrix<RhsScalar>& rhs, const Spec& spec,
+                       const Matrix<RhsScalar>& rhs, const MulParamsType& spec,
                        Matrix<DstScalar>* dst, Path the_path,
                        TrMulParams* params) {
   // Fill in the fields we already know.
@@ -331,17 +335,18 @@ void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
 
   // Create inner loops and packed matrices based on the Path.
   PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
-                                      DstScalar, Spec>(the_path, params);
+                                      DstScalar, MulParamsType>(the_path,
+                                                                params);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
+          typename MulParamsType>
 void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const Spec& spec, Matrix<DstScalar>* dst) {
+                  const MulParamsType& spec, Matrix<DstScalar>* dst) {
   profiler::ScopeLabel label("ReferenceMul");
   for (int i = 0; i < lhs.layout.rows; i++) {
     for (int j = 0; j < rhs.layout.cols; j++) {
-      using AccumScalar = typename Spec::AccumScalar;
+      using AccumScalar = typename MulParamsType::AccumScalar;
       AccumScalar accum = 0;
       for (int k = 0; k < lhs.layout.cols; k++) {
         AccumScalar lhs_val = Element(lhs, i, k);
@@ -365,9 +370,9 @@ void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 template <bool ReferenceMulIsEnabled>
 struct CompileTimeEnabledReferenceMul {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-            typename Spec>
+            typename MulParamsType>
   static void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const Spec& spec, Matrix<DstScalar>* dst) {
+                  const MulParamsType& spec, Matrix<DstScalar>* dst) {
     ReferenceMul(lhs, rhs, spec, dst);
   }
 };
@@ -377,9 +382,9 @@ struct CompileTimeEnabledReferenceMul {
 template <>
 struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-            typename Spec>
+            typename MulParamsType>
   static void Run(const Matrix<LhsScalar>&, const Matrix<RhsScalar>&,
-                  const Spec&, Matrix<DstScalar>*) {
+                  const MulParamsType&, Matrix<DstScalar>*) {
     RUY_DCHECK(false);
   }
 };
@@ -425,9 +430,10 @@ inline void HandlePrepackedCaching(TrMulParams* params,
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                 const Spec& spec, Context* context, Matrix<DstScalar>* dst) {
+                 const MulParamsType& spec, Context* context,
+                 Matrix<DstScalar>* dst) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
                 "CompiledPaths must be a subset of ruy::kAllPaths");
@@ -437,10 +443,10 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                                             lhs.layout.rows, lhs.layout.cols,
                                             rhs.layout.cols);
 
-  EnforceLayoutSupport<Spec>(lhs.layout, rhs.layout, dst->layout);
-  EnforceZeroPointSupport<Spec>(lhs.zero_point, rhs.zero_point,
-                                dst->zero_point);
-  EnforceDstSpecSupport<Spec>(spec, dst->zero_point);
+  EnforceLayoutSupport<MulParamsType>(lhs.layout, rhs.layout, dst->layout);
+  EnforceZeroPointSupport<MulParamsType>(lhs.zero_point, rhs.zero_point,
+                                         dst->zero_point);
+  EnforceDstSpecSupport<MulParamsType>(spec, dst->zero_point);
 
   // This should be a constant, for a given machine and CompiledPaths.
   // There is a back door to override it for testing, but in production it will

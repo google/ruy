@@ -39,14 +39,14 @@ void Kernel8bitSse42(const KernelParams8bit<8, 8>& params);
 
 template <typename DstScalar>
 struct Kernel<Path::kSse42, std::int8_t, std::int8_t, DstScalar,
-              BasicSpec<std::int32_t, DstScalar>> {
+              MulParams<std::int32_t, DstScalar>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<std::int8_t>& lhs,
            const PackedMatrix<std::int8_t>& rhs,
-           const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
+           const MulParams<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
@@ -59,13 +59,13 @@ struct Kernel<Path::kSse42, std::int8_t, std::int8_t, DstScalar,
 void KernelFloatSse42(const KernelParamsFloat<8, 8>& params);
 
 template <>
-struct Kernel<Path::kSse42, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kSse42, float, float, float, MulParams<float, float>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
-           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           const MulParams<float, float>& spec, int start_row, int start_col,
            int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,
@@ -79,14 +79,14 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params);
 
 template <typename DstScalar>
 struct Kernel<Path::kAvx512, std::int8_t, std::int8_t, DstScalar,
-              BasicSpec<std::int32_t, DstScalar>> {
+              MulParams<std::int32_t, DstScalar>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<std::int8_t>& lhs,
            const PackedMatrix<std::int8_t>& rhs,
-           const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
+           const MulParams<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
@@ -104,13 +104,13 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params);
 void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& param);
 
 template <>
-struct Kernel<Path::kAvx512, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kAvx512, float, float, float, MulParams<float, float>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
-           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           const MulParams<float, float>& spec, int start_row, int start_col,
            int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,
@@ -128,14 +128,14 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params);
 
 template <typename DstScalar>
 struct Kernel<Path::kAvx2, std::int8_t, std::int8_t, DstScalar,
-              BasicSpec<std::int32_t, DstScalar>> {
+              MulParams<std::int32_t, DstScalar>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<std::int8_t>& lhs,
            const PackedMatrix<std::int8_t>& rhs,
-           const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
+           const MulParams<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
@@ -153,13 +153,13 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params);
 void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params);
 
 template <>
-struct Kernel<Path::kAvx2, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kAvx2, float, float, float, MulParams<float, float>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
-           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           const MulParams<float, float>& spec, int start_row, int start_col,
            int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,
@@ -180,14 +180,14 @@ void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>& params);
 
 template <typename DstScalar>
 struct Kernel<Path::kAvxVnni, std::int8_t, std::int8_t, DstScalar,
-              BasicSpec<std::int32_t, DstScalar>> {
+              MulParams<std::int32_t, DstScalar>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<std::int8_t>& lhs,
            const PackedMatrix<std::int8_t>& rhs,
-           const BasicSpec<std::int32_t, DstScalar>& spec, int start_row,
+           const MulParams<std::int32_t, DstScalar>& spec, int start_row,
            int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
@@ -200,13 +200,13 @@ struct Kernel<Path::kAvxVnni, std::int8_t, std::int8_t, DstScalar,
 void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>& params);
 
 template <>
-struct Kernel<Path::kAvxVnni, float, float, float, BasicSpec<float, float>> {
+struct Kernel<Path::kAvxVnni, float, float, float, MulParams<float, float>> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
-           const BasicSpec<float, float>& spec, int start_row, int start_col,
+           const MulParams<float, float>& spec, int start_row, int start_col,
            int end_row, int end_col, Matrix<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, spec, start_row, start_col, end_row,

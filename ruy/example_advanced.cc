@@ -45,7 +45,7 @@ void ExamplePrepack(ruy::Context* context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
   ruy::Matrix<float> dst;
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  ruy::BasicSpec<float, float> spec;
+  ruy::MulParams<float, float> spec;
 
   SimpleAllocator allocator;
   auto alloc_fn = [&allocator](int num_bytes) -> void* {

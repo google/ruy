@@ -36,16 +36,17 @@ limitations under the License.
 namespace ruy {
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 struct Kernel {};
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
-                    const PackedMatrix<RhsScalar>& rhs, const Spec& spec,
-                    int start_row, int start_col, int end_row, int end_col,
-                    Matrix<DstScalar>* dst) {
-  using Kernel = Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, Spec>;
+                    const PackedMatrix<RhsScalar>& rhs,
+                    const MulParamsType& spec, int start_row, int start_col,
+                    int end_row, int end_col, Matrix<DstScalar>* dst) {
+  using Kernel =
+      Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>;
   Kernel kernel(tuning);
   using LhsLayout = typename Kernel::LhsLayout;
   using RhsLayout = typename Kernel::RhsLayout;
@@ -78,16 +79,16 @@ void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
 
 // Main entry point for kernels.
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename Spec>
+          typename DstScalar, typename MulParamsType>
 void RunKernel(Tuning tuning, const SidePair<PMatrix>& src, void* spec,
                const SidePair<int>& start, const SidePair<int>& end,
                DMatrix* dst) {
   Matrix<DstScalar> mdst = ToMatrix<DstScalar>(*dst);
-  RunKernelTyped<ThePath, LhsScalar, RhsScalar, DstScalar, Spec>(
+  RunKernelTyped<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
       tuning, ToPackedMatrix<LhsScalar>(src[Side::kLhs]),
       ToPackedMatrix<RhsScalar>(src[Side::kRhs]),
-      *static_cast<const Spec*>(spec), start[Side::kLhs], start[Side::kRhs],
-      end[Side::kLhs], end[Side::kRhs], &mdst);
+      *static_cast<const MulParamsType*>(spec), start[Side::kLhs],
+      start[Side::kRhs], end[Side::kLhs], end[Side::kRhs], &mdst);
 }
 
 // Copied from gemmlowp/fixedpoint.
@@ -127,29 +128,30 @@ inline std::int32_t MultiplyByQuantizedMultiplier(
 // Helper to apply a fixed-point multiplier.  Only 'applicable' if AccumScalar
 // is int32 (i.e. in all cases except floating-point) and if the destination is
 // not int32 (i.e. unless the user wants to get raw accumulators).
-template <typename Spec,
-          bool IsApplicable =
-              std::is_same<typename Spec::AccumScalar, std::int32_t>::value &&
-              !std::is_same<typename Spec::DstScalar, std::int32_t>::value>
+template <typename MulParamsType,
+          bool IsApplicable = std::is_same<typename MulParamsType::AccumScalar,
+                                           std::int32_t>::value &&
+                              !std::is_same<typename MulParamsType::DstScalar,
+                                            std::int32_t>::value>
 struct ApplyMultiplierImpl {};
 
 // Specialization in non-applicable case: do nothing, just check that values
 // are default.
-template <typename Spec>
-struct ApplyMultiplierImpl<Spec, false> {
-  using AccumScalar = typename Spec::AccumScalar;
-  using DstScalar = typename Spec::DstScalar;
-  static void Run(const Spec& spec, int, AccumScalar*) {
+template <typename MulParamsType>
+struct ApplyMultiplierImpl<MulParamsType, false> {
+  using AccumScalar = typename MulParamsType::AccumScalar;
+  using DstScalar = typename MulParamsType::DstScalar;
+  static void Run(const MulParamsType& spec, int, AccumScalar*) {
     RUY_DCHECK_EQ(spec.multiplier_fixedpoint, 0);
     RUY_DCHECK_EQ(spec.multiplier_exponent, 0);
   }
 };
 
-template <typename Spec>
-struct ApplyMultiplierImpl<Spec, true> {
-  using AccumScalar = typename Spec::AccumScalar;
-  using DstScalar = typename Spec::DstScalar;
-  static void Run(const Spec& spec, int row, AccumScalar* accum) {
+template <typename MulParamsType>
+struct ApplyMultiplierImpl<MulParamsType, true> {
+  using AccumScalar = typename MulParamsType::AccumScalar;
+  using DstScalar = typename MulParamsType::DstScalar;
+  static void Run(const MulParamsType& spec, int row, AccumScalar* accum) {
     AccumScalar m = spec.multiplier_fixedpoint_perchannel
                         ? spec.multiplier_fixedpoint_perchannel[row]
                         : spec.multiplier_fixedpoint;
@@ -160,22 +162,23 @@ struct ApplyMultiplierImpl<Spec, true> {
   }
 };
 
-template <typename Spec>
-void ApplyMultiplier(const Spec& spec, int row,
-                     typename Spec::AccumScalar* accum) {
-  ApplyMultiplierImpl<Spec>::Run(spec, row, accum);
+template <typename MulParamsType>
+void ApplyMultiplier(const MulParamsType& spec, int row,
+                     typename MulParamsType::AccumScalar* accum) {
+  ApplyMultiplierImpl<MulParamsType>::Run(spec, row, accum);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename Spec>
-struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
-  using AccumScalar = typename Spec::AccumScalar;
-  using LhsLayout = typename Spec::StandardCppKernelLhsLayout;
-  using RhsLayout = typename Spec::StandardCppKernelRhsLayout;
+          typename MulParamsType>
+struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
+              MulParamsType> {
+  using AccumScalar = typename MulParamsType::AccumScalar;
+  using LhsLayout = typename MulParamsType::StandardCppKernelLhsLayout;
+  using RhsLayout = typename MulParamsType::StandardCppKernelRhsLayout;
   explicit Kernel(Tuning) {}
   void Run(const PackedMatrix<LhsScalar>& lhs,
-           const PackedMatrix<RhsScalar>& rhs, const Spec& spec, int start_row,
-           int start_col, int end_row, int end_col,
+           const PackedMatrix<RhsScalar>& rhs, const MulParamsType& spec,
+           int start_row, int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     // See the comment in RunKernelTyped. end_row may be larger than
     // dst->layout.rows. It's the responsibility of the kernel to avoid
@@ -197,7 +200,7 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
     const int depth = lhs.layout.rows;
     for (int i = start_row; i < clamped_end_row; i++) {
       for (int j = start_col; j < clamped_end_col; j++) {
-        using AccumScalar = typename Spec::AccumScalar;
+        using AccumScalar = typename MulParamsType::AccumScalar;
         AccumScalar accum = 0;
         for (int k = 0; k < depth; k++) {
           AccumScalar lhs_val = Element(lhs, k, i);
@@ -226,13 +229,14 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar, Spec> {
   }
 };
 
-#define RUY_INHERIT_KERNEL(PARENT, CHILD)                                  \
-  template <typename LhsScalar, typename RhsScalar, typename DstScalar,    \
-            typename Spec>                                                 \
-  struct Kernel<CHILD, LhsScalar, RhsScalar, DstScalar, Spec>              \
-      : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, Spec> {            \
-    explicit Kernel(Tuning tuning)                                         \
-        : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, Spec>(tuning) {} \
+#define RUY_INHERIT_KERNEL(PARENT, CHILD)                                 \
+  template <typename LhsScalar, typename RhsScalar, typename DstScalar,   \
+            typename MulParamsType>                                       \
+  struct Kernel<CHILD, LhsScalar, RhsScalar, DstScalar, MulParamsType>    \
+      : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, MulParamsType> {  \
+    explicit Kernel(Tuning tuning)                                        \
+        : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, MulParamsType>( \
+              tuning) {}                                                  \
   };
 
 #if RUY_PLATFORM(NEON)
@@ -326,7 +330,7 @@ struct KernelParams8bit {
 template <typename DstScalar, int LhsCols, int RhsCols>
 void MakeKernelParams8bit(const PackedMatrix<std::int8_t>& lhs,
                           const PackedMatrix<std::int8_t>& rhs,
-                          const BasicSpec<std::int32_t, DstScalar>& spec,
+                          const MulParams<std::int32_t, DstScalar>& spec,
                           int start_row, int start_col, int end_row,
                           int end_col, Matrix<DstScalar>* dst,
                           KernelParams8bit<LhsCols, RhsCols>* params) {
@@ -423,7 +427,7 @@ struct KernelParamsFloat {
 template <int LhsCols, int RhsCols>
 inline void MakeKernelParamsFloat(const PackedMatrix<float>& lhs,
                                   const PackedMatrix<float>& rhs,
-                                  const BasicSpec<float, float>& spec,
+                                  const MulParams<float, float>& spec,
                                   int start_row, int start_col, int end_row,
                                   int end_col, Matrix<float>* dst,
                                   KernelParamsFloat<LhsCols, RhsCols>* params) {

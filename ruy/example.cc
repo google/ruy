@@ -33,7 +33,7 @@ void ExampleMulFloat(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::BasicSpec<float, float> spec;
+  ruy::MulParams<float, float> spec;
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);
 
   std::cout << "Example Mul, float:\n";
@@ -58,7 +58,7 @@ void ExampleMulFloatWithBiasAddAndClamp(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::BasicSpec<float, float> spec;
+  ruy::MulParams<float, float> spec;
   spec.bias = bias_data;
   spec.clamp_min = 0;
   spec.clamp_max = 15;
@@ -88,7 +88,7 @@ void ExampleMulUint8AsymmetricQuantized(ruy::Context *context) {
   dst.data = dst_data;
   dst.zero_point = 129;
 
-  ruy::BasicSpec<std::int32_t, std::uint8_t> spec;
+  ruy::MulParams<std::int32_t, std::uint8_t> spec;
   spec.multiplier_fixedpoint = 1 << 30;
 
   spec.multiplier_exponent = 0;
@@ -116,7 +116,7 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::BasicSpec<std::int32_t, std::int8_t> spec;
+  ruy::MulParams<std::int32_t, std::int8_t> spec;
   spec.multiplier_fixedpoint_perchannel = multiplier_data;
   spec.multiplier_exponent_perchannel = exponent_data;
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);

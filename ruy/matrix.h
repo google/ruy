@@ -205,7 +205,7 @@ StreamType& operator<<(StreamType& stream, const Matrix<Scalar>& mat) {
 // See how partial specializations of Kernel use it to declare their layouts.
 // The only reason why this is currently part of the public API is to
 // allow testing various layouts for the Path::kStandardCpp kernel, as a
-// testing-only feature. See Spec::StandardCppKernelLhsLayout.
+// testing-only feature. See MulParamsType::StandardCppKernelLhsLayout.
 template <Order tOrder, int tRows, int tCols>
 struct FixedKernelLayout {
   static constexpr Order kOrder = tOrder;

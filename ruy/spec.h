@@ -49,13 +49,13 @@ enum class ZeroPointSupport { kGeneral, kSymmetric };
 //    - Destination is ColMajor
 enum class LayoutSupport { kGeneral, kRCC };
 
-// A Spec describes all about a matrix multiplication operation that isn't
-// encoded in the LHS, RHS and destination matrices. Some of that information
-// is encoded as compile-time constants and types (for instance, the choice
-// of accumulator type, AccumScalar). Some of that information is encoded as
-// runtime values (for instance, the optional bias vector).
+// MulParams describes all about a matrix multiplication that
+// isn't encoded in the LHS, RHS and destination matrices. Some of that
+// information is encoded as compile-time constants and types (for instance, the
+// choice of accumulator type, AccumScalar). Some of that information is encoded
+// as runtime values (for instance, the optional bias vector).
 template <typename tAccumScalar, typename tDstScalar>
-struct BasicSpec {
+struct MulParams {
   // Accumulator type. The type of accumulators used to compute the dot-products
   // before being ultimately casted to the destination type.
   using AccumScalar = tAccumScalar;
@@ -140,6 +140,9 @@ struct BasicSpec {
   // to each CPU core. See ruy::SharedDataCacheSize().
   static int shared_data_cache_size() { return SharedDataCacheSize(); }
 };
+
+template <typename tAccumScalar, typename tDstScalar>
+using BasicSpec = MulParams<tAccumScalar, tDstScalar>;
 
 }  // namespace ruy
 

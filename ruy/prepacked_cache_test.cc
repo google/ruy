@@ -156,7 +156,7 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
   ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::BasicSpec<float, float> spec;
+  ruy::MulParams<float, float> spec;
   // Perform the multiplication and confirm no caching occurred.
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, &context, &dst);
   EXPECT_EQ(cache->TotalSize(), 0);
@@ -189,7 +189,7 @@ TEST(PrepackedCacheTest, TestClearCache) {
   ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::BasicSpec<float, float> spec;
+  ruy::MulParams<float, float> spec;
   // Set cacheable for the LHS and see that caching occurs.
   lhs.cacheable = true;
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, &context, &dst);
