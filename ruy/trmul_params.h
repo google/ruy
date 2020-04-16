@@ -36,7 +36,7 @@ struct TrMulParams {
   }
   void RunKernel(Tuning tuning, const SidePair<int>& start,
                  const SidePair<int>& end) {
-    run_kernel(tuning, packed, spec, start, end, &dst);
+    run_kernel(tuning, packed, mul_params, start, end, &dst);
   }
 
   // path id, can be useful info for some fine-tuning, e.g. to guess reasonable
@@ -59,7 +59,7 @@ struct TrMulParams {
   SidePair<bool> is_prepacked;
 
   // Type-erased MulParamsType.
-  void* spec = nullptr;
+  void* mul_params = nullptr;
 };
 
 }  // namespace ruy

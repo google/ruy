@@ -21,8 +21,8 @@ limitations under the License.
 #include "ruy/context.h"
 #include "ruy/dispatch.h"
 #include "ruy/matrix.h"
+#include "ruy/mul_params.h"
 #include "ruy/path.h"
-#include "ruy/spec.h"
 
 namespace ruy {
 
@@ -31,8 +31,8 @@ namespace ruy {
 //
 //   dst = lhs * rhs    // matrix multiplication
 //
-// The `spec` argument conveys additional parameters that are not naturally
-// associated with lhs, rhs, dst. That includes typical neural network
+// The `mul_params` argument conveys additional parameters that are not
+// naturally associated with lhs, rhs, dst. That includes typical neural network
 // application domain specific features such as a bias-vector and clamp bounds,
 // as well as integer quantization parameters.
 //
@@ -41,7 +41,7 @@ namespace ruy {
 // correct (but not efficient) calling pattern is
 //
 //   ruy::Context context;
-//   ruy::Mul(lhs, rhs, spec, &context, dst);
+//   ruy::Mul(lhs, rhs, mul_params, &context, dst);
 //
 // However, creating and destroying a new context everytime is inefficient
 // because it doesn't allow for resources to persist across ruy calls. Such
@@ -53,7 +53,7 @@ namespace ruy {
 //   ruy::Context* context = new ruy::Context;
 //
 //   // Many times
-//   ruy::Mul(lhs, rhs, spec, context, dst);
+//   ruy::Mul(lhs, rhs, mul_params, context, dst);
 //
 // If multiple threads may concurrently be calling ruy::Mul, they must either
 // use separate Contexts, or use a lock to ensure that no two threads are
@@ -72,9 +72,10 @@ namespace ruy {
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const MulParamsType& spec, Context* context, Matrix<DstScalar>* dst) {
+         const MulParamsType& mul_params, Context* context,
+         Matrix<DstScalar>* dst) {
   DispatchMul<ruy::kAllPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      lhs, rhs, spec, context, dst);
+      lhs, rhs, mul_params, context, dst);
 }
 
 // Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to
@@ -82,9 +83,10 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const MulParamsType& spec, Context* context, Matrix<DstScalar>* dst) {
+         const MulParamsType& mul_params, Context* context,
+         Matrix<DstScalar>* dst) {
   DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      lhs, rhs, spec, context, dst);
+      lhs, rhs, mul_params, context, dst);
 }
 
 }  // namespace ruy

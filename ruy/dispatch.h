@@ -46,6 +46,7 @@ limitations under the License.
 #include "ruy/kernel.h"
 #include "ruy/kernel_common.h"
 #include "ruy/matrix.h"
+#include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
 #include "ruy/pack.h"
 #include "ruy/pack_common.h"
@@ -53,7 +54,6 @@ limitations under the License.
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/side_pair.h"
 #include "ruy/size_util.h"
-#include "ruy/spec.h"
 #include "ruy/trmul.h"
 #include "ruy/trmul_params.h"
 
@@ -109,7 +109,7 @@ void EnforceZeroPointSupport(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
 }
 
 template <typename MulParamsType, typename DstScalar>
-void EnforceDstSpecSupport(const MulParamsType& spec,
+void EnforceDstSpecSupport(const MulParamsType& mul_params,
                            DstScalar dst_zero_point) {
   static_assert(
       std::is_same<typename MulParamsType::DstScalar, DstScalar>::value, "");
@@ -119,12 +119,12 @@ void EnforceDstSpecSupport(const MulParamsType& spec,
   // If user is looking for the raw accumulator, zero_point and all the other
   // dequantize fields don't make sense and should not be set.
   RUY_DCHECK_EQ(dst_zero_point, 0);
-  RUY_DCHECK_EQ(spec.clamp_max, std::numeric_limits<std::int32_t>::max());
-  RUY_DCHECK_EQ(spec.clamp_min, std::numeric_limits<std::int32_t>::min());
-  RUY_DCHECK_EQ(spec.multiplier_fixedpoint, 0);
-  RUY_DCHECK_EQ(spec.multiplier_exponent, 0);
-  RUY_DCHECK_EQ(spec.multiplier_fixedpoint_perchannel, nullptr);
-  RUY_DCHECK_EQ(spec.multiplier_exponent_perchannel, nullptr);
+  RUY_DCHECK_EQ(mul_params.clamp_max, std::numeric_limits<std::int32_t>::max());
+  RUY_DCHECK_EQ(mul_params.clamp_min, std::numeric_limits<std::int32_t>::min());
+  RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint, 0);
+  RUY_DCHECK_EQ(mul_params.multiplier_exponent, 0);
+  RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint_perchannel, nullptr);
+  RUY_DCHECK_EQ(mul_params.multiplier_exponent_perchannel, nullptr);
 }
 
 inline bool IsColMajorTrMul(const TrMulParams& params) {
@@ -324,14 +324,14 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
-                       const Matrix<RhsScalar>& rhs, const MulParamsType& spec,
-                       Matrix<DstScalar>* dst, Path the_path,
-                       TrMulParams* params) {
+                       const Matrix<RhsScalar>& rhs,
+                       const MulParamsType& mul_params, Matrix<DstScalar>* dst,
+                       Path the_path, TrMulParams* params) {
   // Fill in the fields we already know.
   params->src[Side::kLhs] = ToDMatrix(lhs);
   params->src[Side::kRhs] = ToDMatrix(rhs);
   params->dst = ToDMatrix(*dst);
-  params->spec = ToVoidPtr(&spec);
+  params->mul_params = ToVoidPtr(&mul_params);
 
   // Create inner loops and packed matrices based on the Path.
   PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
@@ -342,7 +342,7 @@ void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& spec, Matrix<DstScalar>* dst) {
+                  const MulParamsType& mul_params, Matrix<DstScalar>* dst) {
   profiler::ScopeLabel label("ReferenceMul");
   for (int i = 0; i < lhs.layout.rows; i++) {
     for (int j = 0; j < rhs.layout.cols; j++) {
@@ -353,13 +353,13 @@ void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
         AccumScalar rhs_val = Element(rhs, k, j);
         accum += (lhs_val - lhs.zero_point) * (rhs_val - rhs.zero_point);
       }
-      if (spec.bias) {
-        accum += spec.bias[i];
+      if (mul_params.bias) {
+        accum += mul_params.bias[i];
       }
-      ApplyMultiplier(spec, i, &accum);
+      ApplyMultiplier(mul_params, i, &accum);
       accum += dst->zero_point;
-      accum = std::min<AccumScalar>(accum, spec.clamp_max);
-      accum = std::max<AccumScalar>(accum, spec.clamp_min);
+      accum = std::min<AccumScalar>(accum, mul_params.clamp_max);
+      accum = std::max<AccumScalar>(accum, mul_params.clamp_min);
       *ElementPtr(dst, i, j) = static_cast<DstScalar>(accum);
     }
   }
@@ -372,8 +372,8 @@ struct CompileTimeEnabledReferenceMul {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
             typename MulParamsType>
   static void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& spec, Matrix<DstScalar>* dst) {
-    ReferenceMul(lhs, rhs, spec, dst);
+                  const MulParamsType& mul_params, Matrix<DstScalar>* dst) {
+    ReferenceMul(lhs, rhs, mul_params, dst);
   }
 };
 
@@ -432,7 +432,7 @@ inline void HandlePrepackedCaching(TrMulParams* params,
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                 const MulParamsType& spec, Context* context,
+                 const MulParamsType& mul_params, Context* context,
                  Matrix<DstScalar>* dst) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
@@ -446,7 +446,7 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   EnforceLayoutSupport<MulParamsType>(lhs.layout, rhs.layout, dst->layout);
   EnforceZeroPointSupport<MulParamsType>(lhs.zero_point, rhs.zero_point,
                                          dst->zero_point);
-  EnforceDstSpecSupport<MulParamsType>(spec, dst->zero_point);
+  EnforceDstSpecSupport<MulParamsType>(mul_params, dst->zero_point);
 
   // This should be a constant, for a given machine and CompiledPaths.
   // There is a back door to override it for testing, but in production it will
@@ -465,8 +465,8 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   if (the_path == Path::kReference) {
     constexpr bool ReferenceMulIsEnabled =
         (CompiledPaths & Path::kReference) != Path::kNone;
-    CompileTimeEnabledReferenceMul<ReferenceMulIsEnabled>::Run(lhs, rhs, spec,
-                                                               dst);
+    CompileTimeEnabledReferenceMul<ReferenceMulIsEnabled>::Run(lhs, rhs,
+                                                               mul_params, dst);
     return;
   }
 
@@ -478,7 +478,7 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
                                         the_path, &params);
   SidePair<bool> cacheable(lhs.cacheable, rhs.cacheable);
   HandlePrepackedCaching(&params, cacheable, context);

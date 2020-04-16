@@ -24,13 +24,13 @@ limitations under the License.
 #include "ruy/common.h"
 #include "ruy/internal_matrix.h"
 #include "ruy/matrix.h"
+#include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/side_pair.h"
 #include "ruy/size_util.h"
-#include "ruy/spec.h"
 #include "ruy/tune.h"
 
 namespace ruy {
@@ -43,8 +43,9 @@ template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
                     const PackedMatrix<RhsScalar>& rhs,
-                    const MulParamsType& spec, int start_row, int start_col,
-                    int end_row, int end_col, Matrix<DstScalar>* dst) {
+                    const MulParamsType& mul_params, int start_row,
+                    int start_col, int end_row, int end_col,
+                    Matrix<DstScalar>* dst) {
   using Kernel =
       Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>;
   Kernel kernel(tuning);
@@ -65,13 +66,14 @@ void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
   RUY_DCHECK_LT(end_col, dst->layout.cols + RhsLayout::kCols);
   RUY_DCHECK_EQ((end_col - start_col) % RhsLayout::kCols, 0);
 #if RUY_OPT_ENABLED(RUY_OPT_FAT_KERNEL)
-  kernel.Run(lhs, rhs, spec, start_row, start_col, end_row, end_col, dst);
+  kernel.Run(lhs, rhs, mul_params, start_row, start_col, end_row, end_col, dst);
 #else
   for (int col = start_col; col < end_col; col += RhsLayout::kCols) {
     int block_end_col = std::min(col + RhsLayout::kCols, end_col);
     for (int row = start_row; row < end_row; row += LhsLayout::kCols) {
       int block_end_row = std::min(row + LhsLayout::kCols, end_row);
-      kernel.Run(lhs, rhs, spec, row, col, block_end_row, block_end_col, dst);
+      kernel.Run(lhs, rhs, mul_params, row, col, block_end_row, block_end_col,
+                 dst);
     }
   }
 #endif
@@ -80,14 +82,14 @@ void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
 // Main entry point for kernels.
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void RunKernel(Tuning tuning, const SidePair<PMatrix>& src, void* spec,
+void RunKernel(Tuning tuning, const SidePair<PMatrix>& src, void* mul_params,
                const SidePair<int>& start, const SidePair<int>& end,
                DMatrix* dst) {
   Matrix<DstScalar> mdst = ToMatrix<DstScalar>(*dst);
   RunKernelTyped<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
       tuning, ToPackedMatrix<LhsScalar>(src[Side::kLhs]),
       ToPackedMatrix<RhsScalar>(src[Side::kRhs]),
-      *static_cast<const MulParamsType*>(spec), start[Side::kLhs],
+      *static_cast<const MulParamsType*>(mul_params), start[Side::kLhs],
       start[Side::kRhs], end[Side::kLhs], end[Side::kRhs], &mdst);
 }
 
@@ -141,9 +143,9 @@ template <typename MulParamsType>
 struct ApplyMultiplierImpl<MulParamsType, false> {
   using AccumScalar = typename MulParamsType::AccumScalar;
   using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& spec, int, AccumScalar*) {
-    RUY_DCHECK_EQ(spec.multiplier_fixedpoint, 0);
-    RUY_DCHECK_EQ(spec.multiplier_exponent, 0);
+  static void Run(const MulParamsType& mul_params, int, AccumScalar*) {
+    RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint, 0);
+    RUY_DCHECK_EQ(mul_params.multiplier_exponent, 0);
   }
 };
 
@@ -151,21 +153,22 @@ template <typename MulParamsType>
 struct ApplyMultiplierImpl<MulParamsType, true> {
   using AccumScalar = typename MulParamsType::AccumScalar;
   using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& spec, int row, AccumScalar* accum) {
-    AccumScalar m = spec.multiplier_fixedpoint_perchannel
-                        ? spec.multiplier_fixedpoint_perchannel[row]
-                        : spec.multiplier_fixedpoint;
-    int e = spec.multiplier_exponent_perchannel
-                ? spec.multiplier_exponent_perchannel[row]
-                : spec.multiplier_exponent;
+  static void Run(const MulParamsType& mul_params, int row,
+                  AccumScalar* accum) {
+    AccumScalar m = mul_params.multiplier_fixedpoint_perchannel
+                        ? mul_params.multiplier_fixedpoint_perchannel[row]
+                        : mul_params.multiplier_fixedpoint;
+    int e = mul_params.multiplier_exponent_perchannel
+                ? mul_params.multiplier_exponent_perchannel[row]
+                : mul_params.multiplier_exponent;
     *accum = MultiplyByQuantizedMultiplier(*accum, m, e);
   }
 };
 
 template <typename MulParamsType>
-void ApplyMultiplier(const MulParamsType& spec, int row,
+void ApplyMultiplier(const MulParamsType& mul_params, int row,
                      typename MulParamsType::AccumScalar* accum) {
-  ApplyMultiplierImpl<MulParamsType>::Run(spec, row, accum);
+  ApplyMultiplierImpl<MulParamsType>::Run(mul_params, row, accum);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
@@ -177,7 +180,7 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
   using RhsLayout = typename MulParamsType::StandardCppKernelRhsLayout;
   explicit Kernel(Tuning) {}
   void Run(const PackedMatrix<LhsScalar>& lhs,
-           const PackedMatrix<RhsScalar>& rhs, const MulParamsType& spec,
+           const PackedMatrix<RhsScalar>& rhs, const MulParamsType& mul_params,
            int start_row, int start_col, int end_row, int end_col,
            Matrix<DstScalar>* dst) const {
     // See the comment in RunKernelTyped. end_row may be larger than
@@ -207,8 +210,8 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
           AccumScalar rhs_val = Element(rhs, k, j);
           accum += lhs_val * rhs_val;
         }
-        if (spec.bias) {
-          accum += spec.bias[i];
+        if (mul_params.bias) {
+          accum += mul_params.bias[i];
         }
         if (lhs.zero_point) {
           accum -= lhs.zero_point * rhs.sums[j];
@@ -219,10 +222,10 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
         if (lhs.zero_point && rhs.zero_point) {
           accum += lhs.zero_point * rhs.zero_point * depth;
         }
-        ApplyMultiplier(spec, i, &accum);
+        ApplyMultiplier(mul_params, i, &accum);
         accum += dst->zero_point;
-        accum = std::min<AccumScalar>(accum, spec.clamp_max);
-        accum = std::max<AccumScalar>(accum, spec.clamp_min);
+        accum = std::min<AccumScalar>(accum, mul_params.clamp_max);
+        accum = std::max<AccumScalar>(accum, mul_params.clamp_min);
         *ElementPtr(dst, i, j) = static_cast<DstScalar>(accum);
       }
     }
@@ -330,7 +333,7 @@ struct KernelParams8bit {
 template <typename DstScalar, int LhsCols, int RhsCols>
 void MakeKernelParams8bit(const PackedMatrix<std::int8_t>& lhs,
                           const PackedMatrix<std::int8_t>& rhs,
-                          const MulParams<std::int32_t, DstScalar>& spec,
+                          const MulParams<std::int32_t, DstScalar>& mul_params,
                           int start_row, int start_col, int end_row,
                           int end_col, Matrix<DstScalar>* dst,
                           KernelParams8bit<LhsCols, RhsCols>* params) {
@@ -348,8 +351,8 @@ void MakeKernelParams8bit(const PackedMatrix<std::int8_t>& lhs,
   params->rhs_base_ptr = rhs.data + start_col * rhs.layout.stride;
   params->flags = 0;
   params->bias = params->zero_data;
-  if (spec.bias) {
-    params->bias = spec.bias;
+  if (mul_params.bias) {
+    params->bias = mul_params.bias;
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   if (lhs.sums) {
@@ -372,24 +375,24 @@ void MakeKernelParams8bit(const PackedMatrix<std::int8_t>& lhs,
   params->dst_zero_point = dst->zero_point;
   params->depth = depth;
   params->prod_zp_depth = lhs.zero_point * rhs.zero_point * depth;
-  if (spec.multiplier_fixedpoint_perchannel) {
+  if (mul_params.multiplier_fixedpoint_perchannel) {
     params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
     params->flags |= RUY_ASM_FLAG_HAS_PERCHANNEL;
-    params->multiplier_fixedpoint = spec.multiplier_fixedpoint_perchannel;
-    params->multiplier_exponent = spec.multiplier_exponent_perchannel;
+    params->multiplier_fixedpoint = mul_params.multiplier_fixedpoint_perchannel;
+    params->multiplier_exponent = mul_params.multiplier_exponent_perchannel;
   } else {
-    if (spec.multiplier_exponent > 0) {
+    if (mul_params.multiplier_exponent > 0) {
       params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
     }
     params->multiplier_fixedpoint = params->multiplier_fixedpoint_buf;
     params->multiplier_exponent = params->multiplier_exponent_buf;
     for (int i = 0; i < LhsCols; i++) {
-      params->multiplier_fixedpoint_buf[i] = spec.multiplier_fixedpoint;
-      params->multiplier_exponent_buf[i] = spec.multiplier_exponent;
+      params->multiplier_fixedpoint_buf[i] = mul_params.multiplier_fixedpoint;
+      params->multiplier_exponent_buf[i] = mul_params.multiplier_exponent;
     }
   }
-  params->clamp_min = spec.clamp_min;
-  params->clamp_max = spec.clamp_max;
+  params->clamp_min = mul_params.clamp_min;
+  params->clamp_max = mul_params.clamp_max;
   params->dst_rows = dst->layout.rows;
   params->dst_cols = dst->layout.cols;
 
@@ -427,7 +430,7 @@ struct KernelParamsFloat {
 template <int LhsCols, int RhsCols>
 inline void MakeKernelParamsFloat(const PackedMatrix<float>& lhs,
                                   const PackedMatrix<float>& rhs,
-                                  const MulParams<float, float>& spec,
+                                  const MulParams<float, float>& mul_params,
                                   int start_row, int start_col, int end_row,
                                   int end_col, Matrix<float>* dst,
                                   KernelParamsFloat<LhsCols, RhsCols>* params) {
@@ -444,8 +447,8 @@ inline void MakeKernelParamsFloat(const PackedMatrix<float>& lhs,
 
   std::uint8_t flags = 0;
   params->bias = params->zero_data;
-  if (spec.bias) {
-    params->bias = spec.bias;
+  if (mul_params.bias) {
+    params->bias = mul_params.bias;
     flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   params->flags = flags;
@@ -457,8 +460,8 @@ inline void MakeKernelParamsFloat(const PackedMatrix<float>& lhs,
   params->rhs_stride = sizeof(float) * rhs.layout.stride;
   params->dst_stride = sizeof(float) * dst->layout.stride;
   params->depth = depth;
-  params->clamp_min = spec.clamp_min;
-  params->clamp_max = spec.clamp_max;
+  params->clamp_min = mul_params.clamp_min;
+  params->clamp_max = mul_params.clamp_max;
   params->dst_rows = dst->layout.rows;
   params->dst_cols = dst->layout.cols;
 

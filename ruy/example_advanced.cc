@@ -38,14 +38,14 @@ void ExamplePrepack(ruy::Context* context) {
   const float rhs_data[] = {1, 2, 3, 4};
   float dst_data[4];
 
-  // Set up the matrix layouts and spec.
+  // Set up the matrix layouts and mul_params.
   ruy::Matrix<float> lhs;
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
   ruy::Matrix<float> rhs;
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
   ruy::Matrix<float> dst;
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  ruy::MulParams<float, float> spec;
+  ruy::MulParams<float, float> mul_params;
 
   SimpleAllocator allocator;
   auto alloc_fn = [&allocator](int num_bytes) -> void* {
@@ -57,7 +57,7 @@ void ExamplePrepack(ruy::Context* context) {
   // pre-packing.
   ruy::PrepackedMatrix prepacked_rhs;
   rhs.data = rhs_data;
-  ruy::PrePackForMul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst,
+  ruy::PrePackForMul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst,
                                      /*prepacked_lhs=*/nullptr, &prepacked_rhs,
                                      alloc_fn);
 
@@ -65,7 +65,7 @@ void ExamplePrepack(ruy::Context* context) {
   rhs.data = nullptr;
   lhs.data = lhs_data;
   dst.data = dst_data;
-  ruy::MulWithPrepacked<ruy::kAllPaths>(lhs, rhs, spec, context, &dst,
+  ruy::MulWithPrepacked<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst,
                                         /*prepacked_lhs=*/nullptr,
                                         &prepacked_rhs);
   rhs.data = rhs_data;

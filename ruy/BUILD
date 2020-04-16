@@ -344,8 +344,8 @@ cc_test(
 )
 
 cc_library(
-    name = "spec",
-    hdrs = ["spec.h"],
+    name = "mul_params",
+    hdrs = ["mul_params.h"],
     copts = ruy_copts_base(),
     visibility = ["//visibility:public"],
     deps = [
@@ -355,11 +355,11 @@ cc_library(
 )
 
 cc_test(
-    name = "spec_test",
-    srcs = ["spec_test.cc"],
+    name = "mul_params_test",
+    srcs = ["mul_params_test.cc"],
     deps = [
         ":gtest_wrapper",
-        ":spec",
+        ":mul_params",
     ],
 )
 
@@ -404,12 +404,12 @@ cc_library(
         ":common",
         ":internal_matrix",
         ":matrix",
+        ":mul_params",
         ":opt_set",
         ":path",
         ":platform",
         ":side_pair",
         ":size_util",
-        ":spec",
         ":tune",
         "//ruy/profiler:instrumentation",
     ],
@@ -706,12 +706,12 @@ cc_library(
         ":kernel_common",
         ":kernel_sse42",  # fixdeps: keep
         ":matrix",
+        ":mul_params",
         ":opt_set",
         ":path",
         ":platform",
         ":side_pair",
         ":size_util",
-        ":spec",
         ":tune",
         "//ruy/profiler:instrumentation",
     ],
@@ -854,10 +854,10 @@ cc_library(
         ":context_internal",
         ":internal_matrix",
         ":matrix",
+        ":mul_params",
         ":opt_set",
         ":side_pair",
         ":size_util",
-        ":spec",
         ":thread_pool",
         ":trace",
         ":trmul_params",
@@ -887,13 +887,13 @@ cc_library(
         ":internal_matrix",
         ":kernel",
         ":matrix",
+        ":mul_params",
         ":opt_set",
         ":pack",
         ":path",
         ":prepacked_cache",
         ":side_pair",
         ":size_util",
-        ":spec",
         ":trmul",
         ":trmul_params",
         ":tune",
@@ -941,7 +941,7 @@ cc_library(
         ":matrix",
         ":pmu",
         ":ruy",
-        ":spec",
+        ":mul_params",
         ":time",
         ":gtest_wrapper",
         ":platform",
@@ -1007,8 +1007,8 @@ ruy_test(
 )
 
 ruy_test(
-    name = "test_special_specs",
-    srcs = ["test_special_specs.cc"],
+    name = "test_special_mul_params",
+    srcs = ["test_special_mul_params.cc"],
     copts = ruy_copts_base(),
     lhs_rhs_accum_dst = [
         ("f32", "f32", "f32", "f32"),

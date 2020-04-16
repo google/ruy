@@ -45,24 +45,24 @@ namespace ruy {
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                   const MulParamsType& spec, Context* context,
+                   const MulParamsType& mul_params, Context* context,
                    Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
                    PrepackedMatrix* prepacked_rhs,
                    std::function<void*(int)> alloc_fn) {
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
-  PrePackForMulInternal<CompiledPaths>(lhs, rhs, spec, context, dst, prepacked,
-                                       alloc_fn);
+  PrePackForMulInternal<CompiledPaths>(lhs, rhs, mul_params, context, dst,
+                                       prepacked, alloc_fn);
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void MulWithPrepacked(const Matrix<LhsScalar>& lhs,
-                      const Matrix<RhsScalar>& rhs, const MulParamsType& spec,
-                      Context* context, Matrix<DstScalar>* dst,
-                      PrepackedMatrix* prepacked_lhs,
+                      const Matrix<RhsScalar>& rhs,
+                      const MulParamsType& mul_params, Context* context,
+                      Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
                       PrepackedMatrix* prepacked_rhs) {
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
-  MulWithPrepackedInternal<CompiledPaths>(lhs, rhs, spec, context, dst,
+  MulWithPrepackedInternal<CompiledPaths>(lhs, rhs, mul_params, context, dst,
                                           prepacked);
 }
 

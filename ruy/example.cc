@@ -33,8 +33,8 @@ void ExampleMulFloat(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::MulParams<float, float> spec;
-  ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);
+  ruy::MulParams<float, float> mul_params;
+  ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, float:\n";
   std::cout << "LHS:\n" << lhs;
@@ -58,11 +58,11 @@ void ExampleMulFloatWithBiasAddAndClamp(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::MulParams<float, float> spec;
-  spec.bias = bias_data;
-  spec.clamp_min = 0;
-  spec.clamp_max = 15;
-  ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);
+  ruy::MulParams<float, float> mul_params;
+  mul_params.bias = bias_data;
+  mul_params.clamp_min = 0;
+  mul_params.clamp_max = 15;
+  ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, float with bias addition and clamp:\n";
   std::cout << "LHS:\n" << lhs;
@@ -88,11 +88,11 @@ void ExampleMulUint8AsymmetricQuantized(ruy::Context *context) {
   dst.data = dst_data;
   dst.zero_point = 129;
 
-  ruy::MulParams<std::int32_t, std::uint8_t> spec;
-  spec.multiplier_fixedpoint = 1 << 30;
+  ruy::MulParams<std::int32_t, std::uint8_t> mul_params;
+  mul_params.multiplier_fixedpoint = 1 << 30;
 
-  spec.multiplier_exponent = 0;
-  ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);
+  mul_params.multiplier_exponent = 0;
+  ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, uint8 quantized with asymmetric zero points:\n";
   std::cout << "LHS:\n" << lhs;
@@ -116,10 +116,10 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
   dst.data = dst_data;
 
-  ruy::MulParams<std::int32_t, std::int8_t> spec;
-  spec.multiplier_fixedpoint_perchannel = multiplier_data;
-  spec.multiplier_exponent_perchannel = exponent_data;
-  ruy::Mul<ruy::kAllPaths>(lhs, rhs, spec, context, &dst);
+  ruy::MulParams<std::int32_t, std::int8_t> mul_params;
+  mul_params.multiplier_fixedpoint_perchannel = multiplier_data;
+  mul_params.multiplier_exponent_perchannel = exponent_data;
+  ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, int8 quantized with per-channel multipliers\n";
   std::cout << "LHS:\n" << lhs;

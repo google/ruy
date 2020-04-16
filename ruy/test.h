@@ -37,12 +37,12 @@ limitations under the License.
 #include <vector>
 
 #include "ruy/gtest_wrapper.h"  // IWYU pragma: export
-#include "ruy/matrix.h"  // IWYU pragma: export
+#include "ruy/matrix.h"         // IWYU pragma: export
+#include "ruy/mul_params.h"     // IWYU pragma: export
 #include "ruy/platform.h"
 #include "ruy/pmu.h"
 #include "ruy/ruy.h"
 #include "ruy/ruy_advanced.h"
-#include "ruy/spec.h"  // IWYU pragma: export
 #include "ruy/time.h"
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
@@ -537,7 +537,7 @@ struct TestSet final {
 
   StorageMatrix<LhsScalar> lhs;
   StorageMatrix<RhsScalar> rhs;
-  MulParamsType spec;
+  MulParamsType mul_params;
   std::vector<AccumScalar> bias_data;
   std::vector<std::unique_ptr<TestResultType>> results;
 
@@ -580,7 +580,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
   Context* context = &GlobalContext();
 
   if (!result->use_prepacked_lhs && !result->use_prepacked_rhs) {
-    Mul<kAllPaths>(lhs.matrix, rhs.matrix, spec, context,
+    Mul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params, context,
                    &result->storage_matrix.matrix);
     return;
   }
@@ -601,7 +601,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
       result->use_prepacked_lhs ? &result->prepacked_lhs : nullptr;
   PrepackedMatrix* prepacked_rhs_ptr =
       result->use_prepacked_rhs ? &result->prepacked_rhs : nullptr;
-  MulWithPrepacked<kAllPaths>(null_data_lhs, null_data_rhs, spec, context,
+  MulWithPrepacked<kAllPaths>(null_data_lhs, null_data_rhs, mul_params, context,
                               &result->storage_matrix.matrix, prepacked_lhs_ptr,
                               prepacked_rhs_ptr);
 }
@@ -676,7 +676,7 @@ inline gemmlowp::GemmContext& GlobalGemmlowpContext() {
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
           typename RhsScalar, typename DstScalar, typename MulParamsType>
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& spec, int max_num_threads,
+                  const MulParamsType& mul_params, int max_num_threads,
                   Matrix<DstScalar>* dst) {
   static constexpr gemmlowp::MapOrder kGemmlowpLhsOrder =
       GemmlowpOrder<LhsOrder>::kValue;
@@ -693,22 +693,23 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 
   gemmlowp::OutputStageScaleInt32ByFixedPointAndExponent quantize_down_stage;
   quantize_down_stage.result_offset_after_shift = dst->zero_point;
-  quantize_down_stage.result_fixedpoint_multiplier = spec.multiplier_fixedpoint;
-  quantize_down_stage.result_exponent = spec.multiplier_exponent;
+  quantize_down_stage.result_fixedpoint_multiplier =
+      mul_params.multiplier_fixedpoint;
+  quantize_down_stage.result_exponent = mul_params.multiplier_exponent;
   gemmlowp::OutputStageScaleInt32ByFixedPointAndExponentPC<
       gemmlowp::VectorShape::Col>
       quantize_down_stage_pc;
   quantize_down_stage_pc.result_offset_after_shift = dst->zero_point;
   using ColVectorMap =
       gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
-  quantize_down_stage_pc.result_fixedpoint_multiplier =
-      ColVectorMap(spec.multiplier_fixedpoint_perchannel, lhs.layout.rows);
+  quantize_down_stage_pc.result_fixedpoint_multiplier = ColVectorMap(
+      mul_params.multiplier_fixedpoint_perchannel, lhs.layout.rows);
   quantize_down_stage_pc.result_exponent =
-      ColVectorMap(spec.multiplier_exponent_perchannel, lhs.layout.rows);
+      ColVectorMap(mul_params.multiplier_exponent_perchannel, lhs.layout.rows);
 
   gemmlowp::OutputStageClamp clamp_stage;
-  clamp_stage.min = spec.clamp_min;
-  clamp_stage.max = spec.clamp_max;
+  clamp_stage.min = mul_params.clamp_min;
+  clamp_stage.max = mul_params.clamp_max;
   using OutputStageSaturatingCast = typename std::conditional<
       std::is_same<DstScalar, std::uint8_t>::value,
       gemmlowp::OutputStageSaturatingCastToUint8,
@@ -717,13 +718,14 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 
   GlobalGemmlowpContext().set_max_num_threads(max_num_threads ? max_num_threads
                                                               : 1);
-  if (spec.bias) {
+  if (mul_params.bias) {
     using ColVectorMap =
         gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
     gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_add_stage;
-    bias_add_stage.bias_vector = ColVectorMap(spec.bias, dst->layout.rows);
+    bias_add_stage.bias_vector =
+        ColVectorMap(mul_params.bias, dst->layout.rows);
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
-    if (spec.multiplier_exponent_perchannel) {
+    if (mul_params.multiplier_exponent_perchannel) {
       const auto& output_pipeline =
           std::make_tuple(bias_add_stage, quantize_down_stage_pc, clamp_stage,
                           saturating_cast_stage);
@@ -744,7 +746,7 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
     }
   } else {
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
-    if (spec.multiplier_exponent_perchannel) {
+    if (mul_params.multiplier_exponent_perchannel) {
       const auto& output_pipeline = std::make_tuple(
           quantize_down_stage_pc, clamp_stage, saturating_cast_stage);
       gemmlowp::GemmWithOutputPipeline<
@@ -773,13 +775,14 @@ inline constexpr int Mash(Order LhsOrder, Order RhsOrder, Order DstOrder) {
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& spec, int max_num_threads,
+                  const MulParamsType& mul_params, int max_num_threads,
                   Matrix<DstScalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
-#define EVALGEMMLOWP_CASE3(LHS, RHS, DST) \
-  case Mash(LHS, RHS, DST):               \
-    return EvalGemmlowp<LHS, RHS, DST>(lhs, rhs, spec, max_num_threads, dst);
+#define EVALGEMMLOWP_CASE3(LHS, RHS, DST)                                     \
+  case Mash(LHS, RHS, DST):                                                   \
+    return EvalGemmlowp<LHS, RHS, DST>(lhs, rhs, mul_params, max_num_threads, \
+                                       dst);
 #define EVALGEMMLOWP_CASE2(LHS, RHS)             \
   EVALGEMMLOWP_CASE3(LHS, RHS, Order::kColMajor) \
   EVALGEMMLOWP_CASE3(LHS, RHS, Order::kRowMajor)
@@ -815,13 +818,13 @@ struct EigenOrder<Order::kRowMajor> {
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
           typename RhsScalar, typename DstScalar, typename MulParamsType>
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-               const MulParamsType& spec, int max_num_threads,
+               const MulParamsType& mul_params, int max_num_threads,
                Matrix<DstScalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
   RUY_CHECK_EQ(dst->zero_point, 0);
-  RUY_CHECK_EQ(spec.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(spec.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
 
   static constexpr int kEigenLhsOrder = EigenOrder<LhsOrder>::kValue;
   static constexpr int kEigenRhsOrder = EigenOrder<RhsOrder>::kValue;
@@ -848,24 +851,24 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
       Eigen::OuterStride<Eigen::Dynamic>(dst->layout.stride));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
-  if (spec.bias) {
-    EigenBiasType eigen_bias(spec.bias, dst->layout.rows);
-    if (spec.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
+  if (mul_params.bias) {
+    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows);
+    if (mul_params.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs).colwise() + eigen_bias;
     } else {
       eigen_dst.noalias() = ((eigen_lhs * eigen_rhs).colwise() + eigen_bias)
-                                .cwiseMin(spec.clamp_max)
-                                .cwiseMax(spec.clamp_min);
+                                .cwiseMin(mul_params.clamp_max)
+                                .cwiseMax(mul_params.clamp_min);
     }
   } else {
-    if (spec.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
+    if (mul_params.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = eigen_lhs * eigen_rhs;
     } else {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs)
-                                .cwiseMin(spec.clamp_max)
-                                .cwiseMax(spec.clamp_min);
+                                .cwiseMin(mul_params.clamp_max)
+                                .cwiseMax(mul_params.clamp_min);
     }
   }
 }
@@ -873,13 +876,13 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-               const MulParamsType& spec, int max_num_threads,
+               const MulParamsType& mul_params, int max_num_threads,
                Matrix<DstScalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
 #define EVALEIGEN_CASE3(LHS, RHS, DST) \
   case Mash(LHS, RHS, DST):            \
-    return EvalEigen<LHS, RHS, DST>(lhs, rhs, spec, max_num_threads, dst);
+    return EvalEigen<LHS, RHS, DST>(lhs, rhs, mul_params, max_num_threads, dst);
 #define EVALEIGEN_CASE2(LHS, RHS)             \
   EVALEIGEN_CASE3(LHS, RHS, Order::kColMajor) \
   EVALEIGEN_CASE3(LHS, RHS, Order::kRowMajor)
@@ -902,13 +905,13 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename Scalar,
           typename MulParamsType>
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                     const MulParamsType& spec, int max_num_threads,
+                     const MulParamsType& mul_params, int max_num_threads,
                      Matrix<Scalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
   RUY_CHECK_EQ(dst->zero_point, 0);
-  RUY_CHECK_EQ(spec.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(spec.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
 
   // Eigen::TensorMap only supports packed layouts
   RUY_CHECK(IsPacked(lhs.layout));
@@ -953,45 +956,46 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                                DstOrder == Order::kColMajor ? 1 : 0);
   static Eigen::ThreadPool pool(max_num_threads ? max_num_threads : 1);
   static Eigen::ThreadPoolDevice device(&pool, pool.NumThreads());
-  if (spec.bias) {
-    TensorBiasType tensor_bias(spec.bias, dst->layout.rows);
+  if (mul_params.bias) {
+    TensorBiasType tensor_bias(mul_params.bias, dst->layout.rows);
     Eigen::array<int, 2> bias_2d_shape(tr ? 1 : dst->layout.rows,
                                        tr ? dst->layout.rows : 1);
     Eigen::array<int, 2> bcast(tr ? dst->layout.cols : 1,
                                tr ? 1 : dst->layout.cols);
-    if (spec.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
           tensor_lhs.contract(tensor_rhs, contract_dims);
     } else {
       tensor_dst.device(device) =
           (tensor_lhs.contract(tensor_rhs, contract_dims) +
            tensor_bias.reshape(bias_2d_shape).broadcast(bcast))
-              .cwiseMin(spec.clamp_max)
-              .cwiseMax(spec.clamp_min);
+              .cwiseMin(mul_params.clamp_max)
+              .cwiseMax(mul_params.clamp_min);
     }
   } else {
-    if (spec.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
           tensor_lhs.contract(tensor_rhs, contract_dims);
     } else {
       tensor_dst.device(device) = tensor_lhs.contract(tensor_rhs, contract_dims)
-                                      .cwiseMin(spec.clamp_max)
-                                      .cwiseMax(spec.clamp_min);
+                                      .cwiseMin(mul_params.clamp_max)
+                                      .cwiseMax(mul_params.clamp_min);
     }
   }
 }
 
 template <typename Scalar, typename MulParamsType>
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                     const MulParamsType& spec, int max_num_threads,
+                     const MulParamsType& mul_params, int max_num_threads,
                      Matrix<Scalar>* dst) {
   int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
   switch (index) {
-#define EVALEIGENTENSOR_CASE3(LHS, RHS, DST) \
-  case Mash(LHS, RHS, DST):                  \
-    return EvalEigenTensor<LHS, RHS, DST>(lhs, rhs, spec, max_num_threads, dst);
+#define EVALEIGENTENSOR_CASE3(LHS, RHS, DST)                    \
+  case Mash(LHS, RHS, DST):                                     \
+    return EvalEigenTensor<LHS, RHS, DST>(lhs, rhs, mul_params, \
+                                          max_num_threads, dst);
 #define EVALEIGENTENSOR_CASE2(LHS, RHS)             \
   EVALEIGENTENSOR_CASE3(LHS, RHS, Order::kColMajor) \
   EVALEIGENTENSOR_CASE3(LHS, RHS, Order::kRowMajor)
@@ -1039,13 +1043,13 @@ struct GenericBlasGemm<lapack::real> {
 
 template <typename Scalar, typename MulParamsType>
 void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
-                  const MulParamsType& spec, int max_num_threads,
+                  const MulParamsType& mul_params, int max_num_threads,
                   Matrix<Scalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point, 0);
   RUY_CHECK_EQ(rhs.zero_point, 0);
   RUY_CHECK_EQ(dst->zero_point, 0);
-  RUY_CHECK_EQ(spec.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(spec.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
 
   Matrix<Scalar> gemm_lhs;
   Matrix<Scalar> gemm_rhs;
@@ -1111,22 +1115,22 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
       Eigen::OuterStride<Eigen::Dynamic>(gemm_dst.layout.stride));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
-  if (spec.bias) {
-    EigenBiasType eigen_bias(spec.bias, dst->layout.rows);
-    if (spec.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+  if (mul_params.bias) {
+    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows);
+    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
       eigen_dst.noalias() = eigen_dst.colwise() + eigen_bias;
     } else {
       eigen_dst.noalias() = (eigen_dst.colwise() + eigen_bias)
-                                .cwiseMin(spec.clamp_max)
-                                .cwiseMax(spec.clamp_min);
+                                .cwiseMin(mul_params.clamp_max)
+                                .cwiseMax(mul_params.clamp_min);
     }
   } else {
-    if (spec.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        spec.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
     } else {
-      eigen_dst.noalias() =
-          eigen_dst.cwiseMin(spec.clamp_max).cwiseMax(spec.clamp_min);
+      eigen_dst.noalias() = eigen_dst.cwiseMin(mul_params.clamp_max)
+                                .cwiseMax(mul_params.clamp_min);
     }
   }
 }
@@ -1164,15 +1168,16 @@ struct EvalExternalPathImpl<TestSetType, true, false, true> {
   using DstScalar = typename TestSetType::DstScalar;
   static void Run(TestSetType* test_set, TestResult<DstScalar>* test_result) {
     if (test_result->external_path == ExternalPath::kEigen) {
-      EvalEigen(test_set->lhs.matrix, test_set->rhs.matrix, test_set->spec,
-                test_set->max_num_threads, &test_result->storage_matrix.matrix);
+      EvalEigen(test_set->lhs.matrix, test_set->rhs.matrix,
+                test_set->mul_params, test_set->max_num_threads,
+                &test_result->storage_matrix.matrix);
     } else if (test_result->external_path == ExternalPath::kEigenTensor) {
       EvalEigenTensor(test_set->lhs.matrix, test_set->rhs.matrix,
-                      test_set->spec, test_set->max_num_threads,
+                      test_set->mul_params, test_set->max_num_threads,
                       &test_result->storage_matrix.matrix);
     } else if (test_result->external_path == ExternalPath::kOpenBlas) {
-      EvalOpenBlas(test_set->lhs.matrix, test_set->rhs.matrix, test_set->spec,
-                   test_set->max_num_threads,
+      EvalOpenBlas(test_set->lhs.matrix, test_set->rhs.matrix,
+                   test_set->mul_params, test_set->max_num_threads,
                    &test_result->storage_matrix.matrix);
     } else {
       RUY_CHECK(false);
@@ -1185,8 +1190,8 @@ struct EvalExternalPathImpl<TestSetType, false, true, SingleScalarType> {
   using DstScalar = typename TestSetType::DstScalar;
   static void Run(TestSetType* test_set, TestResult<DstScalar>* test_result) {
     if (test_result->external_path == ExternalPath::kGemmlowp) {
-      EvalGemmlowp(test_set->lhs.matrix, test_set->rhs.matrix, test_set->spec,
-                   test_set->max_num_threads,
+      EvalGemmlowp(test_set->lhs.matrix, test_set->rhs.matrix,
+                   test_set->mul_params, test_set->max_num_threads,
                    &test_result->storage_matrix.matrix);
     } else {
       RUY_CHECK(false);
@@ -1393,19 +1398,20 @@ void SwitchMultiplierToPerChannel(TestSetType* test_set) {
     // Values in [0, 2^30 - 1] are normally unused, but harmless.
     // Thus a good way to randomize multipliers is to subtract from them
     // a random value smaller than 2^30 but still significant compared to it.
-    std::int32_t nudged_multiplier = test_set->spec.multiplier_fixedpoint -
-                                     (global_random_engine()() % (1 << 26));
-    int nudged_exponent =
-        test_set->spec.multiplier_exponent - 1 + (global_random_engine()() % 4);
+    std::int32_t nudged_multiplier =
+        test_set->mul_params.multiplier_fixedpoint -
+        (global_random_engine()() % (1 << 26));
+    int nudged_exponent = test_set->mul_params.multiplier_exponent - 1 +
+                          (global_random_engine()() % 4);
     test_set->per_channel_multiplier_fixedpoint[i] = nudged_multiplier;
     test_set->per_channel_multiplier_exponent[i] = nudged_exponent;
   }
-  test_set->spec.multiplier_fixedpoint_perchannel =
+  test_set->mul_params.multiplier_fixedpoint_perchannel =
       test_set->per_channel_multiplier_fixedpoint.data();
-  test_set->spec.multiplier_exponent_perchannel =
+  test_set->mul_params.multiplier_exponent_perchannel =
       test_set->per_channel_multiplier_exponent.data();
-  test_set->spec.multiplier_fixedpoint = 0;
-  test_set->spec.multiplier_exponent = 0;
+  test_set->mul_params.multiplier_fixedpoint = 0;
+  test_set->mul_params.multiplier_exponent = 0;
 }
 
 template <
@@ -1421,8 +1427,8 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, true> {
     double multiplier;
     ComputeReasonableMultiplier<TestSetType>(test_set->lhs.matrix,
                                              test_set->rhs.matrix, &multiplier);
-    QuantizeMultiplier(multiplier, &test_set->spec.multiplier_fixedpoint,
-                       &test_set->spec.multiplier_exponent);
+    QuantizeMultiplier(multiplier, &test_set->mul_params.multiplier_fixedpoint,
+                       &test_set->mul_params.multiplier_exponent);
     if (!test_set->benchmark) {
       test_set->perchannel = global_random_engine()() & 1;
     }
@@ -1435,36 +1441,36 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, true> {
 template <typename TestSetType>
 struct MakeSpecMultiplierFieldsImpl<TestSetType, false> {
   static void Run(TestSetType* test_set) {
-    test_set->spec.multiplier_fixedpoint = 0;
-    test_set->spec.multiplier_exponent = 0;
+    test_set->mul_params.multiplier_fixedpoint = 0;
+    test_set->mul_params.multiplier_exponent = 0;
   }
 };
 
 template <typename MulParamsType>
-void MakeSpecClampFields(MulParamsType* spec) {
+void MakeSpecClampFields(MulParamsType* mul_params) {
   using AccumScalar = typename MulParamsType::AccumScalar;
   using DstScalar = typename MulParamsType::DstScalar;
 
   if (std::is_same<AccumScalar, std::int32_t>::value) {
     // Returning raw accumulators, clamping is not supported.
-    spec->clamp_min = std::numeric_limits<DstScalar>::lowest();
-    spec->clamp_max = std::numeric_limits<DstScalar>::max();
+    mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest();
+    mul_params->clamp_max = std::numeric_limits<DstScalar>::max();
     return;
   }
 
   if (getenv("BENCHMARK_ONLY_MATMUL")) {
     if (std::is_floating_point<DstScalar>::value) {
-      spec->clamp_min = -std::numeric_limits<DstScalar>::infinity();
-      spec->clamp_max = std::numeric_limits<DstScalar>::infinity();
+      mul_params->clamp_min = -std::numeric_limits<DstScalar>::infinity();
+      mul_params->clamp_max = std::numeric_limits<DstScalar>::infinity();
     } else {
-      spec->clamp_min = std::numeric_limits<DstScalar>::lowest();
-      spec->clamp_max = std::numeric_limits<DstScalar>::max();
+      mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest();
+      mul_params->clamp_max = std::numeric_limits<DstScalar>::max();
     }
     return;
   }
 
-  spec->clamp_min = std::numeric_limits<DstScalar>::lowest() + 1;
-  spec->clamp_max = std::numeric_limits<DstScalar>::max() - 1;
+  mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest() + 1;
+  mul_params->clamp_max = std::numeric_limits<DstScalar>::max() - 1;
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
@@ -1500,14 +1506,14 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeMulParams() {
   if (!getenv("BENCHMARK_ONLY_MATMUL") &&
       (benchmark || (global_random_engine()() & 1))) {
     MakeRandomVector(RandomRange::kBias, rows, &bias_data);
-    spec.bias = bias_data.data();
+    mul_params.bias = bias_data.data();
   }
   if (lhs.matrix.zero_point == std::numeric_limits<LhsScalar>::lowest() &&
       rhs.matrix.zero_point == std::numeric_limits<RhsScalar>::lowest()) {
     lhs.matrix.zero_point += 1;
   }
   MakeSpecMultiplierFieldsImpl<TestSet>::Run(this);
-  MakeSpecClampFields(&spec);
+  MakeSpecClampFields(&mul_params);
   life_stage = LifeStage::kHasMulParams;
 }
 
@@ -1615,9 +1621,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
     Matrix<DstScalar> null_data_dst = result->storage_matrix.matrix;
     null_data_dst.data = nullptr;
     ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
-    PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, spec, &GlobalContext(),
-                             &null_data_dst, prepacked_lhs_ptr,
-                             prepacked_rhs_ptr, alloc_fn);
+    PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params,
+                             &GlobalContext(), &null_data_dst,
+                             prepacked_lhs_ptr, prepacked_rhs_ptr, alloc_fn);
     RUY_CHECK_EQ(GlobalContext().last_taken_path, result->path);
   }
 
@@ -1651,7 +1657,8 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
   if (!GetBoolEnvVarOrFalse("NOEXT")) {
     if (SupportsGemmlowp<TestSetType>::kValue) {
 #ifdef GEMMLOWP_SSE4
-      const bool gemmlowp_supported = !spec.multiplier_fixedpoint_perchannel;
+      const bool gemmlowp_supported =
+          !mul_params.multiplier_fixedpoint_perchannel;
 #else
       const bool gemmlowp_supported = true;
 #endif

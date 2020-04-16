@@ -27,10 +27,10 @@ limitations under the License.
 #include "ruy/dispatch.h"
 #include "ruy/internal_matrix.h"
 #include "ruy/matrix.h"
+#include "ruy/mul_params.h"
 #include "ruy/path.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/side_pair.h"
-#include "ruy/spec.h"
 #include "ruy/trmul.h"
 #include "ruy/trmul_params.h"
 #include "ruy/tune.h"
@@ -41,7 +41,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
                            const Matrix<RhsScalar>& rhs,
-                           const MulParamsType& spec, Context* context,
+                           const MulParamsType& mul_params, Context* context,
                            Matrix<DstScalar>* dst,
                            SidePair<PrepackedMatrix*> prepacked,
                            std::function<void*(int)> alloc_fn) {
@@ -52,7 +52,7 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
                                         the_path, &params);
 
   const SidePair<int> origin{0, 0};
@@ -77,7 +77,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
                               const Matrix<RhsScalar>& rhs,
-                              const MulParamsType& spec, Context* context,
+                              const MulParamsType& mul_params, Context* context,
                               Matrix<DstScalar>* dst,
                               SidePair<PrepackedMatrix*> prepacked) {
   profiler::ScopeLabel label("MulWithPrepacked");
@@ -92,7 +92,7 @@ void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
   Matrix<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, spec, dst,
+  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
                                         the_path, &params);
 
   for (Side side : {Side::kLhs, Side::kRhs}) {
