@@ -91,6 +91,7 @@ cc_library(
     name = "size_util",
     hdrs = ["size_util.h"],
     copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
     deps = [":check_macros"],
 )
 
