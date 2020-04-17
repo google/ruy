@@ -33,12 +33,24 @@ inline Integer floor_log2(Integer n) {
   static_assert(sizeof(Integer) == 4 || sizeof(Integer) == 8, "");
 
   RUY_DCHECK_GE(n, 1);
-#ifdef _WIN32
+#ifdef _MSC_VER
   unsigned long result;  // NOLINT[runtime/int]
   if (sizeof(Integer) == 4) {
     _BitScanReverse(&result, n);
   } else {
-    _BitScanReverse64(&result, n);
+#if defined(_M_X64) || defined(_M_ARM64)
+    // _BitScanReverse64 is supported only on 64-bit MSVC platforms
+    _BitScanReverse64(&result, static_cast<unsigned __int64>(n));
+#else
+    // Emulate using 32-bit _BitScanReverse
+    const uint32_t n_hi = uint64_t(n) >> 32;
+    if (n_hi == 0) {
+      _BitScanReverse(&result, static_cast<unsigned long>(n));
+    } else {
+      _BitScanReverse(&result, static_cast<unsigned long>(n_hi));
+      result += 32;
+    }
+#endif  // defined(_M_X64) || defined(_M_ARM64)
   }
   return result;
 #else
