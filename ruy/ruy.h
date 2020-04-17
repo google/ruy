@@ -74,8 +74,8 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
          const MulParamsType& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
-  DispatchMul<ruy::kAllPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      lhs, rhs, mul_params, context, dst);
+  DispatchMul<ruy::kDefaultPaths, LhsScalar, RhsScalar, DstScalar,
+              MulParamsType>(lhs, rhs, mul_params, context, dst);
 }
 
 // Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to

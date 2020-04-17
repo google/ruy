@@ -128,37 +128,78 @@ inline constexpr Path operator~(Path p) {
   return static_cast<Path>(~static_cast<std::uint32_t>(p));
 }
 
+inline constexpr bool Disjoint(Path p, Path q) {
+  return (p & q) == Path::kNone;
+}
+
 inline Path GetMostSignificantPath(Path path_mask) {
   return static_cast<Path>(round_down_pot(static_cast<int>(path_mask)));
 }
 
-// ruy::kAllPaths represents all Path's that make sense to on a given
-// base architecture.
-#ifdef __linux__
+// We define three disjoint sets of paths.
+//
+// kNonArchPaths is the set of paths that are defined regardless of
+// the CPU architecture. These paths are slow, but portable.
+constexpr Path kNonArchPaths = Path::kReference | Path::kStandardCpp;
+
+// The other two are specific to each CPU architecture. Note that these sets
+// do NOT include a fallback for when none of these architecture paths are
+// supported at runtime by the CPU. For that, see the other constants defined
+// further below.
+//
+// kDefaultArchPaths is the set of architecture-specific paths that
+// we recommend for most users. It is part of kDefaultPaths defined
+// below.
+//
+// kExtraArchPaths is the set of all other architecture-specific paths
+// that for whatever reason we're not recommending to most users at the moment.
+// Typically that would include work-in-progress paths, or paths targeting
+// minority hardware that isn't the best compromise of code size to performance
+// for most users.
+
 #if RUY_PLATFORM(NEON_64)
-constexpr Path kAllPaths =
-    Path::kReference | Path::kStandardCpp | Path::kNeon | Path::kNeonDotprod;
-#elif RUY_PLATFORM(NEON_32)
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp | Path::kNeon;
-#elif RUY_PLATFORM(X86)
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp |
-                           Path::kSse42 | Path::kAvx2 | Path::kAvx512 |
-                           Path::kAvxVnni;
+#ifdef __linux__
+constexpr Path kDefaultArchPaths = Path::kNeon | Path::kNeonDotprod;
 #else
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp;
-#endif
-#else   // __linux__
 // We don't know how to do runtime dotprod detection outside of linux for now.
-#if RUY_PLATFORM(NEON)
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp | Path::kNeon;
-#elif RUY_PLATFORM(X86)
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp |
-                           Path::kSse42 | Path::kAvx2 | Path::kAvx512 |
-                           Path::kAvxVnni;
-#else
-constexpr Path kAllPaths = Path::kReference | Path::kStandardCpp;
+constexpr Path kDefaultArchPaths = Path::kNeon;
 #endif
-#endif  // __linux__
+constexpr Path kExtraArchPaths = Path::kNone;
+#elif RUY_PLATFORM(NEON_32)
+constexpr Path kDefaultArchPaths = Path::kNeon;
+constexpr Path kExtraArchPaths = Path::kNone;
+#elif RUY_PLATFORM(X86)
+constexpr Path kDefaultArchPaths = Path::kAvx2 | Path::kAvx512;
+constexpr Path kExtraArchPaths = Path::kSse42 | Path::kAvxVnni;
+#else
+constexpr Path kDefaultArchPaths = Path::kNone;
+constexpr Path kExtraArchPaths = Path::kNone;
+#endif
+
+// Enforce that kDefaultArchPaths, kExtraArchPaths and
+// kNonArchPaths are mutually disjoint.
+static_assert(Disjoint(kDefaultArchPaths, kExtraArchPaths), "");
+static_assert(Disjoint(kDefaultArchPaths, kNonArchPaths), "");
+static_assert(Disjoint(kExtraArchPaths, kNonArchPaths), "");
+
+// We now define two aggregate sets of paths for convenience, including
+// both architecture-specific paths and some portable fallbacks.
+//
+// kDefaultPaths is the set of paths that we recommend most users to use.
+// It is what ruy::Mul(...), the entry point not taking an explicit Path value,
+// uses.
+// Note that kReference is left out of it: there should be no need for it in
+// user applications (not counting debugging). The need for some portable
+// fallback when no architecture-specific path can be used, is filled already by
+// kStandardCpp.
+constexpr Path kDefaultPaths = Path::kStandardCpp | kDefaultArchPaths;
+
+// kAllPaths is the set of all paths that are available to compile.
+// In addition to the Default paths, it also includes the extra
+// architecture paths, as well as the reference path.
+constexpr Path kAllPaths = kNonArchPaths | kDefaultArchPaths | kExtraArchPaths;
+
+static_assert(Disjoint(kDefaultPaths, ~kAllPaths), "");
 
 }  // namespace ruy
 
