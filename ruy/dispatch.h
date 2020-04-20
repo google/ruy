@@ -133,7 +133,7 @@ inline bool IsColMajorTrMul(const TrMulParams& params) {
          IsColMajor(params.dst.layout);
 }
 
-inline void CreatePackedLayout(const Layout& src, const Type& scalar,
+inline void CreatePackedLayout(const InternalLayout& src, const Type& scalar,
                                const KernelLayout& kernel_layout,
                                PackedLayout* packed) {
   packed->order = Order::kColMajor;

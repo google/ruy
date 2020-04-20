@@ -46,7 +46,7 @@ std::vector<std::unique_ptr<TestResult<DstScalar>>> BenchmarkRCC(
   test_set.lhs_order = Order::kRowMajor;
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
-  test_set.layout_style = LayoutStyle::kPackedLinear;
+  test_set.layout_style = LayoutStyle::kUnstridedLinear;
   test_set.benchmark = true;
   const int asymmetry_lhs = shape.symm_lhs ? 0 : 1;
   const int asymmetry_rhs = shape.symm_rhs ? 0 : 1;

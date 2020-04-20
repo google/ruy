@@ -361,7 +361,7 @@ void MakeRandomVector(RandomRange range, int size, std::vector<Scalar>* dst) {
   }
 }
 
-enum class LayoutStyle { kPackedLinear, kLinear };
+enum class LayoutStyle { kUnstridedLinear, kLinear };
 
 inline void MakeLayout(int rows, int cols, Order order,
                        LayoutStyle layout_style, Layout* layout) {
@@ -369,14 +369,14 @@ inline void MakeLayout(int rows, int cols, Order order,
   layout->cols = cols;
   layout->order = order;
 
-  const int packed_stride = order == Order::kColMajor ? rows : cols;
+  const int min_stride = order == Order::kColMajor ? rows : cols;
 
-  RUY_CHECK(layout_style == LayoutStyle::kPackedLinear ||
+  RUY_CHECK(layout_style == LayoutStyle::kUnstridedLinear ||
             layout_style == LayoutStyle::kLinear);
-  if (layout_style == LayoutStyle::kPackedLinear) {
-    layout->stride = packed_stride;
+  if (layout_style == LayoutStyle::kUnstridedLinear) {
+    layout->stride = min_stride;
   } else {
-    layout->stride = packed_stride + 1;
+    layout->stride = min_stride + 1;
   }
 }
 
@@ -524,7 +524,7 @@ struct TestSet final {
   Order lhs_order = Order::kRowMajor;
   Order rhs_order = Order::kColMajor;
   Order dst_order = Order::kColMajor;
-  LayoutStyle layout_style = LayoutStyle::kPackedLinear;
+  LayoutStyle layout_style = LayoutStyle::kUnstridedLinear;
   ExpectedOutcome expected_outcome = ExpectedOutcome::kSuccess;
 
   bool use_specified_zero_points = false;
@@ -913,10 +913,10 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
   RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
 
-  // Eigen::TensorMap only supports packed layouts
-  RUY_CHECK(IsPacked(lhs.layout));
-  RUY_CHECK(IsPacked(rhs.layout));
-  RUY_CHECK(IsPacked(dst->layout));
+  // Eigen::TensorMap only supports unstrided layouts
+  RUY_CHECK(IsUnstrided(lhs.layout));
+  RUY_CHECK(IsUnstrided(rhs.layout));
+  RUY_CHECK(IsUnstrided(dst->layout));
 
   using TensorLhsType =
       Eigen::TensorMap<Eigen::Tensor<const Scalar, 2, Eigen::ColMajor>>;
@@ -1669,7 +1669,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
     if (UsesSingleScalarType<TestSetType>::kValue &&
         std::is_floating_point<AccumScalar>::value) {
       external_paths.push_back(ExternalPath::kEigen);
-      if (layout_style == LayoutStyle::kPackedLinear) {
+      if (layout_style == LayoutStyle::kUnstridedLinear) {
         external_paths.push_back(ExternalPath::kEigenTensor);
       }
 // We link against a generic BLAS target that only maps to OpenBLAS on specific
@@ -2072,7 +2072,7 @@ void TestRCC(int rows, int depth, int cols, ExpectedOutcome expected_outcome) {
   test_set.lhs_order = Order::kRowMajor;
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
-  test_set.layout_style = LayoutStyle::kPackedLinear;
+  test_set.layout_style = LayoutStyle::kUnstridedLinear;
   test_set.expected_outcome = expected_outcome;
   test_set.Run();
 }
@@ -2092,7 +2092,7 @@ void TestNonRCC(int rows, int depth, int cols,
   test_set.lhs_order = Order::kColMajor;
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
-  test_set.layout_style = LayoutStyle::kPackedLinear;
+  test_set.layout_style = LayoutStyle::kUnstridedLinear;
   test_set.expected_outcome = expected_outcome;
   test_set.Run();
 }

@@ -50,7 +50,7 @@ TEST(RuyTest, TestBigMuls) {
 
 TEST(RuyTest, TestBigPowerOfTwoDepthWithAvoidAliasing) {
   // Important to test some power-of-two depths: that's when the
-  // RUY_AVOID_ALIASING optimization kicks in and makes packed matrices
+  // RUY_AVOID_ALIASING optimization kicks in and makes unstrided matrices
   // strided, exposing bugs in kernels mixing up size and stride.
   // Moreover, it's important that the test matrices be sufficiently wide
   // that they will result in multiple blocks, exposing bugs in the

@@ -102,6 +102,34 @@ limitations under the License.
 
 namespace ruy {
 
+// Internal counterpart of Layout.
+struct InternalLayout {
+  std::int32_t rows = 0;
+  std::int32_t cols = 0;
+  // Stride is the offset between two adjacent matrix elements
+  // in the non-contiguous direction.
+  std::int32_t stride = 0;
+  Order order = Order::kColMajor;
+};
+
+inline Layout ToLayout(const InternalLayout& src) {
+  Layout ret;
+  ret.set_rows(src.rows);
+  ret.set_cols(src.cols);
+  ret.set_stride(src.stride);
+  ret.set_order(src.order);
+  return ret;
+}
+
+inline InternalLayout ToInternalLayout(const Layout& src) {
+  InternalLayout ret;
+  ret.rows = src.rows;
+  ret.cols = src.cols;
+  ret.stride = src.stride;
+  ret.order = src.order;
+  return ret;
+}
+
 // KernelLayout describes small-scale block structure in a packed matrix layout.
 // It's a runtime (as opposed to compile-time-constant) version of the
 // FixedKernelLayout struct used to declare kernel layouts.
@@ -126,7 +154,8 @@ struct KernelLayout {
 // the input matrices. This block structure is necessary for the kernels to
 // process data efficiently.
 //
-// This struct is very similar to Layout, but has the extra KernelLayout field.
+// This struct is very similar to InternalLayout, but has the extra KernelLayout
+// field.
 struct PackedLayout {
   std::int32_t rows = 0;
   std::int32_t cols = 0;
@@ -176,7 +205,7 @@ struct Type {
 struct DMatrix {
   Type data_type;
   void* data = nullptr;
-  Layout layout;
+  InternalLayout layout;
   std::int32_t zero_point = 0;
 };
 
@@ -218,7 +247,7 @@ DMatrix ToDMatrix(const Matrix<T>& matrix) {
   DMatrix ret;
   ret.data_type = Type::Create<T>();
   ret.data = ToVoidPtr(matrix.data.get());
-  ret.layout = matrix.layout;
+  ret.layout = ToInternalLayout(matrix.layout);
   ret.zero_point = matrix.zero_point;
   return ret;
 }
@@ -228,7 +257,7 @@ Matrix<T> ToMatrix(const DMatrix& dmatrix) {
   dmatrix.data_type.AssertIs<T>();
   Matrix<T> ret;
   ret.data = static_cast<T*>(dmatrix.data);
-  ret.layout = dmatrix.layout;
+  ret.layout = ToLayout(dmatrix.layout);
   ret.zero_point = dmatrix.zero_point;
   return ret;
 }
@@ -246,9 +275,10 @@ PackedMatrix<T> ToPackedMatrix(const PMatrix& pmatrix) {
   return ret;
 }
 
-// Helpers for Layout / PackedLayout.
+// Helpers for InternalLayout / PackedLayout.
 
-inline bool IsPacked(const Layout& layout) {
+template <typename LayoutType>
+inline bool IsUnstrided(const LayoutType& layout) {
   if (layout.order == Order::kColMajor) {
     return layout.stride == layout.rows;
   } else {
@@ -256,17 +286,18 @@ inline bool IsPacked(const Layout& layout) {
   }
 }
 
-inline bool IsRowMajor(const Layout& layout) {
+template <typename LayoutType>
+inline bool IsRowMajor(const LayoutType& layout) {
   return layout.order == Order::kRowMajor;
 }
 
-template <typename LayoutOrPackedLayout>
-inline bool IsColMajor(const LayoutOrPackedLayout& layout) {
+template <typename LayoutType>
+inline bool IsColMajor(const LayoutType& layout) {
   return layout.order == Order::kColMajor;
 }
 
-template <typename LayoutOrPackedLayout>
-inline int FlatSize(const LayoutOrPackedLayout& layout) {
+template <typename LayoutType>
+int FlatSize(const LayoutType& layout) {
   const int outerdim =
       layout.order == Order::kColMajor ? layout.cols : layout.rows;
   return layout.stride * outerdim;
@@ -358,18 +389,19 @@ inline int SumsSize(const PMatrix& packed) {
 
 // Transpose helpers.
 
-inline void Transpose(Order* order) {
+inline void TransposeOrder(Order* order) {
   *order = *order == Order::kColMajor ? Order::kRowMajor : Order::kColMajor;
 }
 
-inline void Transpose(Layout* layout) {
-  Transpose(&layout->order);
+template <typename LayoutType>
+void TransposeLayout(LayoutType* layout) {
+  TransposeOrder(&layout->order);
   std::swap(layout->rows, layout->cols);
 }
 
-template <typename Scalar>
-inline void Transpose(Matrix<Scalar>* matrix) {
-  Transpose(&matrix->layout);
+template <typename MatrixType>
+void Transpose(MatrixType* matrix) {
+  TransposeLayout(&matrix->layout);
 }
 
 // Helpers for KernelLayout.

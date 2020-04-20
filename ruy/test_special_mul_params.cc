@@ -88,7 +88,7 @@ void TestZeroPointSupport(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
   test_set.lhs_order = Order::kRowMajor;
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
-  test_set.layout_style = LayoutStyle::kPackedLinear;
+  test_set.layout_style = LayoutStyle::kUnstridedLinear;
   test_set.expected_outcome = expected_outcome;
   test_set.lhs_zero_point = lhs_zero_point;
   test_set.rhs_zero_point = rhs_zero_point;
