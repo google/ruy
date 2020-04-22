@@ -40,11 +40,11 @@ void ExamplePrepack(ruy::Context* context) {
 
   // Set up the matrix layouts and mul_params.
   ruy::Matrix<float> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
   ruy::Matrix<float> rhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
   ruy::Matrix<float> dst;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
   ruy::MulParams<float, float> mul_params;
 
   SimpleAllocator allocator;
@@ -56,19 +56,19 @@ void ExamplePrepack(ruy::Context* context) {
   // Note that we only need to set the data pointer for the matrix we are
   // pre-packing.
   ruy::PrepackedMatrix prepacked_rhs;
-  rhs.data = rhs_data;
+  rhs.set_data(rhs_data);
   ruy::PrePackForMul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst,
                                      /*prepacked_lhs=*/nullptr, &prepacked_rhs,
                                      alloc_fn);
 
   // No data will be read from the RHS input matrix when using a pre-packed RHS.
-  rhs.data = nullptr;
-  lhs.data = lhs_data;
-  dst.data = dst_data;
+  rhs.set_data(nullptr);
+  lhs.set_data(lhs_data);
+  dst.set_data(dst_data);
   ruy::MulWithPrepacked<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst,
                                         /*prepacked_lhs=*/nullptr,
                                         &prepacked_rhs);
-  rhs.data = rhs_data;
+  rhs.set_data(rhs_data);
 
   // Print out the results.
   std::cout << "Example Mul with pre-packing RHS, float:\n";

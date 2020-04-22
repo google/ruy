@@ -56,10 +56,10 @@ TEST(MatrixTest, ConstCheckingPtrSanity) {
   int some_nonconst;
   const int some_const = 0;
   EXPECT_EQ(ptr.get(), nullptr);
-  ptr = &some_nonconst;
+  ptr.set(&some_nonconst);
   EXPECT_EQ(static_cast<const PtrType&>(ptr).get(), &some_nonconst);
   EXPECT_EQ(ptr.get(), &some_nonconst);
-  ptr = &some_const;
+  ptr.set(&some_const);
   EXPECT_EQ(static_cast<const PtrType&>(ptr).get(), &some_const);
 #ifndef NDEBUG
   RUY_ASSERT_DEATH(ptr.get(), "");
@@ -68,28 +68,28 @@ TEST(MatrixTest, ConstCheckingPtrSanity) {
 
 TEST(MatrixTest, MatrixClassSanity) {
   Matrix<int> matrix;
-  EXPECT_EQ(matrix.get_data(), nullptr);
-  EXPECT_EQ(matrix.get_zero_point(), 0);
-  EXPECT_EQ(matrix.get_cacheable(), false);
-  EXPECT_EQ(matrix.get_layout().rows(), 0);
-  EXPECT_EQ(matrix.get_layout().cols(), 0);
-  EXPECT_EQ(matrix.get_layout().stride(), 0);
-  EXPECT_EQ(matrix.get_layout().order(), Order::kColMajor);
+  EXPECT_EQ(matrix.data(), nullptr);
+  EXPECT_EQ(matrix.zero_point(), 0);
+  EXPECT_EQ(matrix.cacheable(), false);
+  EXPECT_EQ(matrix.layout().rows(), 0);
+  EXPECT_EQ(matrix.layout().cols(), 0);
+  EXPECT_EQ(matrix.layout().stride(), 0);
+  EXPECT_EQ(matrix.layout().order(), Order::kColMajor);
   const int some_const = 0;
   matrix.set_data(&some_const);
   matrix.set_zero_point(123);
   matrix.set_cacheable(true);
   MakeSimpleLayout(12, 34, Order::kRowMajor, matrix.mutable_layout());
-  EXPECT_EQ(static_cast<const Matrix<int>&>(matrix).get_data(), &some_const);
+  EXPECT_EQ(static_cast<const Matrix<int>&>(matrix).data(), &some_const);
 #ifndef NDEBUG
-  RUY_ASSERT_DEATH(matrix.get_data(), "");
+  RUY_ASSERT_DEATH(matrix.data(), "");
 #endif
-  EXPECT_EQ(matrix.get_zero_point(), 123);
-  EXPECT_EQ(matrix.get_cacheable(), true);
-  EXPECT_EQ(matrix.get_layout().rows(), 12);
-  EXPECT_EQ(matrix.get_layout().cols(), 34);
-  EXPECT_EQ(matrix.get_layout().stride(), 34);
-  EXPECT_EQ(matrix.get_layout().order(), Order::kRowMajor);
+  EXPECT_EQ(matrix.zero_point(), 123);
+  EXPECT_EQ(matrix.cacheable(), true);
+  EXPECT_EQ(matrix.layout().rows(), 12);
+  EXPECT_EQ(matrix.layout().cols(), 34);
+  EXPECT_EQ(matrix.layout().stride(), 34);
+  EXPECT_EQ(matrix.layout().order(), Order::kRowMajor);
 }
 
 }  // namespace

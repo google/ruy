@@ -24,14 +24,14 @@ void ExampleMulFloat(ruy::Context *context) {
   float dst_data[4];
 
   ruy::Matrix<float> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
   ruy::Matrix<float> rhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
   ruy::Matrix<float> dst;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
@@ -49,14 +49,14 @@ void ExampleMulFloatWithBiasAddAndClamp(ruy::Context *context) {
   float dst_data[4];
 
   ruy::Matrix<float> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
   ruy::Matrix<float> rhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
   ruy::Matrix<float> dst;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
   mul_params.bias = bias_data;
@@ -76,17 +76,17 @@ void ExampleMulUint8AsymmetricQuantized(ruy::Context *context) {
   std::uint8_t dst_data[4];
 
   ruy::Matrix<std::uint8_t> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
-  lhs.zero_point = 125;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
+  lhs.set_zero_point(125);
   ruy::Matrix<std::uint8_t> rhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
-  rhs.zero_point = 132;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
+  rhs.set_zero_point(132);
   ruy::Matrix<std::uint8_t> dst;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
-  dst.zero_point = 129;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
+  dst.set_zero_point(129);
 
   ruy::MulParams<std::int32_t, std::uint8_t> mul_params;
   mul_params.multiplier_fixedpoint = 1 << 30;
@@ -107,14 +107,14 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   std::int8_t dst_data[4];
 
   ruy::Matrix<std::int8_t> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
   ruy::Matrix<std::int8_t> rhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
   ruy::Matrix<std::int8_t> dst;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
 
   ruy::MulParams<std::int32_t, std::int8_t> mul_params;
   mul_params.multiplier_fixedpoint_perchannel = multiplier_data;

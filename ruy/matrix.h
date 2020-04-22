@@ -78,20 +78,6 @@ class ConstCheckingPtr final {
  public:
   using element_type = T;
 
-  // Convenience methods. Most `set` calls go through these.
-  ConstCheckingPtr& operator=(T* ptr) {
-    set(ptr);
-    return *this;
-  }
-  ConstCheckingPtr& operator=(const T* ptr) {
-    set(ptr);
-    return *this;
-  }
-  ConstCheckingPtr& operator=(std::nullptr_t) {
-    set(static_cast<T*>(nullptr));
-    return *this;
-  }
-
   // Core accessors. These encapsulate the main logic:
   // - for `set`, the constness of the argument determines whether internal
   // pointer should be tracked as const/mutable.
@@ -104,6 +90,9 @@ class ConstCheckingPtr final {
   void set(const T* ptr) {
     ptr_ = ptr;
     set_mutable(false);
+  }
+  void set(std::nullptr_t) {
+    ptr_ = nullptr;
   }
   T* get() /* NOT const */ {
     assert_mutable();
@@ -136,34 +125,37 @@ class ConstCheckingPtr final {
 // matrices, never use Matrix<const T>.
 // See the comments on detail::ConstCheckingPointer.
 template <typename Scalar>
-struct Matrix final {
+class Matrix final {
+ public:
   static_assert(!std::is_const<Scalar>::value,
                 "Never use Matrix<const T>. Just use Matrix<T>. Constness of "
                 "the data is guarded by debug-only runtime assertions. See "
                 "detail::ConstCheckingPtr.");
 
-  Scalar* get_data() { return data.get(); }
-  const Scalar* get_data() const { return data.get(); }
-  void set_data(Scalar* ptr) { data.set(ptr); }
-  void set_data(const Scalar* ptr) { data.set(ptr); }
-  const Layout& get_layout() const { return layout; }
-  Layout* mutable_layout() { return &layout; }
-  Scalar get_zero_point() const { return zero_point; }
-  void set_zero_point(Scalar value) { zero_point = value; }
-  bool get_cacheable() const { return cacheable; }
-  void set_cacheable(bool value) { cacheable = value; }
+  Scalar* data() { return data_.get(); }
+  const Scalar* data() const { return data_.get(); }
+  void set_data(Scalar* ptr) { data_.set(ptr); }
+  void set_data(const Scalar* ptr) { data_.set(ptr); }
+  void set_data(std::nullptr_t) { data_.set(nullptr); }
+  const Layout& layout() const { return layout_; }
+  Layout* mutable_layout() { return &layout_; }
+  Scalar zero_point() const { return zero_point_; }
+  void set_zero_point(Scalar value) { zero_point_ = value; }
+  bool cacheable() const { return cacheable_; }
+  void set_cacheable(bool value) { cacheable_ = value; }
 
+ private:
   // The underlying buffer wrapped by this matrix.
-  detail::ConstCheckingPtr<Scalar> data;
+  detail::ConstCheckingPtr<Scalar> data_;
   // The shape and data layout of this matrix.
-  Layout layout;
+  Layout layout_;
   // The zero_point, i.e. which Scalar value is to be interpreted as zero.
   // When Scalar is floating-point, this must be 0.
-  Scalar zero_point = 0;
+  Scalar zero_point_ = 0;
   // Clients of Ruy must set this flag to enable any caching behavior. Doesn't
   // impact numerical results, but caching can impact observable metrics like
   // latency, memory usage, power, etc.
-  bool cacheable = false;
+  bool cacheable_ = false;
 };
 
 inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
@@ -193,8 +185,8 @@ struct PrepackedMatrix {
 
 template <typename StreamType, typename Scalar>
 StreamType& operator<<(StreamType& stream, const Matrix<Scalar>& mat) {
-  for (int row = 0; row < mat.layout.rows(); row++) {
-    for (int col = 0; col < mat.layout.cols(); col++) {
+  for (int row = 0; row < mat.layout().rows(); row++) {
+    for (int col = 0; col < mat.layout().cols(); col++) {
       stream << static_cast<double>(Element(mat, row, col)) << " ";
     }
     stream << "\n";
@@ -241,12 +233,12 @@ inline int Offset(const Layout& layout, int row, int col) {
 
 template <typename Scalar>
 const Scalar* ElementPtr(const Matrix<Scalar>& mat, int row, int col) {
-  return mat.data.get() + Offset(mat.layout, row, col);
+  return mat.data() + Offset(mat.layout(), row, col);
 }
 
 template <typename Scalar>
 Scalar* ElementPtr(Matrix<Scalar>* mat, int row, int col) {
-  return mat->data.get() + Offset(mat->layout, row, col);
+  return mat->data() + Offset(mat->layout(), row, col);
 }
 
 template <typename Scalar>

@@ -147,14 +147,14 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
   float dst_data[4];
 
   ruy::Matrix<float> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
   ruy::Matrix<float> rhs;
-  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
+  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
   ruy::Matrix<float> dst;
-  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
+  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
   // Perform the multiplication and confirm no caching occurred.
@@ -163,7 +163,7 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
 
   // Set cacheable for the LHS, repeat the multiplication, and see
   // that caching did occur.
-  lhs.cacheable = true;
+  lhs.set_cacheable(true);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, &context, &dst);
   EXPECT_NE(cache->TotalSize(), 0);
 }
@@ -180,18 +180,18 @@ TEST(PrepackedCacheTest, TestClearCache) {
   float dst_data[4];
 
   ruy::Matrix<float> lhs;
-  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, &lhs.layout);
-  lhs.data = lhs_data;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
   ruy::Matrix<float> rhs;
-  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &rhs.layout);
-  rhs.data = rhs_data;
+  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
   ruy::Matrix<float> dst;
-  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, &dst.layout);
-  dst.data = dst_data;
+  ruy::MakeSimpleLayout(2, 1, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
   // Set cacheable for the LHS and see that caching occurs.
-  lhs.cacheable = true;
+  lhs.set_cacheable(true);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, &context, &dst);
   EXPECT_NE(cache->TotalSize(), 0);
 

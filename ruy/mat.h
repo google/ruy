@@ -141,20 +141,20 @@ struct Mat final {
 template <typename Scalar>
 inline Mat<Scalar> ToInternal(const Matrix<Scalar>& src) {
   Mat<Scalar> ret;
-  ret.data = src.data;
-  ret.layout = ToInternal(src.layout);
-  ret.zero_point = src.zero_point;
-  ret.cacheable = src.cacheable;
+  ret.data.set(src.data());
+  ret.layout = ToInternal(src.layout());
+  ret.zero_point = src.zero_point();
+  ret.cacheable = src.cacheable();
   return ret;
 }
 
 template <typename Scalar>
 inline Mat<Scalar> ToInternal(Matrix<Scalar>& src) {
   Mat<Scalar> ret;
-  ret.data = src.data;
-  ret.layout = ToInternal(src.layout);
-  ret.zero_point = src.zero_point;
-  ret.cacheable = src.cacheable;
+  ret.data.set(src.data());
+  ret.layout = ToInternal(src.layout());
+  ret.zero_point = src.zero_point();
+  ret.cacheable = src.cacheable();
   return ret;
 }
 
@@ -284,7 +284,7 @@ template <typename T>
 Mat<T> UneraseType(const EMat& dmatrix) {
   dmatrix.data_type.AssertIs<T>();
   Mat<T> ret;
-  ret.data = static_cast<T*>(dmatrix.data);
+  ret.data.set(static_cast<T*>(dmatrix.data));
   ret.layout = dmatrix.layout;
   ret.zero_point = dmatrix.zero_point;
   return ret;
