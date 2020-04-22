@@ -22,32 +22,32 @@ namespace {
 
 TEST(MatrixTest, LayoutClassSanity) {
   Layout layout;
-  EXPECT_EQ(layout.get_rows(), 0);
-  EXPECT_EQ(layout.get_cols(), 0);
-  EXPECT_EQ(layout.get_stride(), 0);
-  EXPECT_EQ(layout.get_order(), Order::kColMajor);
+  EXPECT_EQ(layout.rows(), 0);
+  EXPECT_EQ(layout.cols(), 0);
+  EXPECT_EQ(layout.stride(), 0);
+  EXPECT_EQ(layout.order(), Order::kColMajor);
   layout.set_rows(123);
   layout.set_cols(456);
   layout.set_stride(789);
   layout.set_order(Order::kRowMajor);
-  EXPECT_EQ(layout.get_rows(), 123);
-  EXPECT_EQ(layout.get_cols(), 456);
-  EXPECT_EQ(layout.get_stride(), 789);
-  EXPECT_EQ(layout.get_order(), Order::kRowMajor);
+  EXPECT_EQ(layout.rows(), 123);
+  EXPECT_EQ(layout.cols(), 456);
+  EXPECT_EQ(layout.stride(), 789);
+  EXPECT_EQ(layout.order(), Order::kRowMajor);
 }
 
 TEST(MatrixTest, MakeSimpleLayout) {
   Layout layout;
   MakeSimpleLayout(123, 456, Order::kColMajor, &layout);
-  EXPECT_EQ(layout.get_rows(), 123);
-  EXPECT_EQ(layout.get_cols(), 456);
-  EXPECT_EQ(layout.get_stride(), 123);
-  EXPECT_EQ(layout.get_order(), Order::kColMajor);
+  EXPECT_EQ(layout.rows(), 123);
+  EXPECT_EQ(layout.cols(), 456);
+  EXPECT_EQ(layout.stride(), 123);
+  EXPECT_EQ(layout.order(), Order::kColMajor);
   MakeSimpleLayout(321, 654, Order::kRowMajor, &layout);
-  EXPECT_EQ(layout.get_rows(), 321);
-  EXPECT_EQ(layout.get_cols(), 654);
-  EXPECT_EQ(layout.get_stride(), 654);
-  EXPECT_EQ(layout.get_order(), Order::kRowMajor);
+  EXPECT_EQ(layout.rows(), 321);
+  EXPECT_EQ(layout.cols(), 654);
+  EXPECT_EQ(layout.stride(), 654);
+  EXPECT_EQ(layout.order(), Order::kRowMajor);
 }
 
 TEST(MatrixTest, ConstCheckingPtrSanity) {
@@ -71,10 +71,10 @@ TEST(MatrixTest, MatrixClassSanity) {
   EXPECT_EQ(matrix.get_data(), nullptr);
   EXPECT_EQ(matrix.get_zero_point(), 0);
   EXPECT_EQ(matrix.get_cacheable(), false);
-  EXPECT_EQ(matrix.get_layout().get_rows(), 0);
-  EXPECT_EQ(matrix.get_layout().get_cols(), 0);
-  EXPECT_EQ(matrix.get_layout().get_stride(), 0);
-  EXPECT_EQ(matrix.get_layout().get_order(), Order::kColMajor);
+  EXPECT_EQ(matrix.get_layout().rows(), 0);
+  EXPECT_EQ(matrix.get_layout().cols(), 0);
+  EXPECT_EQ(matrix.get_layout().stride(), 0);
+  EXPECT_EQ(matrix.get_layout().order(), Order::kColMajor);
   const int some_const = 0;
   matrix.set_data(&some_const);
   matrix.set_zero_point(123);
@@ -86,10 +86,10 @@ TEST(MatrixTest, MatrixClassSanity) {
 #endif
   EXPECT_EQ(matrix.get_zero_point(), 123);
   EXPECT_EQ(matrix.get_cacheable(), true);
-  EXPECT_EQ(matrix.get_layout().get_rows(), 12);
-  EXPECT_EQ(matrix.get_layout().get_cols(), 34);
-  EXPECT_EQ(matrix.get_layout().get_stride(), 34);
-  EXPECT_EQ(matrix.get_layout().get_order(), Order::kRowMajor);
+  EXPECT_EQ(matrix.get_layout().rows(), 12);
+  EXPECT_EQ(matrix.get_layout().cols(), 34);
+  EXPECT_EQ(matrix.get_layout().stride(), 34);
+  EXPECT_EQ(matrix.get_layout().order(), Order::kRowMajor);
 }
 
 }  // namespace

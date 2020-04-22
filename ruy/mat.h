@@ -122,10 +122,10 @@ struct MatLayout final {
 
 inline MatLayout ToInternal(const Layout& src) {
   MatLayout ret;
-  ret.rows = src.rows;
-  ret.cols = src.cols;
-  ret.stride = src.stride;
-  ret.order = src.order;
+  ret.rows = src.rows();
+  ret.cols = src.cols();
+  ret.stride = src.stride();
+  ret.order = src.order();
   return ret;
 }
 
@@ -305,8 +305,7 @@ PMat<T> UneraseType(const PEMat& pmatrix) {
 
 // Helpers for MatLayout / PMatLayout.
 
-template <typename LayoutType>
-inline bool IsUnstrided(const LayoutType& layout) {
+inline bool IsUnstrided(const MatLayout& layout) {
   if (layout.order == Order::kColMajor) {
     return layout.stride == layout.rows;
   } else {
@@ -314,18 +313,37 @@ inline bool IsUnstrided(const LayoutType& layout) {
   }
 }
 
-template <typename LayoutType>
-inline bool IsRowMajor(const LayoutType& layout) {
+inline bool IsRowMajor(const MatLayout& layout) {
   return layout.order == Order::kRowMajor;
 }
 
-template <typename LayoutType>
-inline bool IsColMajor(const LayoutType& layout) {
+inline bool IsColMajor(const MatLayout& layout) {
   return layout.order == Order::kColMajor;
 }
 
-template <typename LayoutType>
-int FlatSize(const LayoutType& layout) {
+inline int FlatSize(const MatLayout& layout) {
+  const int outerdim =
+      layout.order == Order::kColMajor ? layout.cols : layout.rows;
+  return layout.stride * outerdim;
+}
+
+inline bool IsUnstrided(const PMatLayout& layout) {
+  if (layout.order == Order::kColMajor) {
+    return layout.stride == layout.rows;
+  } else {
+    return layout.stride == layout.cols;
+  }
+}
+
+inline bool IsRowMajor(const PMatLayout& layout) {
+  return layout.order == Order::kRowMajor;
+}
+
+inline bool IsColMajor(const PMatLayout& layout) {
+  return layout.order == Order::kColMajor;
+}
+
+inline int FlatSize(const PMatLayout& layout) {
   const int outerdim =
       layout.order == Order::kColMajor ? layout.cols : layout.rows;
   return layout.stride * outerdim;
@@ -421,14 +439,13 @@ inline void TransposeOrder(Order* order) {
   *order = *order == Order::kColMajor ? Order::kRowMajor : Order::kColMajor;
 }
 
-template <typename LayoutType>
-void TransposeLayout(LayoutType* layout) {
+inline void TransposeLayout(MatLayout* layout) {
   TransposeOrder(&layout->order);
   std::swap(layout->rows, layout->cols);
 }
 
-template <typename MatrixType>
-void Transpose(MatrixType* matrix) {
+template <typename Scalar>
+void Transpose(Mat<Scalar>* matrix) {
   TransposeLayout(&matrix->layout);
 }
 

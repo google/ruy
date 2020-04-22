@@ -29,22 +29,24 @@ namespace ruy {
 enum class Order : std::uint8_t { kColMajor, kRowMajor };
 
 // Describes the shape and storage layout of a matrix.
-struct Layout final {
-  int get_rows() const { return rows; }
-  void set_rows(int val) { rows = val; }
-  int get_cols() const { return cols; }
-  void set_cols(int val) { cols = val; }
-  int get_stride() const { return stride; }
-  void set_stride(int val) { stride = val; }
-  Order get_order() const { return order; }
-  void set_order(Order val) { order = val; }
+class Layout final {
+ public:
+  int rows() const { return rows_; }
+  void set_rows(int val) { rows_ = val; }
+  int cols() const { return cols_; }
+  void set_cols(int val) { cols_ = val; }
+  int stride() const { return stride_; }
+  void set_stride(int val) { stride_ = val; }
+  Order order() const { return order_; }
+  void set_order(Order val) { order_ = val; }
 
-  int rows = 0;
-  int cols = 0;
+ private:
+  int rows_ = 0;
+  int cols_ = 0;
   // Stride is the offset between two adjacent matrix elements
   // in the non-contiguous direction.
-  int stride = 0;
-  Order order = Order::kColMajor;
+  int stride_ = 0;
+  Order order_ = Order::kColMajor;
 };
 
 namespace detail {
@@ -165,10 +167,10 @@ struct Matrix final {
 };
 
 inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
-  layout->rows = rows;
-  layout->cols = cols;
-  layout->order = order;
-  layout->stride = order == Order::kColMajor ? rows : cols;
+  layout->set_rows(rows);
+  layout->set_cols(cols);
+  layout->set_order(order);
+  layout->set_stride(order == Order::kColMajor ? rows : cols);
 }
 
 // Opaque data structure representing a pre-packed matrix, as obtained from
@@ -191,8 +193,8 @@ struct PrepackedMatrix {
 
 template <typename StreamType, typename Scalar>
 StreamType& operator<<(StreamType& stream, const Matrix<Scalar>& mat) {
-  for (int row = 0; row < mat.layout.rows; row++) {
-    for (int col = 0; col < mat.layout.cols; col++) {
+  for (int row = 0; row < mat.layout.rows(); row++) {
+    for (int col = 0; col < mat.layout.cols(); col++) {
       stream << static_cast<double>(Element(mat, row, col)) << " ";
     }
     stream << "\n";
@@ -230,10 +232,10 @@ inline int Offset(const Layout& layout, int row, int col) {
   // bypassing the check?
   // RUY_DCHECK_GE(row, 0);
   // RUY_DCHECK_GE(col, 0);
-  // RUY_DCHECK_LT(row, layout.rows);
-  // RUY_DCHECK_LT(col, layout.cols);
-  int row_stride = layout.order == Order::kColMajor ? 1 : layout.stride;
-  int col_stride = layout.order == Order::kRowMajor ? 1 : layout.stride;
+  // RUY_DCHECK_LT(row, layout.rows());
+  // RUY_DCHECK_LT(col, layout.cols());
+  int row_stride = layout.order() == Order::kColMajor ? 1 : layout.stride();
+  int col_stride = layout.order() == Order::kRowMajor ? 1 : layout.stride();
   return row * row_stride + col * col_stride;
 }
 

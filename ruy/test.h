@@ -365,18 +365,18 @@ enum class LayoutStyle { kUnstridedLinear, kLinear };
 
 inline void MakeLayout(int rows, int cols, Order order,
                        LayoutStyle layout_style, Layout* layout) {
-  layout->rows = rows;
-  layout->cols = cols;
-  layout->order = order;
+  layout->set_rows(rows);
+  layout->set_cols(cols);
+  layout->set_order(order);
 
   const int min_stride = order == Order::kColMajor ? rows : cols;
 
   RUY_CHECK(layout_style == LayoutStyle::kUnstridedLinear ||
             layout_style == LayoutStyle::kLinear);
   if (layout_style == LayoutStyle::kUnstridedLinear) {
-    layout->stride = min_stride;
+    layout->set_stride(min_stride);
   } else {
-    layout->stride = min_stride + 1;
+    layout->set_stride(min_stride + 1);
   }
 }
 
@@ -389,12 +389,34 @@ struct StorageMatrix {
   Matrix<Scalar> matrix;
 };
 
+inline bool IsUnstrided(const Layout& layout) {
+  if (layout.order() == Order::kColMajor) {
+    return layout.stride() == layout.rows();
+  } else {
+    return layout.stride() == layout.cols();
+  }
+}
+
+inline bool IsRowMajor(const Layout& layout) {
+  return layout.order() == Order::kRowMajor;
+}
+
+inline bool IsColMajor(const Layout& layout) {
+  return layout.order() == Order::kColMajor;
+}
+
+inline int FlatSize(const Layout& layout) {
+  const int outerdim =
+      layout.order() == Order::kColMajor ? layout.cols() : layout.rows();
+  return layout.stride() * outerdim;
+}
+
 template <typename Scalar>
 void VerifyConsistentFields(const StorageMatrix<Scalar>& storage_matrix) {
   if (storage_matrix.data.empty()) {
     RUY_CHECK_EQ(storage_matrix.matrix.data.get(), nullptr);
-    RUY_CHECK_EQ(storage_matrix.matrix.layout.rows, 0);
-    RUY_CHECK_EQ(storage_matrix.matrix.layout.cols, 0);
+    RUY_CHECK_EQ(storage_matrix.matrix.layout.rows(), 0);
+    RUY_CHECK_EQ(storage_matrix.matrix.layout.cols(), 0);
   } else {
     RUY_CHECK_EQ(storage_matrix.matrix.data.get(), storage_matrix.data.data());
     RUY_CHECK_EQ(FlatSize(storage_matrix.matrix.layout),
@@ -638,21 +660,23 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
 template <typename Scalar, gemmlowp::MapOrder tOrder>
 void WrapGemmlowp(const Matrix<Scalar>& src,
                   gemmlowp::MatrixMap<const Scalar, tOrder>* dst) {
-  RUY_CHECK(src.layout.order == (tOrder == gemmlowp::MapOrder::ColMajor
-                                     ? Order::kColMajor
-                                     : Order::kRowMajor));
+  RUY_CHECK(src.layout.order() == (tOrder == gemmlowp::MapOrder::ColMajor
+                                       ? Order::kColMajor
+                                       : Order::kRowMajor));
   *dst = gemmlowp::MatrixMap<const Scalar, tOrder>(
-      src.data.get(), src.layout.rows, src.layout.cols, src.layout.stride);
+      src.data.get(), src.layout.rows(), src.layout.cols(),
+      src.layout.stride());
 }
 
 template <typename Scalar, gemmlowp::MapOrder tOrder>
 void WrapGemmlowpMutable(Matrix<Scalar>* src,
                          gemmlowp::MatrixMap<Scalar, tOrder>* dst) {
-  RUY_CHECK(src->layout.order == (tOrder == gemmlowp::MapOrder::ColMajor
-                                      ? Order::kColMajor
-                                      : Order::kRowMajor));
+  RUY_CHECK(src->layout.order() == (tOrder == gemmlowp::MapOrder::ColMajor
+                                        ? Order::kColMajor
+                                        : Order::kRowMajor));
   *dst = gemmlowp::MatrixMap<Scalar, tOrder>(
-      src->data.get(), src->layout.rows, src->layout.cols, src->layout.stride);
+      src->data.get(), src->layout.rows(), src->layout.cols(),
+      src->layout.stride());
 }
 
 template <Order tOrder>
@@ -703,9 +727,9 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   using ColVectorMap =
       gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
   quantize_down_stage_pc.result_fixedpoint_multiplier = ColVectorMap(
-      mul_params.multiplier_fixedpoint_perchannel, lhs.layout.rows);
-  quantize_down_stage_pc.result_exponent =
-      ColVectorMap(mul_params.multiplier_exponent_perchannel, lhs.layout.rows);
+      mul_params.multiplier_fixedpoint_perchannel, lhs.layout.rows());
+  quantize_down_stage_pc.result_exponent = ColVectorMap(
+      mul_params.multiplier_exponent_perchannel, lhs.layout.rows());
 
   gemmlowp::OutputStageClamp clamp_stage;
   clamp_stage.min = mul_params.clamp_min;
@@ -723,7 +747,7 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
         gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
     gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_add_stage;
     bias_add_stage.bias_vector =
-        ColVectorMap(mul_params.bias, dst->layout.rows);
+        ColVectorMap(mul_params.bias, dst->layout.rows());
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
     if (mul_params.multiplier_exponent_perchannel) {
       const auto& output_pipeline =
@@ -777,7 +801,7 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                   const MulParamsType& mul_params, int max_num_threads,
                   Matrix<DstScalar>* dst) {
-  int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
+  int index = Mash(lhs.layout.order(), rhs.layout.order(), dst->layout.order());
   switch (index) {
 #define EVALGEMMLOWP_CASE3(LHS, RHS, DST)                                     \
   case Mash(LHS, RHS, DST):                                                   \
@@ -842,17 +866,19 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   using EigenBiasType =
       typename Eigen::Matrix<DstScalar, Eigen::Dynamic, 1>::ConstMapType;
 
-  EigenLhsType eigen_lhs(lhs.data.get(), lhs.layout.rows, lhs.layout.cols,
-                         Eigen::OuterStride<Eigen::Dynamic>(lhs.layout.stride));
-  EigenRhsType eigen_rhs(rhs.data.get(), rhs.layout.rows, rhs.layout.cols,
-                         Eigen::OuterStride<Eigen::Dynamic>(rhs.layout.stride));
+  EigenLhsType eigen_lhs(
+      lhs.data.get(), lhs.layout.rows(), lhs.layout.cols(),
+      Eigen::OuterStride<Eigen::Dynamic>(lhs.layout.stride()));
+  EigenRhsType eigen_rhs(
+      rhs.data.get(), rhs.layout.rows(), rhs.layout.cols(),
+      Eigen::OuterStride<Eigen::Dynamic>(rhs.layout.stride()));
   EigenDstType eigen_dst(
-      dst->data.get(), dst->layout.rows, dst->layout.cols,
-      Eigen::OuterStride<Eigen::Dynamic>(dst->layout.stride));
+      dst->data.get(), dst->layout.rows(), dst->layout.cols(),
+      Eigen::OuterStride<Eigen::Dynamic>(dst->layout.stride()));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
   if (mul_params.bias) {
-    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows);
+    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows());
     if (mul_params.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
         mul_params.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs).colwise() + eigen_bias;
@@ -878,7 +904,7 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                const MulParamsType& mul_params, int max_num_threads,
                Matrix<DstScalar>* dst) {
-  int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
+  int index = Mash(lhs.layout.order(), rhs.layout.order(), dst->layout.order());
   switch (index) {
 #define EVALEIGEN_CASE3(LHS, RHS, DST) \
   case Mash(LHS, RHS, DST):            \
@@ -933,20 +959,20 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
 
   TensorLhsType tensor_lhs(
       contract_lhs.data.get(),
-      LhsOrder == Order::kColMajor ? contract_lhs.layout.rows
-                                   : contract_lhs.layout.cols,
-      LhsOrder == Order::kColMajor ? contract_lhs.layout.cols
-                                   : contract_lhs.layout.rows);
+      LhsOrder == Order::kColMajor ? contract_lhs.layout.rows()
+                                   : contract_lhs.layout.cols(),
+      LhsOrder == Order::kColMajor ? contract_lhs.layout.cols()
+                                   : contract_lhs.layout.rows());
   TensorRhsType tensor_rhs(
       contract_rhs.data.get(),
-      RhsOrder == Order::kColMajor ? contract_rhs.layout.rows
-                                   : contract_rhs.layout.cols,
-      RhsOrder == Order::kColMajor ? contract_rhs.layout.cols
-                                   : contract_rhs.layout.rows);
+      RhsOrder == Order::kColMajor ? contract_rhs.layout.rows()
+                                   : contract_rhs.layout.cols(),
+      RhsOrder == Order::kColMajor ? contract_rhs.layout.cols()
+                                   : contract_rhs.layout.rows());
   TensorDstType tensor_dst(
       dst->data.get(),
-      DstOrder == Order::kColMajor ? dst->layout.rows : dst->layout.cols,
-      DstOrder == Order::kColMajor ? dst->layout.cols : dst->layout.rows);
+      DstOrder == Order::kColMajor ? dst->layout.rows() : dst->layout.cols(),
+      DstOrder == Order::kColMajor ? dst->layout.cols() : dst->layout.rows());
   using DimPair =
       typename Eigen::Tensor<Scalar, 1, 0, Eigen::Index>::DimensionPair;
   Eigen::array<DimPair, 1> contract_dims(
@@ -957,11 +983,11 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   static Eigen::ThreadPool pool(max_num_threads ? max_num_threads : 1);
   static Eigen::ThreadPoolDevice device(&pool, pool.NumThreads());
   if (mul_params.bias) {
-    TensorBiasType tensor_bias(mul_params.bias, dst->layout.rows);
-    Eigen::array<int, 2> bias_2d_shape(tr ? 1 : dst->layout.rows,
-                                       tr ? dst->layout.rows : 1);
-    Eigen::array<int, 2> bcast(tr ? dst->layout.cols : 1,
-                               tr ? 1 : dst->layout.cols);
+    TensorBiasType tensor_bias(mul_params.bias, dst->layout.rows());
+    Eigen::array<int, 2> bias_2d_shape(tr ? 1 : dst->layout.rows(),
+                                       tr ? dst->layout.rows() : 1);
+    Eigen::array<int, 2> bcast(tr ? dst->layout.cols() : 1,
+                               tr ? 1 : dst->layout.cols());
     if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
         mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
@@ -990,7 +1016,7 @@ template <typename Scalar, typename MulParamsType>
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                      const MulParamsType& mul_params, int max_num_threads,
                      Matrix<Scalar>* dst) {
-  int index = Mash(lhs.layout.order, rhs.layout.order, dst->layout.order);
+  int index = Mash(lhs.layout.order(), rhs.layout.order(), dst->layout.order());
   switch (index) {
 #define EVALEIGENTENSOR_CASE3(LHS, RHS, DST)                    \
   case Mash(LHS, RHS, DST):                                     \
@@ -1041,6 +1067,19 @@ struct GenericBlasGemm<lapack::real> {
   }
 };
 
+inline void TransposeLayout(Layout* layout) {
+  layout->set_order((layout->order() == Order::kRowMajor) ? Order::kColMajor
+                                                          : Order::kRowMajor);
+  int tmp_rows = layout->rows();
+  layout->set_rows(layout->cols());
+  layout->set_cols(tmp_rows);
+}
+
+template <typename Scalar>
+void Transpose(Matrix<Scalar>* matrix) {
+  TransposeLayout(&matrix->layout);
+}
+
 template <typename Scalar, typename MulParamsType>
 void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                   const MulParamsType& mul_params, int max_num_threads,
@@ -1059,7 +1098,7 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   // Use Transpose to reduce to the all-column-major case.
   // Notice that ruy::Matrix merely holds a pointer, does not own data,
   // so Transpose is cheap -- no actual matrix data is being transposed here.
-  if (dst->layout.order == Order::kColMajor) {
+  if (dst->layout.order() == Order::kColMajor) {
     gemm_lhs = lhs;
     gemm_rhs = rhs;
   } else {
@@ -1072,32 +1111,32 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   bool transposed_lhs = false;
   bool transposed_rhs = false;
 
-  if (gemm_lhs.layout.order == Order::kRowMajor) {
+  if (gemm_lhs.layout.order() == Order::kRowMajor) {
     Transpose(&gemm_lhs);
     transposed_lhs = true;
   }
-  if (gemm_rhs.layout.order == Order::kRowMajor) {
+  if (gemm_rhs.layout.order() == Order::kRowMajor) {
     Transpose(&gemm_rhs);
     transposed_rhs = true;
   }
 
-  RUY_CHECK_EQ(gemm_lhs.layout.order, Order::kColMajor);
-  RUY_CHECK_EQ(gemm_rhs.layout.order, Order::kColMajor);
-  RUY_CHECK_EQ(gemm_dst.layout.order, Order::kColMajor);
+  RUY_CHECK_EQ(gemm_lhs.layout.order(), Order::kColMajor);
+  RUY_CHECK_EQ(gemm_rhs.layout.order(), Order::kColMajor);
+  RUY_CHECK_EQ(gemm_dst.layout.order(), Order::kColMajor);
 
   char transa = transposed_lhs ? 'T' : 'N';
   char transb = transposed_rhs ? 'T' : 'N';
-  int m = gemm_lhs.layout.rows;
-  int n = gemm_rhs.layout.cols;
-  int k = gemm_lhs.layout.cols;
+  int m = gemm_lhs.layout.rows();
+  int n = gemm_rhs.layout.cols();
+  int k = gemm_lhs.layout.cols();
   float alpha = 1;
   Scalar* a = gemm_lhs.data.get();
-  int lda = gemm_lhs.layout.stride;
+  int lda = gemm_lhs.layout.stride();
   Scalar* b = gemm_rhs.data.get();
-  int ldb = gemm_rhs.layout.stride;
+  int ldb = gemm_rhs.layout.stride();
   float beta = 0;
   Scalar* c = gemm_dst.data.get();
-  int ldc = gemm_dst.layout.stride;
+  int ldc = gemm_dst.layout.stride();
   GenericBlasGemm<Scalar>::Run(&transa, &transb, &m, &n, &k, &alpha, a, &lda, b,
                                &ldb, &beta, c, &ldc);
 
@@ -1111,12 +1150,12 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
       typename Eigen::Matrix<Scalar, Eigen::Dynamic, 1>::ConstMapType;
 
   EigenDstType eigen_dst(
-      gemm_dst.data.get(), gemm_dst.layout.rows, gemm_dst.layout.cols,
-      Eigen::OuterStride<Eigen::Dynamic>(gemm_dst.layout.stride));
+      gemm_dst.data.get(), gemm_dst.layout.rows(), gemm_dst.layout.cols(),
+      Eigen::OuterStride<Eigen::Dynamic>(gemm_dst.layout.stride()));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
   if (mul_params.bias) {
-    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows);
+    EigenBiasType eigen_bias(mul_params.bias, dst->layout.rows());
     if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
         mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
       eigen_dst.noalias() = eigen_dst.colwise() + eigen_bias;
@@ -1211,18 +1250,18 @@ void EvalExternalPath(
 template <typename Scalar>
 bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
            int depth) {
-  RUY_CHECK_EQ(matrix1.layout.rows, matrix2.layout.rows);
-  RUY_CHECK_EQ(matrix1.layout.cols, matrix2.layout.cols);
+  RUY_CHECK_EQ(matrix1.layout.rows(), matrix2.layout.rows());
+  RUY_CHECK_EQ(matrix1.layout.cols(), matrix2.layout.cols());
   RUY_CHECK_EQ(matrix1.zero_point, matrix2.zero_point);
-  const int size = matrix1.layout.rows * matrix1.layout.cols;
+  const int size = matrix1.layout.rows() * matrix1.layout.cols();
   double tolerated_max_diff = 0;
   double tolerated_mean_diff = 0;
   if (std::is_floating_point<Scalar>::value) {
     // TODO: replace hardcoded 100 by something more sensible, probably
     // roughly sqrt(depth) based on central limit theorem.
     double max_abs_val = 0;
-    for (int row = 0; row < matrix1.layout.rows; row++) {
-      for (int col = 0; col < matrix1.layout.cols; col++) {
+    for (int row = 0; row < matrix1.layout.rows(); row++) {
+      for (int col = 0; col < matrix1.layout.cols(); col++) {
         max_abs_val =
             std::max(max_abs_val,
                      std::abs(static_cast<double>(Element(matrix1, row, col))));
@@ -1240,8 +1279,8 @@ bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
     tolerated_mean_diff = std::min(1.0, 2.0 * std::pow(size, -0.2));
   }
   double sum_diff = 0;
-  for (int row = 0; row < matrix1.layout.rows; row++) {
-    for (int col = 0; col < matrix1.layout.cols; col++) {
+  for (int row = 0; row < matrix1.layout.rows(); row++) {
+    for (int col = 0; col < matrix1.layout.cols(); col++) {
       double elem1 = Element(matrix1, row, col);
       double elem2 = Element(matrix2, row, col);
       double diff = elem1 - elem2;
@@ -1295,8 +1334,8 @@ void GetMatrixStats(const Matrix<Scalar>& matrix, Stats* stats) {
   double max = -std::numeric_limits<double>::infinity();
   double sum = 0;
   std::vector<double> allvals;
-  for (int row = 0; row < matrix.layout.rows; row++) {
-    for (int col = 0; col < matrix.layout.cols; col++) {
+  for (int row = 0; row < matrix.layout.rows(); row++) {
+    for (int col = 0; col < matrix.layout.cols(); col++) {
       double val = Element(matrix, row, col);
       min = std::min(min, val);
       max = std::max(max, val);
@@ -1333,8 +1372,8 @@ void AnalyzeTestError(const TestSetType& test_set, int first_bad_result_index,
   GetMatrixStats(good_matrix, &error_analysis->stats_good);
   GetMatrixStats(bad_matrix, &error_analysis->stats_bad);
   bool found_first_error = false;
-  for (int row = 0; row < good_matrix.layout.rows; row++) {
-    for (int col = 0; col < good_matrix.layout.cols; col++) {
+  for (int row = 0; row < good_matrix.layout.rows(); row++) {
+    for (int col = 0; col < good_matrix.layout.cols(); col++) {
       if (Element(good_matrix, row, col) != Element(bad_matrix, row, col)) {
         if (!found_first_error) {
           found_first_error = true;
@@ -1364,7 +1403,7 @@ void ComputeReasonableMultiplier(
     return;
   }
   *multiplier = static_cast<double>(std::numeric_limits<DstScalar>::max()) /
-                (static_cast<double>(lhs.layout.cols) *
+                (static_cast<double>(lhs.layout.cols()) *
                  std::numeric_limits<LhsScalar>::max() *
                  std::numeric_limits<RhsScalar>::max());
 }
@@ -1985,9 +2024,9 @@ std::string DumpRegion(const Matrix<Scalar>& matrix, int center_row,
                        int center_col) {
   static constexpr int kRadius = 20;
   int first_row = std::max(0, center_row - kRadius);
-  int last_row = std::min(matrix.layout.rows - 1, center_row + kRadius);
+  int last_row = std::min(matrix.layout.rows() - 1, center_row + kRadius);
   int first_col = std::max(0, center_col - kRadius);
-  int last_col = std::min(matrix.layout.cols - 1, center_col + kRadius);
+  int last_col = std::min(matrix.layout.cols() - 1, center_col + kRadius);
   std::ostringstream stream;
   for (int row = first_row; row <= last_row; row++) {
     for (int col = first_col; col <= last_col; col++) {
@@ -2000,7 +2039,7 @@ std::string DumpRegion(const Matrix<Scalar>& matrix, int center_row,
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::VerifyTestResults() const {
-  const int depth = lhs.matrix.layout.cols;
+  const int depth = lhs.matrix.layout.cols();
   for (int i = 0; i < static_cast<int>(results.size()) - 1; i++) {
     if (!Agree(*results[i], *results[i + 1], depth)) {
       std::string paths_in_agreement;
