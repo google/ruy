@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "ruy/context_internal.h"
+#include "ruy/context_friend.h"
 
 #include "ruy/check_macros.h"
 #include "ruy/context.h"
+#include "ruy/context_private.h"
 #include "ruy/detect_arm.h"
 #include "ruy/detect_x86.h"
 #include "ruy/have_built_path_for.h"
@@ -24,14 +25,14 @@ limitations under the License.
 
 namespace ruy {
 
-void ContextInternal::SetRuntimeEnabledPaths(Context* context, Path paths) {
-  context->runtime_enabled_paths_ = paths;
+void ContextFriend::SetRuntimeEnabledPaths(Context* context, Path paths) {
+  context->private_->runtime_enabled_paths_ = paths;
 }
 
-Path ContextInternal::GetRuntimeEnabledPaths(Context* context) {
+Path ContextFriend::GetRuntimeEnabledPaths(Context* context) {
   // Note, this is a reference, used to avoid exceedingly long lines in this
   // function body. Assigning to it mutates *context.
-  Path& enabled_paths = context->runtime_enabled_paths_;
+  Path& enabled_paths = context->private_->runtime_enabled_paths_;
 
   // This function should always return the same value on a given machine.
   // When runtime_enabled_paths_ has its initial value kNone, it performs
@@ -111,33 +112,39 @@ Path ContextInternal::GetRuntimeEnabledPaths(Context* context) {
   return enabled_paths;
 }
 
+Path ContextFriend::SelectPath(Context* context, Path compiled_paths) {
+  context->private_->last_selected_path_ =
+      GetMostSignificantPath(compiled_paths & GetRuntimeEnabledPaths(context));
+  return context->private_->last_selected_path_;
+}
+
 const std::vector<std::unique_ptr<PerThreadState>>&
-ContextInternal::GetPerThreadStates(Context* context, int thread_count) {
-  while (context->per_thread_states.size() <
+ContextFriend::GetPerThreadStates(Context* context, int thread_count) {
+  while (context->private_->per_thread_states_.size() <
          static_cast<std::size_t>(thread_count)) {
-    context->per_thread_states.emplace_back(new PerThreadState);
+    context->private_->per_thread_states_.emplace_back(new PerThreadState);
   }
-  return context->per_thread_states;
+  return context->private_->per_thread_states_;
 }
 
-Allocator* ContextInternal::GetMainAllocator(Context* context) {
-  if (!context->main_allocator_) {
-    context->main_allocator_.reset(new Allocator);
+Allocator* ContextFriend::GetMainAllocator(Context* context) {
+  if (!context->private_->main_allocator_) {
+    context->private_->main_allocator_.reset(new Allocator);
   }
-  return context->main_allocator_.get();
+  return context->private_->main_allocator_.get();
 }
 
-PrepackedCache* ContextInternal::GetPrepackedCache(Context* context) {
-  if (!context->prepacked_cache_) {
-    context->prepacked_cache_.reset(new PrepackedCache);
+PrepackedCache* ContextFriend::GetPrepackedCache(Context* context) {
+  if (!context->private_->prepacked_cache_) {
+    context->private_->prepacked_cache_.reset(new PrepackedCache);
   }
-  return context->prepacked_cache_.get();
+  return context->private_->prepacked_cache_.get();
 }
 
-Tuning ContextInternal::GetMainThreadTuning(Context* context) {
+Tuning ContextFriend::GetMainThreadTuning(Context* context) {
   const auto& per_thread_states = GetPerThreadStates(context, 1);
   TuningResolver* tuning_resolver = &per_thread_states[0]->tuning_resolver;
-  tuning_resolver->SetTuning(context->explicit_tuning);
+  tuning_resolver->SetTuning(context->private_->explicit_tuning_);
   return tuning_resolver->Resolve();
 }
 

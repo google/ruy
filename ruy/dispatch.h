@@ -41,7 +41,7 @@ limitations under the License.
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
 #include "ruy/context.h"
-#include "ruy/context_internal.h"
+#include "ruy/context_friend.h"
 #include "ruy/kernel.h"
 #include "ruy/kernel_common.h"
 #include "ruy/mat.h"
@@ -394,17 +394,16 @@ struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
 inline void HandlePrepackedCaching(TrMulParams* params,
                                    const SidePair<bool>& cacheable,
                                    Context* context) {
-  if (context->cache_policy == CachePolicy::kNoCache) {
+  if (context->cache_policy() == CachePolicy::kNoCache) {
     return;
   }
 
-  if (context->cache_policy == CachePolicy::kCacheLHSOnNarrowMul) {
+  if (context->cache_policy() == CachePolicy::kCacheLHSOnNarrowMul) {
     // TODO(b/149304278) Cache on dst.cols <= selected kernel width.
     if (!cacheable[Side::kLhs] || params->dst.layout.cols > 4) {
       return;
     }
-    PrepackedCache* prepacked_cache =
-        ContextInternal::GetPrepackedCache(context);
+    PrepackedCache* prepacked_cache = ContextFriend::GetPrepackedCache(context);
     auto cache_key = std::make_pair(reinterpret_cast<void*>(params->run_kernel),
                                     params->src[Side::kLhs].data);
     auto it = prepacked_cache->FindAndUpdate(cache_key);
@@ -423,7 +422,7 @@ inline void HandlePrepackedCaching(TrMulParams* params,
     params->packed[Side::kLhs].data = prepacked_lhs.data;
     params->packed[Side::kLhs].sums = prepacked_lhs.sums;
     params->is_prepacked[Side::kLhs] = true;
-    Tuning tuning = ContextInternal::GetMainThreadTuning(context);
+    Tuning tuning = ContextFriend::GetMainThreadTuning(context);
     params->RunPack(Side::kLhs, tuning, 0,
                     params->packed[Side::kLhs].layout.cols);
     prepacked_cache->Insert(cache_key, prepacked_lhs);
@@ -458,7 +457,7 @@ void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   //
   // Unfortunately, it is not a *static* constant, since it depends on runtime
   // detection of the available SIMD instructions.
-  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
+  Path the_path = ContextFriend::SelectPath(context, CompiledPaths);
 
   // Production code should probably never execute Path::kReference.
   // Path::kReference implements a Mul, not a TrMul like the rest of Ruy, so if

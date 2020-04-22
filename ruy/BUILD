@@ -152,7 +152,7 @@ cc_test(
     name = "prepacked_cache_test",
     srcs = ["prepacked_cache_test.cc"],
     deps = [
-        ":context_internal",
+        ":context_friend",
         ":gtest_wrapper",
         ":prepacked_cache",
         ":ruy",
@@ -759,7 +759,32 @@ cc_library(
 )
 
 cc_library(
+    name = "context_private",
+    srcs = [
+        "context_private.cc",
+    ],
+    hdrs = [
+        "context_private.h",
+    ],
+    copts = ruy_copts_base(),
+    deps = [
+        ":allocator",
+        ":check_macros",
+        ":detect_arm",
+        ":detect_x86",
+        ":have_built_path_for",
+        ":path",
+        ":platform",
+        ":prepacked_cache",
+        ":thread_pool",
+        ":trace",
+        ":tune",
+    ],
+)
+
+cc_library(
     name = "context",
+    srcs = ["context.cc"],
     hdrs = [
         "context.h",
     ],
@@ -768,6 +793,7 @@ cc_library(
     deps = [
         ":allocator",
         ":check_macros",
+        ":context_private",
         ":detect_arm",
         ":detect_x86",
         ":have_built_path_for",
@@ -785,27 +811,29 @@ cc_test(
     srcs = ["context_test.cc"],
     deps = [
         ":context",
-        ":context_internal",
+        ":context_friend",
         ":gtest_wrapper",
         ":path",
         ":platform",
         ":prepacked_cache",
+        ":tune",
     ],
 )
 
 cc_library(
-    name = "context_internal",
+    name = "context_friend",
     srcs = [
-        "context_internal.cc",
+        "context_friend.cc",
     ],
     hdrs = [
-        "context_internal.h",
+        "context_friend.h",
     ],
     copts = ruy_copts_base(),
     deps = [
         ":allocator",
         ":check_macros",
         ":context",
+        ":context_private",
         ":detect_arm",
         ":detect_x86",
         ":have_built_path_for",
@@ -819,11 +847,11 @@ cc_library(
 )
 
 cc_test(
-    name = "context_internal_test",
-    srcs = ["context_internal_test.cc"],
+    name = "context_friend_test",
+    srcs = ["context_friend_test.cc"],
     deps = [
         ":context",
-        ":context_internal",
+        ":context_friend",
         ":gtest_wrapper",
         ":path",
         ":platform",
@@ -852,7 +880,7 @@ cc_library(
         ":check_macros",
         ":common",
         ":context",
-        ":context_internal",
+        ":context_friend",
         ":mat",
         ":matrix",
         ":mul_params",
@@ -884,7 +912,7 @@ cc_library(
         ":check_macros",
         ":common",
         ":context",
-        ":context_internal",
+        ":context_friend",
         ":kernel",
         ":mat",
         ":matrix",

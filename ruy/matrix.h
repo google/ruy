@@ -168,15 +168,6 @@ inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
 // Opaque data structure representing a pre-packed matrix, as obtained from
 // Ruy's advanced API.
 struct PrepackedMatrix {
-  void* get_data() const { return data; }
-  void set_data(void* ptr) { data = ptr; }
-  int get_data_size() const { return data_size; }
-  void set_data_size(int value) { data_size = value; }
-  void* get_sums() const { return sums; }
-  void set_sums(void* ptr) { sums = ptr; }
-  int get_sums_size() const { return sums_size; }
-  void set_sums_size(int value) { sums_size = value; }
-
   void* data = nullptr;
   int data_size = 0;
   void* sums = nullptr;

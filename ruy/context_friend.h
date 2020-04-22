@@ -13,31 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef RUY_RUY_CONTEXT_INTERNAL_H_
-#define RUY_RUY_CONTEXT_INTERNAL_H_
+#ifndef RUY_RUY_CONTEXT_FRIEND_H_
+#define RUY_RUY_CONTEXT_FRIEND_H_
+
+#include <memory>
+#include <vector>
 
 #include "ruy/context.h"
+#include "ruy/context_private.h"
 
 namespace ruy {
 
-class ContextInternal {
+class ContextFriend {
  public:
   static void SetRuntimeEnabledPaths(Context* context, Path paths);
   static Path GetRuntimeEnabledPaths(Context* context);
+  static Path SelectPath(Context* context, Path compiled_paths);
   static const std::vector<std::unique_ptr<PerThreadState>>& GetPerThreadStates(
       Context* context, int thread_count);
   static Allocator* GetMainAllocator(Context* context);
   static PrepackedCache* GetPrepackedCache(Context* context);
   static Tuning GetMainThreadTuning(Context* context);
-
-  template <Path CompiledPaths>
-  static Path GetPathToTake(Context* context) {
-    context->last_taken_path =
-        GetMostSignificantPath(CompiledPaths & GetRuntimeEnabledPaths(context));
-    return context->last_taken_path;
-  }
 };
 
 }  // end namespace ruy
 
-#endif  // RUY_RUY_CONTEXT_INTERNAL_H_
+#endif  // RUY_RUY_CONTEXT_FRIEND_H_

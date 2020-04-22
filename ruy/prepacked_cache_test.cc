@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <thread>  // NOLINT(build/c++11)
 
-#include "ruy/context_internal.h"
+#include "ruy/context_friend.h"
 #include "ruy/gtest_wrapper.h"
 #include "ruy/ruy.h"
 #include "ruy/time.h"
@@ -138,8 +138,8 @@ TEST(PrepackedCacheTest, TestCacheEjection2) {
 TEST(PrepackedCacheTest, TestCacheOnCacheable) {
   // Create context and set the cache policy
   ruy::Context context;
-  context.cache_policy = ruy::kCacheLHSOnNarrowMul;
-  PrepackedCache* cache = ContextInternal::GetPrepackedCache(&context);
+  context.set_cache_policy(ruy::CachePolicy::kCacheLHSOnNarrowMul);
+  PrepackedCache* cache = ContextFriend::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 
   const float lhs_data[] = {1, 2, 3, 4};
@@ -171,8 +171,8 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
 TEST(PrepackedCacheTest, TestClearCache) {
   // Create context and set the cache policy
   ruy::Context context;
-  context.cache_policy = ruy::kCacheLHSOnNarrowMul;
-  PrepackedCache* cache = ContextInternal::GetPrepackedCache(&context);
+  context.set_cache_policy(ruy::CachePolicy::kCacheLHSOnNarrowMul);
+  PrepackedCache* cache = ContextFriend::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 
   const float lhs_data[] = {1, 2, 3, 4};
@@ -198,7 +198,7 @@ TEST(PrepackedCacheTest, TestClearCache) {
   // Clear the cache via the Context.
   context.ClearPrepackedCache();
   // Verify that the cache is now empty.
-  cache = ContextInternal::GetPrepackedCache(&context);
+  cache = ContextFriend::GetPrepackedCache(&context);
   EXPECT_EQ(cache->TotalSize(), 0);
 }
 

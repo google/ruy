@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "ruy/context_internal.h"
+#include "ruy/context_friend.h"
 
 #include "ruy/context.h"
 #include "ruy/gtest_wrapper.h"
@@ -23,11 +23,10 @@ limitations under the License.
 namespace ruy {
 namespace {
 
-TEST(ContextInternalTest, EnabledPathsGeneral) {
+TEST(ContextFriendTest, EnabledPathsGeneral) {
   ruy::Context context;
-  const auto ruy_paths = ContextInternal::GetRuntimeEnabledPaths(&context);
-  const auto ruy_paths_repeat =
-      ContextInternal::GetRuntimeEnabledPaths(&context);
+  const auto ruy_paths = ContextFriend::GetRuntimeEnabledPaths(&context);
+  const auto ruy_paths_repeat = ContextFriend::GetRuntimeEnabledPaths(&context);
   ASSERT_EQ(ruy_paths, ruy_paths_repeat);
   EXPECT_NE(ruy_paths, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kReference, Path::kReference);
@@ -35,33 +34,33 @@ TEST(ContextInternalTest, EnabledPathsGeneral) {
 }
 
 #if RUY_PLATFORM(X86)
-TEST(ContextInternalTest, EnabledPathsX86) {
+TEST(ContextFriendTest, EnabledPathsX86) {
   ruy::Context context;
-  ContextInternal::SetRuntimeEnabledPaths(
+  ContextFriend::SetRuntimeEnabledPaths(
       &context, Path::kSse42 | Path::kAvx2 | Path::kAvx512 | Path::kAvxVnni);
-  const auto ruy_paths = ContextInternal::GetRuntimeEnabledPaths(&context);
+  const auto ruy_paths = ContextFriend::GetRuntimeEnabledPaths(&context);
   EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
 }
 #endif  // RUY_PLATFORM(X86)
 
 #if RUY_PLATFORM(ARM)
-TEST(ContextInternalTest, EnabledPathsArm) {
+TEST(ContextFriendTest, EnabledPathsArm) {
   ruy::Context context;
-  ContextInternal::SetRuntimeEnabledPaths(&context,
-                                          Path::kNeon | Path::kNeonDotprod);
-  const auto ruy_paths = ContextInternal::GetRuntimeEnabledPaths(&context);
+  ContextFriend::SetRuntimeEnabledPaths(&context,
+                                        Path::kNeon | Path::kNeonDotprod);
+  const auto ruy_paths = ContextFriend::GetRuntimeEnabledPaths(&context);
   EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kNeon, Path::kNeon);
 }
 #endif  // RUY_PLATFORM(ARM)
 
-TEST(ContextInternalTest, GetPerThreadStates) {
+TEST(ContextFriendTest, GetPerThreadStates) {
   ruy::Context context;
   for (int i = 1; i <= 4; i++) {
     const auto& per_thread_states =
-        ContextInternal::GetPerThreadStates(&context, i);
+        ContextFriend::GetPerThreadStates(&context, i);
     EXPECT_EQ(per_thread_states.size(), i);
     for (int j = 0; j < i; j++) {
       EXPECT_NE(&per_thread_states[j]->get_allocator(), nullptr);
@@ -72,7 +71,7 @@ TEST(ContextInternalTest, GetPerThreadStates) {
                 per_thread_states[j]->mutable_tuning_resolver());
     }
     // Calling with a smaller thread_count should not shrink the vector.
-    EXPECT_EQ(ContextInternal::GetPerThreadStates(&context, 1).size(), i);
+    EXPECT_EQ(ContextFriend::GetPerThreadStates(&context, 1).size(), i);
   }
 }
 
