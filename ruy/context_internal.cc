@@ -113,11 +113,11 @@ Path ContextInternal::GetRuntimeEnabledPaths(Context* context) {
 
 const std::vector<std::unique_ptr<PerThreadState>>&
 ContextInternal::GetPerThreadStates(Context* context, int thread_count) {
-  while (context->per_thread_states.size() <
+  while (context->per_thread_states_.size() <
          static_cast<std::size_t>(thread_count)) {
-    context->per_thread_states.emplace_back(new PerThreadState);
+    context->per_thread_states_.emplace_back(new PerThreadState);
   }
-  return context->per_thread_states;
+  return context->per_thread_states_;
 }
 
 Allocator* ContextInternal::GetMainAllocator(Context* context) {
@@ -137,7 +137,7 @@ PrepackedCache* ContextInternal::GetPrepackedCache(Context* context) {
 Tuning ContextInternal::GetMainThreadTuning(Context* context) {
   const auto& per_thread_states = GetPerThreadStates(context, 1);
   TuningResolver* tuning_resolver = &per_thread_states[0]->tuning_resolver;
-  tuning_resolver->SetTuning(context->explicit_tuning);
+  tuning_resolver->SetTuning(context->explicit_tuning_);
   return tuning_resolver->Resolve();
 }
 

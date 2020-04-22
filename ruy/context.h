@@ -53,35 +53,34 @@ struct PerThreadState {
 // enabled (typically based on which instruction sets are detected) and how
 // many threads to use.
 struct Context final {
-  Path get_last_taken_path() const { return last_taken_path; }
-  void set_last_taken_path(Path value) { last_taken_path = value; }
-  Tuning get_explicit_tuning() const { return explicit_tuning; }
-  void set_explicit_tuning(Tuning value) { explicit_tuning = value; }
+  Path last_taken_path() const { return last_taken_path_; }
+  void set_last_taken_path(Path value) { last_taken_path_ = value; }
+  Tuning explicit_tuning() const { return explicit_tuning_; }
+  void set_explicit_tuning(Tuning value) { explicit_tuning_ = value; }
   // See comment on workers_pool: we wanted to rename it all along.
-  const ThreadPool& get_thread_pool() const { return workers_pool; }
-  ThreadPool* mutable_thread_pool() { return &workers_pool; }
-  int get_max_num_threads() const { return max_num_threads; }
-  void set_max_num_threads(int value) { max_num_threads = value; }
-  const TracingContext& get_tracing() const { return tracing; }
-  TracingContext* mutable_tracing() { return &tracing; }
-  CachePolicy get_cache_policy() const { return cache_policy; }
-  void set_cache_policy(CachePolicy value) { cache_policy = value; }
-
-  Path last_taken_path = Path::kNone;
-  Tuning explicit_tuning = Tuning::kAuto;
-  // TODO(b/154013439) rename that thread_pool. Current name is gemmlowp legacy.
-  // And make it a pointer so that context.h does not
-  // need to #include "thread_pool.h".
-  ThreadPool workers_pool;
-  int max_num_threads = 1;
-  // TODO(b/154013439) make `tracing` a pointer so that context.h does not
-  // need to #include "trace.h".
-  TracingContext tracing;
-  CachePolicy cache_policy = CachePolicy::kNoCache;
+  const ThreadPool& thread_pool() const { return thread_pool_; }
+  ThreadPool* mutable_thread_pool() { return &thread_pool_; }
+  int max_num_threads() const { return max_num_threads_; }
+  void set_max_num_threads(int value) { max_num_threads_ = value; }
+  const TracingContext& tracing() const { return tracing_; }
+  TracingContext* mutable_tracing() { return &tracing_; }
+  CachePolicy cache_policy() const { return cache_policy_; }
+  void set_cache_policy(CachePolicy value) { cache_policy_ = value; }
 
   void ClearPrepackedCache() { prepacked_cache_ = nullptr; }
 
  private:
+  Path last_taken_path_ = Path::kNone;
+  Tuning explicit_tuning_ = Tuning::kAuto;
+  // TODO(b/154013439) make `thread_pool_` a pointer so that context.h does not
+  // need to #include "thread_pool.h".
+  ThreadPool thread_pool_;
+  int max_num_threads_ = 1;
+  // TODO(b/154013439) make `tracing` a pointer so that context.h does not
+  // need to #include "trace.h".
+  TracingContext tracing_;
+  CachePolicy cache_policy_ = CachePolicy::kNoCache;
+
   // Allocator for main thread work before invoking the threadpool.
   // Our simple Allocator does not allow reserving/allocating more blocks
   // while it's already in committed state, so the main thread needs both
@@ -97,7 +96,7 @@ struct Context final {
   // State for each thread in the thread pool. Entry 0 is the main thread.
   // Only used internally in TrMul, so this doesn't have public accessors,
   // instead we befriend TrMul.
-  std::vector<std::unique_ptr<PerThreadState>> per_thread_states;
+  std::vector<std::unique_ptr<PerThreadState>> per_thread_states_;
 
   friend class ContextInternal;
 };

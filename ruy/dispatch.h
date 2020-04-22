@@ -394,11 +394,11 @@ struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
 inline void HandlePrepackedCaching(TrMulParams* params,
                                    const SidePair<bool>& cacheable,
                                    Context* context) {
-  if (context->cache_policy == CachePolicy::kNoCache) {
+  if (context->cache_policy() == CachePolicy::kNoCache) {
     return;
   }
 
-  if (context->cache_policy == CachePolicy::kCacheLHSOnNarrowMul) {
+  if (context->cache_policy() == CachePolicy::kCacheLHSOnNarrowMul) {
     // TODO(b/149304278) Cache on dst.cols <= selected kernel width.
     if (!cacheable[Side::kLhs] || params->dst.layout.cols > 4) {
       return;

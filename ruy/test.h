@@ -631,18 +631,18 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
-  GlobalContext().explicit_tuning = result->tuning;
+  GlobalContext().set_explicit_tuning(result->tuning);
   if (max_num_threads) {
-    GlobalContext().max_num_threads = max_num_threads;
+    GlobalContext().set_max_num_threads(max_num_threads);
   } else if (benchmark) {
-    GlobalContext().max_num_threads = 1;
+    GlobalContext().set_max_num_threads(1);
   } else {
-    GlobalContext().max_num_threads = 1 + global_random_engine()() % 8;
+    GlobalContext().set_max_num_threads(1 + global_random_engine()() % 8);
   }
   ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
   if (expected_outcome == ExpectedOutcome::kSuccess) {
     DoMul(result);
-    RUY_CHECK_EQ(GlobalContext().last_taken_path, result->path);
+    RUY_CHECK_EQ(GlobalContext().last_taken_path(), result->path);
   } else if (expected_outcome == ExpectedOutcome::kDeath) {
     // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
     // Report a bug?
@@ -652,8 +652,8 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
   } else {
     RUY_CHECK(false);
   }
-  GlobalContext().explicit_tuning = Tuning::kAuto;
-  GlobalContext().max_num_threads = 1;
+  GlobalContext().set_explicit_tuning(Tuning::kAuto);
+  GlobalContext().set_max_num_threads(1);
 }
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
@@ -1673,7 +1673,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
     PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params,
                              &GlobalContext(), &null_data_dst,
                              prepacked_lhs_ptr, prepacked_rhs_ptr, alloc_fn);
-    RUY_CHECK_EQ(GlobalContext().last_taken_path, result->path);
+    RUY_CHECK_EQ(GlobalContext().last_taken_path(), result->path);
   }
 
   life_stage = LifeStage::kHasPrepackedMatrices;

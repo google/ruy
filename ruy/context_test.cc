@@ -24,21 +24,21 @@ namespace {
 
 TEST(ContextTest, ContextClassSanity) {
   Context context;
-  EXPECT_EQ(context.get_last_taken_path(), Path::kNone);
-  EXPECT_EQ(context.get_explicit_tuning(), Tuning::kAuto);
-  EXPECT_EQ(&context.get_thread_pool(), context.mutable_thread_pool());
+  EXPECT_EQ(context.last_taken_path(), Path::kNone);
+  EXPECT_EQ(context.explicit_tuning(), Tuning::kAuto);
+  EXPECT_EQ(&context.thread_pool(), context.mutable_thread_pool());
   EXPECT_NE(context.mutable_thread_pool(), nullptr);
-  EXPECT_EQ(context.get_max_num_threads(), 1);
-  EXPECT_EQ(&context.get_tracing(), context.mutable_tracing());
-  EXPECT_EQ(context.get_cache_policy(), CachePolicy::kNoCache);
+  EXPECT_EQ(context.max_num_threads(), 1);
+  EXPECT_EQ(&context.tracing(), context.mutable_tracing());
+  EXPECT_EQ(context.cache_policy(), CachePolicy::kNoCache);
   context.set_last_taken_path(Path::kStandardCpp);
   context.set_explicit_tuning(Tuning::kOutOfOrder);
   context.set_max_num_threads(2);
   context.set_cache_policy(CachePolicy::kCacheLHSOnNarrowMul);
-  EXPECT_EQ(context.get_last_taken_path(), Path::kStandardCpp);
-  EXPECT_EQ(context.get_explicit_tuning(), Tuning::kOutOfOrder);
-  EXPECT_EQ(context.get_max_num_threads(), 2);
-  EXPECT_EQ(context.get_cache_policy(), CachePolicy::kCacheLHSOnNarrowMul);
+  EXPECT_EQ(context.last_taken_path(), Path::kStandardCpp);
+  EXPECT_EQ(context.explicit_tuning(), Tuning::kOutOfOrder);
+  EXPECT_EQ(context.max_num_threads(), 2);
+  EXPECT_EQ(context.cache_policy(), CachePolicy::kCacheLHSOnNarrowMul);
 }
 
 }  // namespace

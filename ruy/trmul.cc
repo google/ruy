@@ -256,7 +256,7 @@ int GetThreadCount(Context* context, int rows, int cols, int depth) {
   static constexpr int kDivisorLog2 = 15;
   const int guess_log2 = std::max(
       0, ceil_log2(rows) + ceil_log2(cols) + ceil_log2(depth) - kDivisorLog2);
-  return std::min(1 << guess_log2, context->max_num_threads);
+  return std::min(1 << guess_log2, context->max_num_threads());
 }
 
 LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
@@ -281,7 +281,7 @@ LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
 void TrMul(TrMulParams* params, Context* context) {
   profiler::ScopeLabel label(
       "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
-      static_cast<int>(params->path), context->max_num_threads,
+      static_cast<int>(params->path), context->max_num_threads(),
       params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
   PEMat& packed_lhs = params->packed[Side::kLhs];
@@ -331,7 +331,7 @@ void TrMul(TrMulParams* params, Context* context) {
 
   profiler::ScopeLabel label_general("TrMulImpl, general case");
 
-  auto* trace = NewTraceOrNull(&context->tracing, rows, depth, cols);
+  auto* trace = NewTraceOrNull(context->mutable_tracing(), rows, depth, cols);
   TraceRecordStart(trace);
 
   // Initialize block map.
@@ -348,7 +348,7 @@ void TrMul(TrMulParams* params, Context* context) {
   const auto& per_thread_states =
       ContextInternal::GetPerThreadStates(context, thread_count);
   for (auto& per_thread_state : per_thread_states) {
-    per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning);
+    per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning());
   }
 
   // In the need_atomics case, allocate and initialize atomic values tracking
@@ -388,7 +388,7 @@ void TrMul(TrMulParams* params, Context* context) {
 
   // Do the computation.
   TraceRecordExecute(block_map, trace);
-  context->workers_pool.Execute(thread_count, tasks);
+  context->mutable_thread_pool()->Execute(thread_count, tasks);
 
   // Finish up.
   for (int i = 0; i < thread_count; i++) {

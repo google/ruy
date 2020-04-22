@@ -32,9 +32,9 @@ class ContextInternal {
 
   template <Path CompiledPaths>
   static Path GetPathToTake(Context* context) {
-    context->last_taken_path =
+    context->last_taken_path_ =
         GetMostSignificantPath(CompiledPaths & GetRuntimeEnabledPaths(context));
-    return context->last_taken_path;
+    return context->last_taken_path_;
   }
 };
 
