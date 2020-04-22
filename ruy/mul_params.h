@@ -55,54 +55,56 @@ enum class LayoutSupport { kGeneral, kRCC };
 // choice of accumulator type, AccumScalar). Some of that information is encoded
 // as runtime values (for instance, the optional bias vector).
 template <typename tAccumScalar, typename tDstScalar>
-struct MulParams {
+class MulParams /* not final, legitimate to subclass */ {
+ public:
   // Accumulator type. The type of accumulators used to compute the dot-products
   // before being ultimately casted to the destination type.
   using AccumScalar = tAccumScalar;
   // The destination scalar type.
   using DstScalar = tDstScalar;
 
-  const AccumScalar* get_bias() const { return bias; }
-  void set_bias(const AccumScalar* ptr) { bias = ptr; }
-  AccumScalar get_multiplier_fixedpoint() const {
-    return multiplier_fixedpoint;
-  }
+  const AccumScalar* bias() const { return bias_; }
+  void set_bias(const AccumScalar* ptr) { bias_ = ptr; }
+  AccumScalar multiplier_fixedpoint() const { return multiplier_fixedpoint_; }
   void set_multiplier_fixedpoint(const AccumScalar value) {
-    multiplier_fixedpoint = value;
+    multiplier_fixedpoint_ = value;
   }
-  int get_multiplier_exponent() const { return multiplier_exponent; }
-  void set_multiplier_exponent(const int value) { multiplier_exponent = value; }
-  const AccumScalar* get_multiplier_fixedpoint_perchannel() const {
-    return multiplier_fixedpoint_perchannel;
+  int multiplier_exponent() const { return multiplier_exponent_; }
+  void set_multiplier_exponent(const int value) {
+    multiplier_exponent_ = value;
+  }
+  const AccumScalar* multiplier_fixedpoint_perchannel() const {
+    return multiplier_fixedpoint_perchannel_;
   }
   void set_multiplier_fixedpoint_perchannel(const AccumScalar* ptr) {
-    multiplier_fixedpoint_perchannel = ptr;
+    multiplier_fixedpoint_perchannel_ = ptr;
   }
-  const int* get_multiplier_exponent_perchannel() const {
-    return multiplier_exponent_perchannel;
+  const int* multiplier_exponent_perchannel() const {
+    return multiplier_exponent_perchannel_;
   }
   void set_multiplier_exponent_perchannel(const int* ptr) {
-    multiplier_exponent_perchannel = ptr;
+    multiplier_exponent_perchannel_ = ptr;
   }
-  DstScalar get_clamp_min() const { return clamp_min; }
-  void set_clamp_min(const DstScalar value) { clamp_min = value; }
-  DstScalar get_clamp_max() const { return clamp_max; }
-  void set_clamp_max(const DstScalar value) { clamp_max = value; }
+  DstScalar clamp_min() const { return clamp_min_; }
+  void set_clamp_min(const DstScalar value) { clamp_min_ = value; }
+  DstScalar clamp_max() const { return clamp_max_; }
+  void set_clamp_max(const DstScalar value) { clamp_max_ = value; }
 
+ protected:
   // The bias vector data, if not null.
-  const AccumScalar* bias = nullptr;
+  const AccumScalar* bias_ = nullptr;
   // Only for non-floating-point cases. The fixed-point part (i.e. the mantissa)
   // of the multiplier by which accumulators are multiplied before being casted
   // to the destination type.
-  AccumScalar multiplier_fixedpoint = 0;
+  AccumScalar multiplier_fixedpoint_ = 0;
   // Only for non-floating-point cases. The exponent part of the aforementioned
   // multiplier.
-  int multiplier_exponent = 0;
+  int multiplier_exponent_ = 0;
   // Per-channel variant of multiplier_fixedpoint. If not nullptr, this must
   // point to a buffer of as many values as there are rows in the destination
   // matrix. Each row of the destination matrix will use the corresponding
   // buffer element instead of multiplier_fixedpoint.
-  const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
+  const AccumScalar* multiplier_fixedpoint_perchannel_ = nullptr;
   // Per-channel variant of multiplier_exponent. If not nullptr, this must
   // point to a buffer of as many values as there are rows in the destination
   // matrix. Each row of the destination matrix will use the corresponding
@@ -110,15 +112,17 @@ struct MulParams {
   //
   // Either none or both of multiplier_exponent_perchannel and
   // multiplier_fixedpoint_perchannel must be nullptr.
-  const int* multiplier_exponent_perchannel = nullptr;
+  const int* multiplier_exponent_perchannel_ = nullptr;
   // min clamp bound of destination values.
-  DstScalar clamp_min = std::is_floating_point<DstScalar>::value
-                            ? -std::numeric_limits<DstScalar>::infinity()
-                            : std::numeric_limits<DstScalar>::lowest();
+  DstScalar clamp_min_ = std::is_floating_point<DstScalar>::value
+                             ? -std::numeric_limits<DstScalar>::infinity()
+                             : std::numeric_limits<DstScalar>::lowest();
   // max clamp bound of destination values.
-  DstScalar clamp_max = std::is_floating_point<DstScalar>::value
-                            ? std::numeric_limits<DstScalar>::infinity()
-                            : std::numeric_limits<DstScalar>::max();
+  DstScalar clamp_max_ = std::is_floating_point<DstScalar>::value
+                             ? std::numeric_limits<DstScalar>::infinity()
+                             : std::numeric_limits<DstScalar>::max();
+
+ public:
   // See above enum LoopStructure
   static constexpr LoopStructure kLoopStructure = LoopStructure::kAuto;
   // See above enum LayoutSupport

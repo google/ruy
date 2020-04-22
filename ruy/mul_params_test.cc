@@ -30,20 +30,20 @@ TEST(MulParamsTest, SpecClassSanity) {
   static_assert(std::is_same<MulParamsType::DstScalar, std::int8_t>::value, "");
 
   MulParamsType mul_params;
-  EXPECT_EQ(mul_params.get_bias(), nullptr);
-  EXPECT_EQ(mul_params.get_multiplier_fixedpoint(), 0);
-  EXPECT_EQ(mul_params.get_multiplier_exponent(), 0);
-  EXPECT_EQ(mul_params.get_multiplier_fixedpoint_perchannel(), nullptr);
-  EXPECT_EQ(mul_params.get_multiplier_exponent_perchannel(), nullptr);
-  EXPECT_EQ(mul_params.get_clamp_min(), -128);
-  EXPECT_EQ(mul_params.get_clamp_max(), 127);
+  EXPECT_EQ(mul_params.bias(), nullptr);
+  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 0);
+  EXPECT_EQ(mul_params.multiplier_exponent(), 0);
+  EXPECT_EQ(mul_params.multiplier_fixedpoint_perchannel(), nullptr);
+  EXPECT_EQ(mul_params.multiplier_exponent_perchannel(), nullptr);
+  EXPECT_EQ(mul_params.clamp_min(), -128);
+  EXPECT_EQ(mul_params.clamp_max(), 127);
   std::int32_t bias_data[1];
   mul_params.set_bias(bias_data);
   mul_params.set_multiplier_fixedpoint(123);
   mul_params.set_multiplier_exponent(4);
-  EXPECT_EQ(mul_params.get_bias(), bias_data);
-  EXPECT_EQ(mul_params.get_multiplier_fixedpoint(), 123);
-  EXPECT_EQ(mul_params.get_multiplier_exponent(), 4);
+  EXPECT_EQ(mul_params.bias(), bias_data);
+  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 123);
+  EXPECT_EQ(mul_params.multiplier_exponent(), 4);
   mul_params.set_multiplier_fixedpoint(0);
   mul_params.set_multiplier_exponent(0);
   std::int32_t multiplier_fixedpoint_perchannel_data[1];
@@ -54,14 +54,14 @@ TEST(MulParamsTest, SpecClassSanity) {
       multiplier_exponent_perchannel_data);
   mul_params.set_clamp_min(-10);
   mul_params.set_clamp_max(10);
-  EXPECT_EQ(mul_params.get_multiplier_fixedpoint(), 0);
-  EXPECT_EQ(mul_params.get_multiplier_exponent(), 0);
-  EXPECT_EQ(mul_params.get_multiplier_fixedpoint_perchannel(),
+  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 0);
+  EXPECT_EQ(mul_params.multiplier_exponent(), 0);
+  EXPECT_EQ(mul_params.multiplier_fixedpoint_perchannel(),
             multiplier_fixedpoint_perchannel_data);
-  EXPECT_EQ(mul_params.get_multiplier_exponent_perchannel(),
+  EXPECT_EQ(mul_params.multiplier_exponent_perchannel(),
             multiplier_exponent_perchannel_data);
-  EXPECT_EQ(mul_params.get_clamp_min(), -10);
-  EXPECT_EQ(mul_params.get_clamp_max(), 10);
+  EXPECT_EQ(mul_params.clamp_min(), -10);
+  EXPECT_EQ(mul_params.clamp_max(), 10);
 }
 
 }  // namespace

@@ -59,9 +59,9 @@ void ExampleMulFloatWithBiasAddAndClamp(ruy::Context *context) {
   dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
-  mul_params.bias = bias_data;
-  mul_params.clamp_min = 0;
-  mul_params.clamp_max = 15;
+  mul_params.set_bias(bias_data);
+  mul_params.set_clamp_min(0);
+  mul_params.set_clamp_max(15);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, float with bias addition and clamp:\n";
@@ -89,9 +89,9 @@ void ExampleMulUint8AsymmetricQuantized(ruy::Context *context) {
   dst.set_zero_point(129);
 
   ruy::MulParams<std::int32_t, std::uint8_t> mul_params;
-  mul_params.multiplier_fixedpoint = 1 << 30;
+  mul_params.set_multiplier_fixedpoint(1 << 30);
 
-  mul_params.multiplier_exponent = 0;
+  mul_params.set_multiplier_exponent(0);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, uint8 quantized with asymmetric zero points:\n";
@@ -117,8 +117,8 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   dst.set_data(dst_data);
 
   ruy::MulParams<std::int32_t, std::int8_t> mul_params;
-  mul_params.multiplier_fixedpoint_perchannel = multiplier_data;
-  mul_params.multiplier_exponent_perchannel = exponent_data;
+  mul_params.set_multiplier_fixedpoint_perchannel(multiplier_data);
+  mul_params.set_multiplier_exponent_perchannel(exponent_data);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, context, &dst);
 
   std::cout << "Example Mul, int8 quantized with per-channel multipliers\n";

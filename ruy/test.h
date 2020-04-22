@@ -719,8 +719,8 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   gemmlowp::OutputStageScaleInt32ByFixedPointAndExponent quantize_down_stage;
   quantize_down_stage.result_offset_after_shift = dst->zero_point();
   quantize_down_stage.result_fixedpoint_multiplier =
-      mul_params.multiplier_fixedpoint;
-  quantize_down_stage.result_exponent = mul_params.multiplier_exponent;
+      mul_params.multiplier_fixedpoint();
+  quantize_down_stage.result_exponent = mul_params.multiplier_exponent();
   gemmlowp::OutputStageScaleInt32ByFixedPointAndExponentPC<
       gemmlowp::VectorShape::Col>
       quantize_down_stage_pc;
@@ -728,13 +728,13 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   using ColVectorMap =
       gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
   quantize_down_stage_pc.result_fixedpoint_multiplier = ColVectorMap(
-      mul_params.multiplier_fixedpoint_perchannel, lhs.layout().rows());
+      mul_params.multiplier_fixedpoint_perchannel(), lhs.layout().rows());
   quantize_down_stage_pc.result_exponent = ColVectorMap(
-      mul_params.multiplier_exponent_perchannel, lhs.layout().rows());
+      mul_params.multiplier_exponent_perchannel(), lhs.layout().rows());
 
   gemmlowp::OutputStageClamp clamp_stage;
-  clamp_stage.min = mul_params.clamp_min;
-  clamp_stage.max = mul_params.clamp_max;
+  clamp_stage.min = mul_params.clamp_min();
+  clamp_stage.max = mul_params.clamp_max();
   using OutputStageSaturatingCast = typename std::conditional<
       std::is_same<DstScalar, std::uint8_t>::value,
       gemmlowp::OutputStageSaturatingCastToUint8,
@@ -743,14 +743,14 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 
   GlobalGemmlowpContext().set_max_num_threads(max_num_threads ? max_num_threads
                                                               : 1);
-  if (mul_params.bias) {
+  if (mul_params.bias()) {
     using ColVectorMap =
         gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
     gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_add_stage;
     bias_add_stage.bias_vector =
-        ColVectorMap(mul_params.bias, dst->layout().rows());
+        ColVectorMap(mul_params.bias(), dst->layout().rows());
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
-    if (mul_params.multiplier_exponent_perchannel) {
+    if (mul_params.multiplier_exponent_perchannel()) {
       const auto& output_pipeline =
           std::make_tuple(bias_add_stage, quantize_down_stage_pc, clamp_stage,
                           saturating_cast_stage);
@@ -771,7 +771,7 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
     }
   } else {
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
-    if (mul_params.multiplier_exponent_perchannel) {
+    if (mul_params.multiplier_exponent_perchannel()) {
       const auto& output_pipeline = std::make_tuple(
           quantize_down_stage_pc, clamp_stage, saturating_cast_stage);
       gemmlowp::GemmWithOutputPipeline<
@@ -849,8 +849,8 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
-  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent(), 0);
 
   static constexpr int kEigenLhsOrder = EigenOrder<LhsOrder>::kValue;
   static constexpr int kEigenRhsOrder = EigenOrder<RhsOrder>::kValue;
@@ -879,24 +879,24 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
       Eigen::OuterStride<Eigen::Dynamic>(dst->layout().stride()));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
-  if (mul_params.bias) {
-    EigenBiasType eigen_bias(mul_params.bias, dst->layout().rows());
-    if (mul_params.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
+  if (mul_params.bias()) {
+    EigenBiasType eigen_bias(mul_params.bias(), dst->layout().rows());
+    if (mul_params.clamp_max() == std::numeric_limits<DstScalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs).colwise() + eigen_bias;
     } else {
       eigen_dst.noalias() = ((eigen_lhs * eigen_rhs).colwise() + eigen_bias)
-                                .cwiseMin(mul_params.clamp_max)
-                                .cwiseMax(mul_params.clamp_min);
+                                .cwiseMin(mul_params.clamp_max())
+                                .cwiseMax(mul_params.clamp_min());
     }
   } else {
-    if (mul_params.clamp_max == std::numeric_limits<DstScalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<DstScalar>::infinity()) {
+    if (mul_params.clamp_max() == std::numeric_limits<DstScalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = eigen_lhs * eigen_rhs;
     } else {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs)
-                                .cwiseMin(mul_params.clamp_max)
-                                .cwiseMax(mul_params.clamp_min);
+                                .cwiseMin(mul_params.clamp_max())
+                                .cwiseMax(mul_params.clamp_min());
     }
   }
 }
@@ -939,8 +939,8 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
-  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent(), 0);
 
   // Eigen::TensorMap only supports unstrided layouts
   RUY_CHECK(IsUnstrided(lhs.layout()));
@@ -986,32 +986,32 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                                DstOrder == Order::kColMajor ? 1 : 0);
   static Eigen::ThreadPool pool(max_num_threads ? max_num_threads : 1);
   static Eigen::ThreadPoolDevice device(&pool, pool.NumThreads());
-  if (mul_params.bias) {
-    TensorBiasType tensor_bias(mul_params.bias, dst->layout().rows());
+  if (mul_params.bias()) {
+    TensorBiasType tensor_bias(mul_params.bias(), dst->layout().rows());
     Eigen::array<int, 2> bias_2d_shape(tr ? 1 : dst->layout().rows(),
                                        tr ? dst->layout().rows() : 1);
     Eigen::array<int, 2> bcast(tr ? dst->layout().cols() : 1,
                                tr ? 1 : dst->layout().cols());
-    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
           tensor_lhs.contract(tensor_rhs, contract_dims);
     } else {
       tensor_dst.device(device) =
           (tensor_lhs.contract(tensor_rhs, contract_dims) +
            tensor_bias.reshape(bias_2d_shape).broadcast(bcast))
-              .cwiseMin(mul_params.clamp_max)
-              .cwiseMax(mul_params.clamp_min);
+              .cwiseMin(mul_params.clamp_max())
+              .cwiseMax(mul_params.clamp_min());
     }
   } else {
-    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
           tensor_lhs.contract(tensor_rhs, contract_dims);
     } else {
       tensor_dst.device(device) = tensor_lhs.contract(tensor_rhs, contract_dims)
-                                      .cwiseMin(mul_params.clamp_max)
-                                      .cwiseMax(mul_params.clamp_min);
+                                      .cwiseMin(mul_params.clamp_max())
+                                      .cwiseMax(mul_params.clamp_min());
     }
   }
 }
@@ -1092,8 +1092,8 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
-  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint, 0);
-  RUY_CHECK_EQ(mul_params.multiplier_exponent, 0);
+  RUY_CHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
+  RUY_CHECK_EQ(mul_params.multiplier_exponent(), 0);
 
   Matrix<Scalar> gemm_lhs;
   Matrix<Scalar> gemm_rhs;
@@ -1159,22 +1159,22 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
       Eigen::OuterStride<Eigen::Dynamic>(gemm_dst.layout().stride()));
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
-  if (mul_params.bias) {
-    EigenBiasType eigen_bias(mul_params.bias, dst->layout().rows());
-    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+  if (mul_params.bias()) {
+    EigenBiasType eigen_bias(mul_params.bias(), dst->layout().rows());
+    if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
       eigen_dst.noalias() = eigen_dst.colwise() + eigen_bias;
     } else {
       eigen_dst.noalias() = (eigen_dst.colwise() + eigen_bias)
-                                .cwiseMin(mul_params.clamp_max)
-                                .cwiseMax(mul_params.clamp_min);
+                                .cwiseMin(mul_params.clamp_max())
+                                .cwiseMax(mul_params.clamp_min());
     }
   } else {
-    if (mul_params.clamp_max == std::numeric_limits<Scalar>::infinity() &&
-        mul_params.clamp_min == -std::numeric_limits<Scalar>::infinity()) {
+    if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
+        mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
     } else {
-      eigen_dst.noalias() = eigen_dst.cwiseMin(mul_params.clamp_max)
-                                .cwiseMax(mul_params.clamp_min);
+      eigen_dst.noalias() = eigen_dst.cwiseMin(mul_params.clamp_max())
+                                .cwiseMax(mul_params.clamp_min());
     }
   }
 }
@@ -1443,19 +1443,19 @@ void SwitchMultiplierToPerChannel(TestSetType* test_set) {
     // Thus a good way to randomize multipliers is to subtract from them
     // a random value smaller than 2^30 but still significant compared to it.
     std::int32_t nudged_multiplier =
-        test_set->mul_params.multiplier_fixedpoint -
+        test_set->mul_params.multiplier_fixedpoint() -
         (global_random_engine()() % (1 << 26));
-    int nudged_exponent = test_set->mul_params.multiplier_exponent - 1 +
+    int nudged_exponent = test_set->mul_params.multiplier_exponent() - 1 +
                           (global_random_engine()() % 4);
     test_set->per_channel_multiplier_fixedpoint[i] = nudged_multiplier;
     test_set->per_channel_multiplier_exponent[i] = nudged_exponent;
   }
-  test_set->mul_params.multiplier_fixedpoint_perchannel =
-      test_set->per_channel_multiplier_fixedpoint.data();
-  test_set->mul_params.multiplier_exponent_perchannel =
-      test_set->per_channel_multiplier_exponent.data();
-  test_set->mul_params.multiplier_fixedpoint = 0;
-  test_set->mul_params.multiplier_exponent = 0;
+  test_set->mul_params.set_multiplier_fixedpoint_perchannel(
+      test_set->per_channel_multiplier_fixedpoint.data());
+  test_set->mul_params.set_multiplier_exponent_perchannel(
+      test_set->per_channel_multiplier_exponent.data());
+  test_set->mul_params.set_multiplier_fixedpoint(0);
+  test_set->mul_params.set_multiplier_exponent(0);
 }
 
 template <
@@ -1471,8 +1471,13 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, true> {
     double multiplier;
     ComputeReasonableMultiplier<TestSetType>(test_set->lhs.matrix,
                                              test_set->rhs.matrix, &multiplier);
-    QuantizeMultiplier(multiplier, &test_set->mul_params.multiplier_fixedpoint,
-                       &test_set->mul_params.multiplier_exponent);
+    typename TestSetType::AccumScalar multiplier_fixedpoint;
+    int multiplier_exponent;
+    QuantizeMultiplier(multiplier, &multiplier_fixedpoint,
+                       &multiplier_exponent);
+    test_set->mul_params.set_multiplier_fixedpoint(multiplier_fixedpoint);
+    test_set->mul_params.set_multiplier_exponent(multiplier_exponent);
+
     if (!test_set->benchmark) {
       test_set->perchannel = global_random_engine()() & 1;
     }
@@ -1485,8 +1490,8 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, true> {
 template <typename TestSetType>
 struct MakeSpecMultiplierFieldsImpl<TestSetType, false> {
   static void Run(TestSetType* test_set) {
-    test_set->mul_params.multiplier_fixedpoint = 0;
-    test_set->mul_params.multiplier_exponent = 0;
+    test_set->mul_params.set_multiplier_fixedpoint(0);
+    test_set->mul_params.set_multiplier_exponent(0);
   }
 };
 
@@ -1497,24 +1502,24 @@ void MakeSpecClampFields(MulParamsType* mul_params) {
 
   if (std::is_same<AccumScalar, std::int32_t>::value) {
     // Returning raw accumulators, clamping is not supported.
-    mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest();
-    mul_params->clamp_max = std::numeric_limits<DstScalar>::max();
+    mul_params->set_clamp_min(std::numeric_limits<DstScalar>::lowest());
+    mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max());
     return;
   }
 
   if (getenv("BENCHMARK_ONLY_MATMUL")) {
     if (std::is_floating_point<DstScalar>::value) {
-      mul_params->clamp_min = -std::numeric_limits<DstScalar>::infinity();
-      mul_params->clamp_max = std::numeric_limits<DstScalar>::infinity();
+      mul_params->set_clamp_min(-std::numeric_limits<DstScalar>::infinity());
+      mul_params->set_clamp_max(std::numeric_limits<DstScalar>::infinity());
     } else {
-      mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest();
-      mul_params->clamp_max = std::numeric_limits<DstScalar>::max();
+      mul_params->set_clamp_min(std::numeric_limits<DstScalar>::lowest());
+      mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max());
     }
     return;
   }
 
-  mul_params->clamp_min = std::numeric_limits<DstScalar>::lowest() + 1;
-  mul_params->clamp_max = std::numeric_limits<DstScalar>::max() - 1;
+  mul_params->set_clamp_min(std::numeric_limits<DstScalar>::lowest() + 1);
+  mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max() - 1);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
@@ -1550,7 +1555,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeMulParams() {
   if (!getenv("BENCHMARK_ONLY_MATMUL") &&
       (benchmark || (global_random_engine()() & 1))) {
     MakeRandomVector(RandomRange::kBias, rows, &bias_data);
-    mul_params.bias = bias_data.data();
+    mul_params.set_bias(bias_data.data());
   }
   if (lhs.matrix.zero_point() == std::numeric_limits<LhsScalar>::lowest() &&
       rhs.matrix.zero_point() == std::numeric_limits<RhsScalar>::lowest()) {
@@ -1702,7 +1707,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
     if (SupportsGemmlowp<TestSetType>::kValue) {
 #ifdef GEMMLOWP_SSE4
       const bool gemmlowp_supported =
-          !mul_params.multiplier_fixedpoint_perchannel;
+          !mul_params.multiplier_fixedpoint_perchannel();
 #else
       const bool gemmlowp_supported = true;
 #endif

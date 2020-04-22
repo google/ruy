@@ -143,8 +143,8 @@ struct ApplyMultiplierImpl<MulParamsType, false> {
   using AccumScalar = typename MulParamsType::AccumScalar;
   using DstScalar = typename MulParamsType::DstScalar;
   static void Run(const MulParamsType& mul_params, int, AccumScalar*) {
-    RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint, 0);
-    RUY_DCHECK_EQ(mul_params.multiplier_exponent, 0);
+    RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
+    RUY_DCHECK_EQ(mul_params.multiplier_exponent(), 0);
   }
 };
 
@@ -154,12 +154,12 @@ struct ApplyMultiplierImpl<MulParamsType, true> {
   using DstScalar = typename MulParamsType::DstScalar;
   static void Run(const MulParamsType& mul_params, int row,
                   AccumScalar* accum) {
-    AccumScalar m = mul_params.multiplier_fixedpoint_perchannel
-                        ? mul_params.multiplier_fixedpoint_perchannel[row]
-                        : mul_params.multiplier_fixedpoint;
-    int e = mul_params.multiplier_exponent_perchannel
-                ? mul_params.multiplier_exponent_perchannel[row]
-                : mul_params.multiplier_exponent;
+    AccumScalar m = mul_params.multiplier_fixedpoint_perchannel()
+                        ? mul_params.multiplier_fixedpoint_perchannel()[row]
+                        : mul_params.multiplier_fixedpoint();
+    int e = mul_params.multiplier_exponent_perchannel()
+                ? mul_params.multiplier_exponent_perchannel()[row]
+                : mul_params.multiplier_exponent();
     *accum = MultiplyByQuantizedMultiplier(*accum, m, e);
   }
 };
@@ -208,8 +208,8 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
           AccumScalar rhs_val = Element(rhs, k, j);
           accum += lhs_val * rhs_val;
         }
-        if (mul_params.bias) {
-          accum += mul_params.bias[i];
+        if (mul_params.bias()) {
+          accum += mul_params.bias()[i];
         }
         if (lhs.zero_point) {
           accum -= lhs.zero_point * rhs.sums[j];
@@ -222,8 +222,8 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
         }
         ApplyMultiplier(mul_params, i, &accum);
         accum += dst->zero_point;
-        accum = std::min<AccumScalar>(accum, mul_params.clamp_max);
-        accum = std::max<AccumScalar>(accum, mul_params.clamp_min);
+        accum = std::min<AccumScalar>(accum, mul_params.clamp_max());
+        accum = std::max<AccumScalar>(accum, mul_params.clamp_min());
         *ElementPtr(dst, i, j) = static_cast<DstScalar>(accum);
       }
     }
@@ -349,8 +349,8 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->rhs_base_ptr = rhs.data + start_col * rhs.layout.stride;
   params->flags = 0;
   params->bias = params->zero_data;
-  if (mul_params.bias) {
-    params->bias = mul_params.bias;
+  if (mul_params.bias()) {
+    params->bias = mul_params.bias();
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   if (lhs.sums) {
@@ -373,24 +373,25 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->dst_zero_point = dst->zero_point;
   params->depth = depth;
   params->prod_zp_depth = lhs.zero_point * rhs.zero_point * depth;
-  if (mul_params.multiplier_fixedpoint_perchannel) {
+  if (mul_params.multiplier_fixedpoint_perchannel()) {
     params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
     params->flags |= RUY_ASM_FLAG_HAS_PERCHANNEL;
-    params->multiplier_fixedpoint = mul_params.multiplier_fixedpoint_perchannel;
-    params->multiplier_exponent = mul_params.multiplier_exponent_perchannel;
+    params->multiplier_fixedpoint =
+        mul_params.multiplier_fixedpoint_perchannel();
+    params->multiplier_exponent = mul_params.multiplier_exponent_perchannel();
   } else {
-    if (mul_params.multiplier_exponent > 0) {
+    if (mul_params.multiplier_exponent() > 0) {
       params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
     }
     params->multiplier_fixedpoint = params->multiplier_fixedpoint_buf;
     params->multiplier_exponent = params->multiplier_exponent_buf;
     for (int i = 0; i < LhsCols; i++) {
-      params->multiplier_fixedpoint_buf[i] = mul_params.multiplier_fixedpoint;
-      params->multiplier_exponent_buf[i] = mul_params.multiplier_exponent;
+      params->multiplier_fixedpoint_buf[i] = mul_params.multiplier_fixedpoint();
+      params->multiplier_exponent_buf[i] = mul_params.multiplier_exponent();
     }
   }
-  params->clamp_min = mul_params.clamp_min;
-  params->clamp_max = mul_params.clamp_max;
+  params->clamp_min = mul_params.clamp_min();
+  params->clamp_max = mul_params.clamp_max();
   params->dst_rows = dst->layout.rows;
   params->dst_cols = dst->layout.cols;
 
@@ -445,8 +446,8 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
 
   std::uint8_t flags = 0;
   params->bias = params->zero_data;
-  if (mul_params.bias) {
-    params->bias = mul_params.bias;
+  if (mul_params.bias()) {
+    params->bias = mul_params.bias();
     flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   params->flags = flags;
@@ -458,8 +459,8 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
   params->rhs_stride = sizeof(float) * rhs.layout.stride;
   params->dst_stride = sizeof(float) * dst->layout.stride;
   params->depth = depth;
-  params->clamp_min = mul_params.clamp_min;
-  params->clamp_max = mul_params.clamp_max;
+  params->clamp_min = mul_params.clamp_min();
+  params->clamp_max = mul_params.clamp_max();
   params->dst_rows = dst->layout.rows;
   params->dst_cols = dst->layout.cols;
 
