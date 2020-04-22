@@ -223,6 +223,35 @@ template <Order tOrder, int tRows, int tCols>
 constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kRows;
 #endif
 
+// TODO(b/130417400) add a unit test
+inline int Offset(const Layout& layout, int row, int col) {
+  // TODO(benoitjacob)  - should check this but this make the _slow tests take
+  // 5x longer.  Find a mitigation like in Eigen with an 'internal' variant
+  // bypassing the check?
+  // RUY_DCHECK_GE(row, 0);
+  // RUY_DCHECK_GE(col, 0);
+  // RUY_DCHECK_LT(row, layout.rows);
+  // RUY_DCHECK_LT(col, layout.cols);
+  int row_stride = layout.order == Order::kColMajor ? 1 : layout.stride;
+  int col_stride = layout.order == Order::kRowMajor ? 1 : layout.stride;
+  return row * row_stride + col * col_stride;
+}
+
+template <typename Scalar>
+const Scalar* ElementPtr(const Matrix<Scalar>& mat, int row, int col) {
+  return mat.data.get() + Offset(mat.layout, row, col);
+}
+
+template <typename Scalar>
+Scalar* ElementPtr(Matrix<Scalar>* mat, int row, int col) {
+  return mat->data.get() + Offset(mat->layout, row, col);
+}
+
+template <typename Scalar>
+Scalar Element(const Matrix<Scalar>& mat, int row, int col) {
+  return *ElementPtr(mat, row, col);
+}
+
 }  // namespace ruy
 
 #endif  // RUY_RUY_MATRIX_H_

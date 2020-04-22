@@ -88,7 +88,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/opt_set.h"
 #include "ruy/pack_common.h"
@@ -142,8 +142,8 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
   static constexpr int kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -225,8 +225,8 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
                 "");
   static constexpr int kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -274,8 +274,8 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
   static constexpr int kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
@@ -355,9 +355,8 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                 float, float> {
-  static void Run(Tuning tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 8, 0);
@@ -432,9 +431,8 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
                 float, float> {
-  static void Run(Tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 4, 0);

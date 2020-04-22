@@ -365,8 +365,8 @@ cc_test(
 )
 
 cc_library(
-    name = "internal_matrix",
-    hdrs = ["internal_matrix.h"],
+    name = "mat",
+    hdrs = ["mat.h"],
     copts = ruy_copts_base(),
     deps = [
         ":check_macros",
@@ -403,7 +403,7 @@ cc_library(
     deps = [
         ":check_macros",
         ":common",
-        ":internal_matrix",
+        ":mat",
         ":matrix",
         ":mul_params",
         ":opt_set",
@@ -428,7 +428,7 @@ cc_library(
     deps = [
         ":check_macros",
         ":common",
-        ":internal_matrix",
+        ":mat",
         ":matrix",
         ":opt_set",
         ":path",
@@ -699,13 +699,13 @@ cc_library(
     deps = [
         ":check_macros",
         ":common",
-        ":internal_matrix",
         ":kernel_arm",  # fixdeps: keep
         ":kernel_avx2",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
         ":kernel_avxvnni",  # fixdeps: keep
         ":kernel_common",
         ":kernel_sse42",  # fixdeps: keep
+        ":mat",
         ":matrix",
         ":mul_params",
         ":opt_set",
@@ -728,7 +728,7 @@ cc_library(
     deps = [
         ":check_macros",
         ":common",
-        ":internal_matrix",
+        ":mat",
         ":matrix",
         ":opt_set",
         ":pack_arm",  # fixdeps: keep
@@ -835,7 +835,7 @@ cc_library(
     hdrs = ["trmul_params.h"],
     copts = ruy_copts_base(),
     deps = [
-        ":internal_matrix",
+        ":mat",
         ":side_pair",
         ":tune",
     ],
@@ -853,7 +853,7 @@ cc_library(
         ":common",
         ":context",
         ":context_internal",
-        ":internal_matrix",
+        ":mat",
         ":matrix",
         ":mul_params",
         ":opt_set",
@@ -885,8 +885,8 @@ cc_library(
         ":common",
         ":context",
         ":context_internal",
-        ":internal_matrix",
         ":kernel",
+        ":mat",
         ":matrix",
         ":mul_params",
         ":opt_set",

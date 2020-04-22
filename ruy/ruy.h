@@ -20,6 +20,7 @@ limitations under the License.
 
 #include "ruy/context.h"
 #include "ruy/dispatch.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
@@ -74,8 +75,12 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
          const MulParamsType& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
+  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
+  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
+  Mat<DstScalar> internal_dst = ToInternal(*dst);
   DispatchMul<ruy::kDefaultPaths, LhsScalar, RhsScalar, DstScalar,
-              MulParamsType>(lhs, rhs, mul_params, context, dst);
+              MulParamsType>(internal_lhs, internal_rhs, mul_params, context,
+                             &internal_dst);
 }
 
 // Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to
@@ -85,8 +90,11 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
          const MulParamsType& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
+  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
+  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
+  Mat<DstScalar> internal_dst = ToInternal(*dst);
   DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      lhs, rhs, mul_params, context, dst);
+      internal_lhs, internal_rhs, mul_params, context, &internal_dst);
 }
 
 }  // namespace ruy

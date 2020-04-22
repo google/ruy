@@ -20,8 +20,8 @@ limitations under the License.
 #include <cstdint>
 
 #include "ruy/common.h"
-#include "ruy/internal_matrix.h"
 #include "ruy/kernel_common.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
@@ -56,11 +56,9 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   Tuning tuning = Tuning::kAuto;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<std::int8_t>& lhs,
-           const PackedMatrix<std::int8_t>& rhs,
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
            const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
-           int start_col, int end_row, int end_col,
-           Matrix<DstScalar>* dst) const {
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
@@ -85,11 +83,9 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 2>;
   Tuning tuning = Tuning::kAuto;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<std::int8_t>& lhs,
-           const PackedMatrix<std::int8_t>& rhs,
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
            const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
-           int start_col, int end_row, int end_col,
-           Matrix<DstScalar>* dst) const {
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
@@ -110,11 +106,9 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<std::int8_t>& lhs,
-           const PackedMatrix<std::int8_t>& rhs,
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
            const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
-           int start_col, int end_row, int end_col,
-           Matrix<DstScalar>* dst) const {
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
@@ -142,9 +136,9 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
            const MulParams<float, float>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Matrix<float>* dst) const {
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
@@ -165,9 +159,9 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 4>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
            const MulParams<float, float>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Matrix<float>* dst) const {
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
     KernelParamsFloat<8, 4> params;
 
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
@@ -190,9 +184,9 @@ struct Kernel<Path::kNeonDotprod, float, float, float,
   using Base =
       Kernel<Path::kNeon, float, float, float, MulParams<float, float>>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PackedMatrix<float>& lhs, const PackedMatrix<float>& rhs,
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
            const MulParams<float, float>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Matrix<float>* dst) const {
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);

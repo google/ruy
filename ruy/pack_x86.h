@@ -89,7 +89,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/opt_set.h"
 #include "ruy/pack_common.h"
@@ -122,8 +122,8 @@ struct PackImpl<Path::kSse42, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (SSE 4.2 8-bit)");
 
@@ -165,9 +165,8 @@ template <>
 struct PackImpl<Path::kSse42, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                 float, float> {
   using Layout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
-  static void Run(Tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     profiler::ScopeLabel label("Pack (SSE 4.2 float)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
@@ -209,8 +208,8 @@ struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX2 8-bit)");
 
@@ -248,9 +247,8 @@ template <>
 struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                 float, float> {
   using Layout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
-  static void Run(Tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     profiler::ScopeLabel label("Pack (AVX2 float)");
 
     RUY_DCHECK(IsColMajor(src_matrix.layout));
@@ -294,8 +292,8 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 8-bit)");
 
@@ -333,9 +331,8 @@ void PackFloatAvx512(const float* src_ptr, const float* zerobuf, int src_stride,
 template <>
 struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
                 float, float, float> {
-  static void Run(Tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 float)");
     using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
     RUY_DCHECK(IsColMajor(src_matrix.layout));
@@ -383,8 +380,8 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kColMajor, 4, 16>,
   static constexpr std::int8_t kInputXor =
       std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
 
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<std::int8_t>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 8-bit)");
 
@@ -427,9 +424,8 @@ void PackFloatAvxVnni(const float* src_ptr, const float* zerobuf,
 template <>
 struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kRowMajor, 1, 16>,
                 float, float, float> {
-  static void Run(Tuning, const Matrix<float>& src_matrix,
-                  PackedMatrix<float>* packed_matrix, int start_col,
-                  int end_col) {
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 float)");
 
     using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;

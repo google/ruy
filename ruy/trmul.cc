@@ -26,7 +26,7 @@ limitations under the License.
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
 #include "ruy/context_internal.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
@@ -240,7 +240,7 @@ struct TrMulTask final : Task {
   SidePair<bool*> local_packed;
 };
 
-void AllocatePMatrix(Allocator* allocator, PMatrix* packed) {
+void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
   packed->data = allocator->AllocateBytes(DataSize(*packed));
   packed->sums = allocator->AllocateBytes(SumsSize(*packed));
 }
@@ -284,10 +284,10 @@ void TrMul(TrMulParams* params, Context* context) {
       static_cast<int>(params->path), context->max_num_threads,
       params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
-  PMatrix& packed_lhs = params->packed[Side::kLhs];
-  PMatrix& packed_rhs = params->packed[Side::kRhs];
-  DMatrix& lhs = params->src[Side::kLhs];
-  DMatrix& rhs = params->src[Side::kRhs];
+  PEMat& packed_lhs = params->packed[Side::kLhs];
+  PEMat& packed_rhs = params->packed[Side::kRhs];
+  EMat& lhs = params->src[Side::kLhs];
+  EMat& rhs = params->src[Side::kRhs];
 
   const int rows = lhs.layout.cols;
   const int cols = rhs.layout.cols;

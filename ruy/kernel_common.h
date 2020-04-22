@@ -22,7 +22,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
@@ -41,11 +41,10 @@ struct Kernel {};
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
-                    const PackedMatrix<RhsScalar>& rhs,
-                    const MulParamsType& mul_params, int start_row,
-                    int start_col, int end_row, int end_col,
-                    Matrix<DstScalar>* dst) {
+void RunKernelTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
+                    const PMat<RhsScalar>& rhs, const MulParamsType& mul_params,
+                    int start_row, int start_col, int end_row, int end_col,
+                    Mat<DstScalar>* dst) {
   using Kernel =
       Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>;
   Kernel kernel(tuning);
@@ -82,13 +81,13 @@ void RunKernelTyped(Tuning tuning, const PackedMatrix<LhsScalar>& lhs,
 // Main entry point for kernels.
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void RunKernel(Tuning tuning, const SidePair<PMatrix>& src, void* mul_params,
+void RunKernel(Tuning tuning, const SidePair<PEMat>& src, void* mul_params,
                const SidePair<int>& start, const SidePair<int>& end,
-               DMatrix* dst) {
-  Matrix<DstScalar> mdst = ToMatrix<DstScalar>(*dst);
+               EMat* dst) {
+  Mat<DstScalar> mdst = UneraseType<DstScalar>(*dst);
   RunKernelTyped<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      tuning, ToPackedMatrix<LhsScalar>(src[Side::kLhs]),
-      ToPackedMatrix<RhsScalar>(src[Side::kRhs]),
+      tuning, UneraseType<LhsScalar>(src[Side::kLhs]),
+      UneraseType<RhsScalar>(src[Side::kRhs]),
       *static_cast<const MulParamsType*>(mul_params), start[Side::kLhs],
       start[Side::kRhs], end[Side::kLhs], end[Side::kRhs], &mdst);
 }
@@ -179,10 +178,9 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
   using LhsLayout = typename MulParamsType::StandardCppKernelLhsLayout;
   using RhsLayout = typename MulParamsType::StandardCppKernelRhsLayout;
   explicit Kernel(Tuning) {}
-  void Run(const PackedMatrix<LhsScalar>& lhs,
-           const PackedMatrix<RhsScalar>& rhs, const MulParamsType& mul_params,
-           int start_row, int start_col, int end_row, int end_col,
-           Matrix<DstScalar>* dst) const {
+  void Run(const PMat<LhsScalar>& lhs, const PMat<RhsScalar>& rhs,
+           const MulParamsType& mul_params, int start_row, int start_col,
+           int end_row, int end_col, Mat<DstScalar>* dst) const {
     // See the comment in RunKernelTyped. end_row may be larger than
     // dst->layout.rows. It's the responsibility of the kernel to avoid
     // overrunning dst boundaries, which we do here by computing
@@ -331,11 +329,11 @@ struct KernelParams8bit {
 };
 
 template <typename DstScalar, int LhsCols, int RhsCols>
-void MakeKernelParams8bit(const PackedMatrix<std::int8_t>& lhs,
-                          const PackedMatrix<std::int8_t>& rhs,
+void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
+                          const PMat<std::int8_t>& rhs,
                           const MulParams<std::int32_t, DstScalar>& mul_params,
                           int start_row, int start_col, int end_row,
-                          int end_col, Matrix<DstScalar>* dst,
+                          int end_col, Mat<DstScalar>* dst,
                           KernelParams8bit<LhsCols, RhsCols>* params) {
   using Params = KernelParams8bit<LhsCols, RhsCols>;
 
@@ -428,11 +426,11 @@ struct KernelParamsFloat {
 };
 
 template <int LhsCols, int RhsCols>
-inline void MakeKernelParamsFloat(const PackedMatrix<float>& lhs,
-                                  const PackedMatrix<float>& rhs,
+inline void MakeKernelParamsFloat(const PMat<float>& lhs,
+                                  const PMat<float>& rhs,
                                   const MulParams<float, float>& mul_params,
                                   int start_row, int start_col, int end_row,
-                                  int end_col, Matrix<float>* dst,
+                                  int end_col, Mat<float>* dst,
                                   KernelParamsFloat<LhsCols, RhsCols>* params) {
   const int depth = lhs.layout.rows;
   RUY_DCHECK_EQ(start_row % LhsCols, 0);

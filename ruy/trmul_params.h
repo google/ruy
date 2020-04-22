@@ -16,16 +16,16 @@ limitations under the License.
 #ifndef RUY_RUY_TRMUL_PARAMS_H_
 #define RUY_RUY_TRMUL_PARAMS_H_
 
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/side_pair.h"
 #include "ruy/tune.h"
 
 namespace ruy {
 
-using RunKernelFn = void(Tuning, const SidePair<PMatrix>&, void*,
-                         const SidePair<int>&, const SidePair<int>&, DMatrix*);
+using RunKernelFn = void(Tuning, const SidePair<PEMat>&, void*,
+                         const SidePair<int>&, const SidePair<int>&, EMat*);
 
-using RunPackFn = void(Tuning, const DMatrix&, PMatrix*, int, int);
+using RunPackFn = void(Tuning, const EMat&, PEMat*, int, int);
 
 // Type-erased data needed for implementing TrMul.
 struct TrMulParams {
@@ -53,9 +53,9 @@ struct TrMulParams {
   RunKernelFn* run_kernel = nullptr;
 
   // Matrices and packed matrices.
-  SidePair<DMatrix> src;
-  DMatrix dst;
-  SidePair<PMatrix> packed;
+  SidePair<EMat> src;
+  EMat dst;
+  SidePair<PEMat> packed;
   SidePair<bool> is_prepacked;
 
   // Type-erased MulParamsType.

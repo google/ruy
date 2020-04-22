@@ -25,7 +25,7 @@ limitations under the License.
 #include "ruy/context.h"
 #include "ruy/context_internal.h"
 #include "ruy/dispatch.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
@@ -39,17 +39,16 @@ namespace ruy {
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
-                           const Matrix<RhsScalar>& rhs,
+void PrePackForMulInternal(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                            const MulParamsType& mul_params, Context* context,
-                           Matrix<DstScalar>* dst,
+                           Mat<DstScalar>* dst,
                            SidePair<PrepackedMatrix*> prepacked,
                            std::function<void*(int)> alloc_fn) {
   profiler::ScopeLabel label("PrePackForMul");
   Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
-  Matrix<LhsScalar> transposed_lhs(lhs);
+  Mat<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
   CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
@@ -75,10 +74,10 @@ void PrePackForMulInternal(const Matrix<LhsScalar>& lhs,
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
-                              const Matrix<RhsScalar>& rhs,
+void MulWithPrepackedInternal(const Mat<LhsScalar>& lhs,
+                              const Mat<RhsScalar>& rhs,
                               const MulParamsType& mul_params, Context* context,
-                              Matrix<DstScalar>* dst,
+                              Mat<DstScalar>* dst,
                               SidePair<PrepackedMatrix*> prepacked) {
   profiler::ScopeLabel label("MulWithPrepacked");
 
@@ -89,7 +88,7 @@ void MulWithPrepackedInternal(const Matrix<LhsScalar>& lhs,
   Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
-  Matrix<LhsScalar> transposed_lhs(lhs);
+  Mat<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
   CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,

@@ -42,9 +42,9 @@ limitations under the License.
 #include "ruy/common.h"
 #include "ruy/context.h"
 #include "ruy/context_internal.h"
-#include "ruy/internal_matrix.h"
 #include "ruy/kernel.h"
 #include "ruy/kernel_common.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
@@ -63,8 +63,9 @@ namespace ruy {
 // this function enforces that the matrix multiplication at hand falls into
 // that special case.
 template <typename MulParamsType>
-void EnforceLayoutSupport(const Layout& lhs_layout, const Layout& rhs_layout,
-                          const Layout& dst_layout) {
+void EnforceLayoutSupport(const MatLayout& lhs_layout,
+                          const MatLayout& rhs_layout,
+                          const MatLayout& dst_layout) {
   if (MulParamsType::kLayoutSupport == LayoutSupport::kRCC) {
     RUY_DCHECK(IsRowMajor(lhs_layout));
     RUY_DCHECK(IsColMajor(rhs_layout));
@@ -133,9 +134,9 @@ inline bool IsColMajorTrMul(const TrMulParams& params) {
          IsColMajor(params.dst.layout);
 }
 
-inline void CreatePackedLayout(const InternalLayout& src, const Type& scalar,
+inline void CreatePackedLayout(const MatLayout& src, const Type& scalar,
                                const KernelLayout& kernel_layout,
-                               PackedLayout* packed) {
+                               PMatLayout* packed) {
   packed->order = Order::kColMajor;
   packed->rows = round_up_pot(src.rows, kernel_layout.rows);
   packed->cols = round_up_pot(src.cols, kernel_layout.cols);
@@ -161,8 +162,8 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
       typename std::conditional<std::is_floating_point<Scalar>::value, Scalar,
                                 std::int32_t>::type;
 
-  const DMatrix& src = params->src[side];
-  PMatrix* packed = &params->packed[side];
+  const EMat& src = params->src[side];
+  PEMat* packed = &params->packed[side];
   packed->data_type = Type::Create<PackedScalar>();
   packed->sums_type = Type::Create<SumsType>();
   CreatePackedLayout(src.layout, packed->data_type, kernel_layout,
@@ -323,14 +324,13 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
-                       const Matrix<RhsScalar>& rhs,
-                       const MulParamsType& mul_params, Matrix<DstScalar>* dst,
+void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
+                       const MulParamsType& mul_params, Mat<DstScalar>* dst,
                        Path the_path, TrMulParams* params) {
   // Fill in the fields we already know.
-  params->src[Side::kLhs] = ToDMatrix(lhs);
-  params->src[Side::kRhs] = ToDMatrix(rhs);
-  params->dst = ToDMatrix(*dst);
+  params->src[Side::kLhs] = EraseType(lhs);
+  params->src[Side::kRhs] = EraseType(rhs);
+  params->dst = EraseType(*dst);
   params->mul_params = ToVoidPtr(&mul_params);
 
   // Create inner loops and packed matrices based on the Path.
@@ -341,8 +341,8 @@ void CreateTrMulParams(const Matrix<LhsScalar>& lhs,
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
-void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& mul_params, Matrix<DstScalar>* dst) {
+void ReferenceMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
+                  const MulParamsType& mul_params, Mat<DstScalar>* dst) {
   profiler::ScopeLabel label("ReferenceMul");
   for (int i = 0; i < lhs.layout.rows; i++) {
     for (int j = 0; j < rhs.layout.cols; j++) {
@@ -371,8 +371,8 @@ template <bool ReferenceMulIsEnabled>
 struct CompileTimeEnabledReferenceMul {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
             typename MulParamsType>
-  static void Run(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& mul_params, Matrix<DstScalar>* dst) {
+  static void Run(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
+                  const MulParamsType& mul_params, Mat<DstScalar>* dst) {
     ReferenceMul(lhs, rhs, mul_params, dst);
   }
 };
@@ -383,8 +383,8 @@ template <>
 struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,
             typename MulParamsType>
-  static void Run(const Matrix<LhsScalar>&, const Matrix<RhsScalar>&,
-                  const MulParamsType&, Matrix<DstScalar>*) {
+  static void Run(const Mat<LhsScalar>&, const Mat<RhsScalar>&,
+                  const MulParamsType&, Mat<DstScalar>*) {
     RUY_DCHECK(false);
   }
 };
@@ -431,9 +431,9 @@ inline void HandlePrepackedCaching(TrMulParams* params,
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
+void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                  const MulParamsType& mul_params, Context* context,
-                 Matrix<DstScalar>* dst) {
+                 Mat<DstScalar>* dst) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
                 "CompiledPaths must be a subset of ruy::kAllPaths");
@@ -475,7 +475,7 @@ void DispatchMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   //
   // This is Ruy's main code path.
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
-  Matrix<LhsScalar> transposed_lhs(lhs);
+  Mat<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
   CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,

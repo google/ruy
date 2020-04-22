@@ -87,7 +87,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/internal_matrix.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/opt_set.h"
 #include "ruy/path.h"
@@ -193,8 +193,8 @@ template <typename FixedKernelLayout, typename Scalar, typename PackedScalar,
           typename SumsType>
 struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
                 SumsType> {
-  static void Run(Tuning, const Matrix<Scalar>& src_matrix,
-                  PackedMatrix<PackedScalar>* packed_matrix, int start_col,
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<PackedScalar>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (generic)");
     RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
@@ -231,12 +231,11 @@ RUY_INHERIT_PACK(Path::kAvx512, Path::kAvxVnni)
 // Main entry point for packing.
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
           typename PackedScalar>
-void RunPack(Tuning tuning, const DMatrix& src_matrix, PMatrix* packed_matrix,
+void RunPack(Tuning tuning, const EMat& src_matrix, PEMat* packed_matrix,
              int start_col, int end_col) {
-  using SumsType = typename PackedMatrix<PackedScalar>::SumsType;
-  Matrix<Scalar> src = ToMatrix<Scalar>(src_matrix);
-  PackedMatrix<PackedScalar> packed =
-      ToPackedMatrix<PackedScalar>(*packed_matrix);
+  using SumsType = typename PMat<PackedScalar>::SumsType;
+  Mat<Scalar> src = UneraseType<Scalar>(src_matrix);
+  PMat<PackedScalar> packed = UneraseType<PackedScalar>(*packed_matrix);
   PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType>::Run(
       tuning, src, &packed, start_col, end_col);
 }

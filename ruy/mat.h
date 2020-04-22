@@ -14,32 +14,47 @@ limitations under the License.
 ==============================================================================*/
 
 // Internal types and helpers for matrices.
+// "Mat" is the name we use to refer to our internal matrix classes; it can be
+// thought of as a shorter version of "InternalMatrix"`
 //
-// Ruy has a couple slightly different notions of matrices, besides the
+// Ruy has four internal matrix classes, besides the
 // Matrix<T> class that we expose to the user-facing API.
 //
 // TODO(silvasean): Put parts of this architecture description somewhere more
 // prominent.
 //
-// The 4 main matrix types are:
-// - Matrix<T>: This is a user-facing type on Ruy's external API boundary. It is
-// also used internally.
-// - DMatrix: This is a type-erased version of Matrix<T>. "D" = "dynamic".
-// - PMatrix: This represents a packed matrix, which requires tracking kernel
-// layout and row/column sums for quantization. It is type-erased.
-// - PackedMatrix<T>: This is a statically typed variant of PMatrix for
-// convenience inside typed routines.
+// The 4 internal matrix classes are named Mat, EMat, PMat, PEMat, where:
+// - "E" indicates a type-erased class, storing a void* pointer and a runtime
+//   enum value to track the scalar type, as opposed to being templatized
+//   on a Scalar type and storing a Scalar* pointer.
+// - "P" indicates a packed matrix class, the output of the packing code and
+//   input of the kernel code. See comments in pack.h regarding packing.
+//
+// In other words:
+//
+//                Plain matrices   Packed matrices
+//             +----------------------------------
+// Templated   |  Mat, Matrix      PMat
+// Type-erased |  EMat             PEMat
 //
 // Note that Matrix<T> is *not* implemented in terms of the internal types. It
-// is an independent, simple, and user-facing type.
+// is an independent, simple, and user-facing type. Matrix<T> is functionally
+// equivalent to Mat, but we keep it separate to insulate internals from
+// interface and to be able to make different compromises in internals
+// vs interface: in internals we prefer Mat to be a C-style struct with
+// raw data member access and to be similar to the other PMat/EMat/PEMat
+// classes for consistency.
 //
 // The use of type-erasure might seem surprising for a library like Ruy with a
 // heavily-templated entry point, but it is motivated by the desire for most of
 // Ruy's "middle-end" to be non-templated. Ruy can be thought of as having 3
 // main parts:
-// - "front-end" (dispatch.h) - this is the highly templated ruy::Mul entry
-// point, along with routines that select RunKernel and RunPack implementations
-// statically based on those template parameters.
+// - "entry-point" (ruy.h) - this is the highly templated ruy::Mul entry
+// point.
+// - "front-end" (dispatch.h) - the work to handle the entry-point call down
+// to the point where it can be handed off to the middle/back ends below. That
+// includes routines that select RunKernel and RunPack
+// implementations statically based on those template parameters.
 // - "back-end" (kernel.h, pack.h)- this consists of the implementations of
 // RunKernel and RunPack, often in assembly code, which are the building blocks
 // that Ruy calls to perform matrix multiplication.  These are templated so that
@@ -56,9 +71,10 @@ limitations under the License.
 // and thus the static type information is still present.
 //
 // Each layer of Ruy uses matrix types:
-// - "front-end": Matrix<T>
-// - "middle-end": DMatrix, PMatrix
-// - "back-end": Matrix<T>, PackedMatrix<T>
+// - "entry-point": Matrix<T>
+// - "front-end": Mat
+// - "middle-end": EMat, PEMat
+// - "back-end": Mat, PMat
 //
 // The use of separate types for packed matrices is not essential, but makes it
 // obvious at a glance whether a matrix is a packed matrix or not. We would
@@ -70,22 +86,14 @@ limitations under the License.
 // definition for Matrix<T> and see a very simple definition with no internal
 // details like sums and kernel block layout.
 //
-// To present another structured view of our various matrix types, here's a
-// table:
-//                Plain matrices   Packed matrices
-//             +----------------------------------
-// Templated   |  Matrix<T>        PackedMatrix<T>
-// Type-erased |  DMatrix          PMatrix
-//
-//
 // There is 1 additional matrix type not mentioned above, due to its low
 // importance:
-// - PrepackedMatrix: This is a user-facing version of PMatrix. It has the bare
-// minimum of fields needed for representing the raw data and sums buffers of a
-// packed matrix for the "advanced" explicit pre-packing API. This type plays no
-// role in Ruy's internals and can generally by ignored. The only reason it
-// exists is so that PMatrix is not exposed to users -- we prefer to keep the
-// internal matrix types hidden, even from "advanced" users.
+// - PrepackedMatrix: This is a user-facing version of PEMat. It has
+// the bare minimum of fields needed for representing the raw data and sums
+// buffers of a packed matrix for the "advanced" explicit pre-packing API. This
+// type plays no role in Ruy's internals and can generally by ignored. The only
+// reason it exists is so that PEMat is not exposed to users -- we
+// prefer to keep the internal matrix types hidden, even from "advanced" users.
 
 #ifndef RUY_RUY_INTERNAL_MATRIX_H_
 #define RUY_RUY_INTERNAL_MATRIX_H_
@@ -102,8 +110,8 @@ limitations under the License.
 
 namespace ruy {
 
-// Internal counterpart of Layout.
-struct InternalLayout {
+// Internal counterpart of Layout, used by Mat.
+struct MatLayout final {
   std::int32_t rows = 0;
   std::int32_t cols = 0;
   // Stride is the offset between two adjacent matrix elements
@@ -112,21 +120,41 @@ struct InternalLayout {
   Order order = Order::kColMajor;
 };
 
-inline Layout ToLayout(const InternalLayout& src) {
-  Layout ret;
-  ret.set_rows(src.rows);
-  ret.set_cols(src.cols);
-  ret.set_stride(src.stride);
-  ret.set_order(src.order);
-  return ret;
-}
-
-inline InternalLayout ToInternalLayout(const Layout& src) {
-  InternalLayout ret;
+inline MatLayout ToInternal(const Layout& src) {
+  MatLayout ret;
   ret.rows = src.rows;
   ret.cols = src.cols;
   ret.stride = src.stride;
   ret.order = src.order;
+  return ret;
+}
+
+// Internal counterpart of Matrix
+template <typename Scalar>
+struct Mat final {
+  detail::ConstCheckingPtr<Scalar> data;
+  MatLayout layout;
+  Scalar zero_point = 0;
+  bool cacheable = false;
+};
+
+template <typename Scalar>
+inline Mat<Scalar> ToInternal(const Matrix<Scalar>& src) {
+  Mat<Scalar> ret;
+  ret.data = src.data;
+  ret.layout = ToInternal(src.layout);
+  ret.zero_point = src.zero_point;
+  ret.cacheable = src.cacheable;
+  return ret;
+}
+
+template <typename Scalar>
+inline Mat<Scalar> ToInternal(Matrix<Scalar>& src) {
+  Mat<Scalar> ret;
+  ret.data = src.data;
+  ret.layout = ToInternal(src.layout);
+  ret.zero_point = src.zero_point;
+  ret.cacheable = src.cacheable;
   return ret;
 }
 
@@ -144,7 +172,7 @@ inline InternalLayout ToInternalLayout(const Layout& src) {
 // Note that in the case of kcols=1, krows=1, this degenerates to
 // `[cols, rows, 1, 1]` which is equivalent to having no small-scale block
 // structure.
-struct KernelLayout {
+struct KernelLayout final {
   Order order = Order::kColMajor;
   std::uint8_t rows = 1;
   std::uint8_t cols = 1;
@@ -154,9 +182,9 @@ struct KernelLayout {
 // the input matrices. This block structure is necessary for the kernels to
 // process data efficiently.
 //
-// This struct is very similar to InternalLayout, but has the extra KernelLayout
+// This struct is very similar to MatLayout, but has the extra KernelLayout
 // field.
-struct PackedLayout {
+struct PMatLayout final {
   std::int32_t rows = 0;
   std::int32_t cols = 0;
   // Stride is the offset between two adjacent matrix elements
@@ -179,7 +207,7 @@ struct PackedLayout {
 // this file, Ruy's "front-end", which is templated, instantiates all the
 // necessary "back-end" routines with complete static knowledge of all the
 // types.
-struct Type {
+struct Type final {
   template <typename T>
   static Type Create() {
     Type ret;
@@ -202,26 +230,26 @@ struct Type {
 };
 
 // Type-erased matrix.
-struct DMatrix {
+struct EMat final {
   Type data_type;
   void* data = nullptr;
-  InternalLayout layout;
+  MatLayout layout;
   std::int32_t zero_point = 0;
 };
 
 // Type-erased packed matrix.
-struct PMatrix {
+struct PEMat final {
   Type data_type;
   void* data = nullptr;
   Type sums_type;
   void* sums = nullptr;
-  PackedLayout layout;
+  PMatLayout layout;
   std::int32_t zero_point = 0;
 };
 
 // Convenient typed helper for packed matrices.
 template <typename Scalar>
-struct PackedMatrix {
+struct PMat final {
   // The row/column sums needed for quantized matrix multiplication when
   // the opposite operand of the multiplication uses a non-symmetric zero
   // point.
@@ -238,36 +266,36 @@ struct PackedMatrix {
 
   Scalar* data = nullptr;
   SumsType* sums = nullptr;
-  PackedLayout layout;
+  PMatLayout layout;
   std::int32_t zero_point = 0;
 };
 
 template <typename T>
-DMatrix ToDMatrix(const Matrix<T>& matrix) {
-  DMatrix ret;
+EMat EraseType(const Mat<T>& matrix) {
+  EMat ret;
   ret.data_type = Type::Create<T>();
   ret.data = ToVoidPtr(matrix.data.get());
-  ret.layout = ToInternalLayout(matrix.layout);
+  ret.layout = matrix.layout;
   ret.zero_point = matrix.zero_point;
   return ret;
 }
 
 template <typename T>
-Matrix<T> ToMatrix(const DMatrix& dmatrix) {
+Mat<T> UneraseType(const EMat& dmatrix) {
   dmatrix.data_type.AssertIs<T>();
-  Matrix<T> ret;
+  Mat<T> ret;
   ret.data = static_cast<T*>(dmatrix.data);
-  ret.layout = ToLayout(dmatrix.layout);
+  ret.layout = dmatrix.layout;
   ret.zero_point = dmatrix.zero_point;
   return ret;
 }
 
 template <typename T>
-PackedMatrix<T> ToPackedMatrix(const PMatrix& pmatrix) {
-  using SumsType = typename PackedMatrix<T>::SumsType;
+PMat<T> UneraseType(const PEMat& pmatrix) {
+  using SumsType = typename PMat<T>::SumsType;
   pmatrix.data_type.AssertIs<T>();
   pmatrix.sums_type.AssertIs<SumsType>();
-  PackedMatrix<T> ret;
+  PMat<T> ret;
   ret.data = static_cast<T*>(pmatrix.data);
   ret.sums = static_cast<SumsType*>(pmatrix.sums);
   ret.layout = pmatrix.layout;
@@ -275,7 +303,7 @@ PackedMatrix<T> ToPackedMatrix(const PMatrix& pmatrix) {
   return ret;
 }
 
-// Helpers for InternalLayout / PackedLayout.
+// Helpers for MatLayout / PMatLayout.
 
 template <typename LayoutType>
 inline bool IsUnstrided(const LayoutType& layout) {
@@ -304,7 +332,7 @@ int FlatSize(const LayoutType& layout) {
 }
 
 // TODO(b/130417400) add a unit test
-inline int Offset(const Layout& layout, int row, int col) {
+inline int Offset(const MatLayout& layout, int row, int col) {
   // TODO(benoitjacob)  - should check this but this make the _slow tests take
   // 5x longer.  Find a mitigation like in Eigen with an 'internal' variant
   // bypassing the check?
@@ -318,7 +346,7 @@ inline int Offset(const Layout& layout, int row, int col) {
 }
 
 // TODO(b/130417400) add a unit test
-inline int Offset(const PackedLayout& layout, int row, int col) {
+inline int Offset(const PMatLayout& layout, int row, int col) {
   RUY_DCHECK(is_pot(layout.kernel.rows));
   RUY_DCHECK(is_pot(layout.kernel.cols));
   int row_outer = row & ~(layout.kernel.rows - 1);
@@ -340,48 +368,48 @@ inline int Offset(const PackedLayout& layout, int row, int col) {
   return offset_outer + offset_inner;
 }
 
-// Helpers for Matrix<T>.
+// Helpers for Mat<T>.
 
 template <typename Scalar>
-const Scalar* ElementPtr(const Matrix<Scalar>& mat, int row, int col) {
+const Scalar* ElementPtr(const Mat<Scalar>& mat, int row, int col) {
   return mat.data.get() + Offset(mat.layout, row, col);
 }
 
 template <typename Scalar>
-Scalar* ElementPtr(Matrix<Scalar>* mat, int row, int col) {
+Scalar* ElementPtr(Mat<Scalar>* mat, int row, int col) {
   return mat->data.get() + Offset(mat->layout, row, col);
 }
 
 template <typename Scalar>
-Scalar Element(const Matrix<Scalar>& mat, int row, int col) {
+Scalar Element(const Mat<Scalar>& mat, int row, int col) {
   return *ElementPtr(mat, row, col);
 }
 
-// Helpers for PackedMatrix<T>.
+// Helpers for PMat<T>.
 // Duplicated from Matrix<T>, but the duplication seems acceptable.
 
 template <typename Scalar>
-const Scalar* ElementPtr(const PackedMatrix<Scalar>& mat, int row, int col) {
+const Scalar* ElementPtr(const PMat<Scalar>& mat, int row, int col) {
   return mat.data + Offset(mat.layout, row, col);
 }
 
 template <typename Scalar>
-Scalar* ElementPtr(PackedMatrix<Scalar>* mat, int row, int col) {
+Scalar* ElementPtr(PMat<Scalar>* mat, int row, int col) {
   return mat->data + Offset(mat->layout, row, col);
 }
 
 template <typename Scalar>
-Scalar Element(const PackedMatrix<Scalar>& mat, int row, int col) {
+Scalar Element(const PMat<Scalar>& mat, int row, int col) {
   return *ElementPtr(mat, row, col);
 }
 
-// Helpers for PMatrix.
+// Helpers for PEMat.
 
-inline int DataSize(const PMatrix& packed) {
+inline int DataSize(const PEMat& packed) {
   return FlatSize(packed.layout) * packed.data_type.size;
 }
 
-inline int SumsSize(const PMatrix& packed) {
+inline int SumsSize(const PEMat& packed) {
   // Packed matrices are only relevant for Ruy's TrMul implementations. For
   // TrMul, the number of sums is always equal to the number of columns.
   return packed.layout.cols * packed.sums_type.size;

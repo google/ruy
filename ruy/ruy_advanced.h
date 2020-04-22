@@ -22,6 +22,7 @@ limitations under the License.
 #include <functional>
 
 #include "ruy/context.h"
+#include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/path.h"
 #include "ruy/prepack.h"
@@ -49,9 +50,13 @@ void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                    Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
                    PrepackedMatrix* prepacked_rhs,
                    std::function<void*(int)> alloc_fn) {
+  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
+  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
+  Mat<DstScalar> internal_dst = ToInternal(*dst);
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
-  PrePackForMulInternal<CompiledPaths>(lhs, rhs, mul_params, context, dst,
-                                       prepacked, alloc_fn);
+  PrePackForMulInternal<CompiledPaths>(internal_lhs, internal_rhs, mul_params,
+                                       context, &internal_dst, prepacked,
+                                       alloc_fn);
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
@@ -61,8 +66,13 @@ void MulWithPrepacked(const Matrix<LhsScalar>& lhs,
                       const MulParamsType& mul_params, Context* context,
                       Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
                       PrepackedMatrix* prepacked_rhs) {
+  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
+  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
+  Mat<DstScalar> internal_dst = ToInternal(*dst);
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
-  MulWithPrepackedInternal<CompiledPaths>(lhs, rhs, mul_params, context, dst,
+
+  MulWithPrepackedInternal<CompiledPaths>(internal_lhs, internal_rhs,
+                                          mul_params, context, &internal_dst,
                                           prepacked);
 }
 
