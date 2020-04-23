@@ -14,7 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 // Temporary dotprod-detection code until we can rely on getauxval.
-
+Foooo
 #ifndef RUY_RUY_DETECT_ARM_H_
 #define RUY_RUY_DETECT_ARM_H_
 
