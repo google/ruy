@@ -36,6 +36,9 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
+#include "ruy/context.h"
+#include "ruy/context_get_ctx.h"
+#include "ruy/ctx.h"
 #include "ruy/gtest_wrapper.h"  // IWYU pragma: export
 #include "ruy/matrix.h"         // IWYU pragma: export
 #include "ruy/mul_params.h"     // IWYU pragma: export
@@ -639,10 +642,10 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
   } else {
     GlobalContext().set_max_num_threads(1 + global_random_engine()() % 8);
   }
-  ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
+  get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
   if (expected_outcome == ExpectedOutcome::kSuccess) {
     DoMul(result);
-    RUY_CHECK_EQ(GlobalContext().last_taken_path(), result->path);
+    RUY_CHECK_EQ(GlobalContext().last_selected_path(), result->path);
   } else if (expected_outcome == ExpectedOutcome::kDeath) {
     // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
     // Report a bug?
@@ -1669,11 +1672,11 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
     // invocation doesn't write into it.
     Matrix<DstScalar> null_data_dst = result->storage_matrix.matrix;
     null_data_dst.set_data(nullptr);
-    ContextInternal::SetRuntimeEnabledPaths(&GlobalContext(), result->path);
+    get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
     PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params,
                              &GlobalContext(), &null_data_dst,
                              prepacked_lhs_ptr, prepacked_rhs_ptr, alloc_fn);
-    RUY_CHECK_EQ(GlobalContext().last_taken_path(), result->path);
+    RUY_CHECK_EQ(GlobalContext().last_selected_path(), result->path);
   }
 
   life_stage = LifeStage::kHasPrepackedMatrices;
@@ -1689,7 +1692,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
     // Use a dummy Context just to perform the resolution of specific runtime
     // enabled paths.
     Context context;
-    paths_bitfield = ContextInternal::GetRuntimeEnabledPaths(&context);
+    paths_bitfield = get_ctx(&context)->GetRuntimeEnabledPaths();
   }
 
   // Trim bits that don't correspond to a compiled path,

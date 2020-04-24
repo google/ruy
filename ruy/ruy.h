@@ -19,6 +19,7 @@ limitations under the License.
 #define RUY_RUY_RUY_H_
 
 #include "ruy/context.h"
+#include "ruy/context_get_ctx.h"
 #include "ruy/dispatch.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
@@ -79,8 +80,8 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
   Mat<DstScalar> internal_dst = ToInternal(*dst);
   DispatchMul<ruy::kDefaultPaths, LhsScalar, RhsScalar, DstScalar,
-              MulParamsType>(internal_lhs, internal_rhs, mul_params, context,
-                             &internal_dst);
+              MulParamsType>(internal_lhs, internal_rhs, mul_params,
+                             get_ctx(context), &internal_dst);
 }
 
 // Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to
@@ -94,7 +95,7 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
   Mat<DstScalar> internal_dst = ToInternal(*dst);
   DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      internal_lhs, internal_rhs, mul_params, context, &internal_dst);
+      internal_lhs, internal_rhs, mul_params, get_ctx(context), &internal_dst);
 }
 
 }  // namespace ruy

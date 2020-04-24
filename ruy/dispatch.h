@@ -40,8 +40,7 @@ limitations under the License.
 
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/context.h"
-#include "ruy/context_internal.h"
+#include "ruy/ctx.h"
 #include "ruy/kernel.h"
 #include "ruy/kernel_common.h"
 #include "ruy/mat.h"
@@ -217,8 +216,6 @@ void PopulateTrMulParams(TrMulParams* params) {
       &RunPack<ThePath, RhsKernelLayout, RhsScalar, PackedRhsScalar>;
   params->run_kernel = &RunKernel<ThePath, PackedLhsScalar, PackedRhsScalar,
                                   DstScalar, MulParamsType>;
-
-  return;
 }
 
 // PopulateTrMulParamsAllCompiledPaths calls into one of multiple
@@ -392,19 +389,17 @@ struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
 };
 
 inline void HandlePrepackedCaching(TrMulParams* params,
-                                   const SidePair<bool>& cacheable,
-                                   Context* context) {
-  if (context->cache_policy() == CachePolicy::kNoCache) {
+                                   const SidePair<bool>& cacheable, Ctx* ctx) {
+  if (ctx->cache_policy() == CachePolicy::kNoCache) {
     return;
   }
 
-  if (context->cache_policy() == CachePolicy::kCacheLHSOnNarrowMul) {
+  if (ctx->cache_policy() == CachePolicy::kCacheLHSOnNarrowMul) {
     // TODO(b/149304278) Cache on dst.cols <= selected kernel width.
     if (!cacheable[Side::kLhs] || params->dst.layout.cols > 4) {
       return;
     }
-    PrepackedCache* prepacked_cache =
-        ContextInternal::GetPrepackedCache(context);
+    PrepackedCache* prepacked_cache = ctx->GetPrepackedCache();
     auto cache_key = std::make_pair(reinterpret_cast<void*>(params->run_kernel),
                                     params->src[Side::kLhs].data);
     auto it = prepacked_cache->FindAndUpdate(cache_key);
@@ -423,7 +418,7 @@ inline void HandlePrepackedCaching(TrMulParams* params,
     params->packed[Side::kLhs].data = prepacked_lhs.data;
     params->packed[Side::kLhs].sums = prepacked_lhs.sums;
     params->is_prepacked[Side::kLhs] = true;
-    Tuning tuning = ContextInternal::GetMainThreadTuning(context);
+    Tuning tuning = ctx->GetMainThreadTuning();
     params->RunPack(Side::kLhs, tuning, 0,
                     params->packed[Side::kLhs].layout.cols);
     prepacked_cache->Insert(cache_key, prepacked_lhs);
@@ -434,7 +429,7 @@ inline void HandlePrepackedCaching(TrMulParams* params,
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-                 const MulParamsType& mul_params, Context* context,
+                 const MulParamsType& mul_params, Ctx* ctx,
                  Mat<DstScalar>* dst) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
@@ -458,7 +453,7 @@ void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   //
   // Unfortunately, it is not a *static* constant, since it depends on runtime
   // detection of the available SIMD instructions.
-  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
+  Path the_path = ctx->SelectPath(CompiledPaths);
 
   // Production code should probably never execute Path::kReference.
   // Path::kReference implements a Mul, not a TrMul like the rest of Ruy, so if
@@ -483,8 +478,8 @@ void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
                                         the_path, &params);
   SidePair<bool> cacheable(lhs.cacheable, rhs.cacheable);
-  HandlePrepackedCaching(&params, cacheable, context);
-  TrMul(&params, context);
+  HandlePrepackedCaching(&params, cacheable, ctx);
+  TrMul(&params, ctx);
 }
 
 }  // namespace ruy

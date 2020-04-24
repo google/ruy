@@ -25,7 +25,7 @@ limitations under the License.
 #include "ruy/block_map.h"
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
-#include "ruy/context_internal.h"
+#include "ruy/ctx.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
@@ -245,7 +245,7 @@ void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
   packed->sums = allocator->AllocateBytes(SumsSize(*packed));
 }
 
-int GetThreadCount(Context* context, int rows, int cols, int depth) {
+int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
 #if RUY_PLATFORM(EMSCRIPTEN)
   // b/139927184, std::thread constructor raises exception
   return 1;
@@ -256,7 +256,7 @@ int GetThreadCount(Context* context, int rows, int cols, int depth) {
   static constexpr int kDivisorLog2 = 15;
   const int guess_log2 = std::max(
       0, ceil_log2(rows) + ceil_log2(cols) + ceil_log2(depth) - kDivisorLog2);
-  return std::min(1 << guess_log2, context->max_num_threads());
+  return std::min(1 << guess_log2, ctx->max_num_threads());
 }
 
 LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
@@ -278,10 +278,10 @@ LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
 
 }  // namespace
 
-void TrMul(TrMulParams* params, Context* context) {
+void TrMul(TrMulParams* params, Ctx* ctx) {
   profiler::ScopeLabel label(
       "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
-      static_cast<int>(params->path), context->max_num_threads(),
+      static_cast<int>(params->path), ctx->max_num_threads(),
       params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
   PEMat& packed_lhs = params->packed[Side::kLhs];
@@ -293,12 +293,12 @@ void TrMul(TrMulParams* params, Context* context) {
   const int cols = rhs.layout.cols;
   const int depth = lhs.layout.rows;
 
-  const int tentative_thread_count = GetThreadCount(context, rows, cols, depth);
+  const int tentative_thread_count = GetThreadCount(ctx, rows, cols, depth);
   const auto loop_structure = GetLoopStructure(
       tentative_thread_count, rows, cols, depth, lhs.data_type.size,
       rhs.data_type.size, params->local_data_cache_size,
       params->shared_data_cache_size);
-  Allocator* allocator = ContextInternal::GetMainAllocator(context);
+  Allocator* allocator = ctx->GetMainAllocator();
 
   // Allocate packed matrices
   for (Side side : {Side::kLhs, Side::kRhs}) {
@@ -313,7 +313,7 @@ void TrMul(TrMulParams* params, Context* context) {
   // version of that.
   if (loop_structure == LoopStructure::kSimple) {
     profiler::ScopeLabel label_simple("TrMulImpl, simple loop");
-    Tuning tuning = ContextInternal::GetMainThreadTuning(context);
+    Tuning tuning = ctx->GetMainThreadTuning();
 
     const SidePair<int> origin{0, 0};
     const SidePair<int> rounded_dims{packed_lhs.layout.cols,
@@ -331,7 +331,7 @@ void TrMul(TrMulParams* params, Context* context) {
 
   profiler::ScopeLabel label_general("TrMulImpl, general case");
 
-  auto* trace = NewTraceOrNull(context->mutable_tracing(), rows, depth, cols);
+  auto* trace = NewTraceOrNull(ctx->mutable_tracing(), rows, depth, cols);
   TraceRecordStart(trace);
 
   // Initialize block map.
@@ -345,10 +345,9 @@ void TrMul(TrMulParams* params, Context* context) {
   // Initialize per-thread state.
   const int thread_count = block_map.thread_count;
   const bool need_atomics = thread_count > 1;
-  const auto& per_thread_states =
-      ContextInternal::GetPerThreadStates(context, thread_count);
-  for (auto& per_thread_state : per_thread_states) {
-    per_thread_state->tuning_resolver.SetTuning(context->explicit_tuning());
+  ctx->EnsureThreadSpecificResources(thread_count);
+  for (int i = 0; i < thread_count; i++) {
+    ctx->GetThreadSpecificTuningResolver(i)->SetTuning(ctx->explicit_tuning());
   }
 
   // In the need_atomics case, allocate and initialize atomic values tracking
@@ -380,15 +379,16 @@ void TrMul(TrMulParams* params, Context* context) {
   atomic_block_id->store(thread_count);
 
   for (int i = 0; i < thread_count; i++) {
+    auto* allocator = ctx->GetThreadSpecificAllocator(i);
+    auto* tuning_resolver = ctx->GetThreadSpecificTuningResolver(i);
     new (tasks + i)
         TrMulTask(params, block_map, atomic_block_id, i, need_atomics,
-                  packing_status, &per_thread_states[i]->tuning_resolver,
-                  &per_thread_states[i]->allocator, trace);
+                  packing_status, tuning_resolver, allocator, trace);
   }
 
   // Do the computation.
   TraceRecordExecute(block_map, trace);
-  context->mutable_thread_pool()->Execute(thread_count, tasks);
+  ctx->mutable_thread_pool()->Execute(thread_count, tasks);
 
   // Finish up.
   for (int i = 0; i < thread_count; i++) {

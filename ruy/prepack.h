@@ -22,8 +22,7 @@ limitations under the License.
 #include <functional>
 
 #include "ruy/check_macros.h"
-#include "ruy/context.h"
-#include "ruy/context_internal.h"
+#include "ruy/ctx.h"
 #include "ruy/dispatch.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
@@ -40,12 +39,12 @@ namespace ruy {
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void PrePackForMulInternal(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-                           const MulParamsType& mul_params, Context* context,
+                           const MulParamsType& mul_params, Ctx* ctx,
                            Mat<DstScalar>* dst,
                            SidePair<PrepackedMatrix*> prepacked,
                            std::function<void*(int)> alloc_fn) {
   profiler::ScopeLabel label("PrePackForMul");
-  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
+  Path the_path = ctx->SelectPath(CompiledPaths);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
   Mat<LhsScalar> transposed_lhs(lhs);
@@ -58,7 +57,7 @@ void PrePackForMulInternal(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   const SidePair<int> rounded_dims{params.packed[Side::kLhs].layout.cols,
                                    params.packed[Side::kRhs].layout.cols};
 
-  Tuning tuning = ContextInternal::GetMainThreadTuning(context);
+  Tuning tuning = ctx->GetMainThreadTuning();
   for (Side side : {Side::kLhs, Side::kRhs}) {
     if (prepacked[side]) {
       prepacked[side]->data_size = DataSize(params.packed[side]);
@@ -76,7 +75,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void MulWithPrepackedInternal(const Mat<LhsScalar>& lhs,
                               const Mat<RhsScalar>& rhs,
-                              const MulParamsType& mul_params, Context* context,
+                              const MulParamsType& mul_params, Ctx* ctx,
                               Mat<DstScalar>* dst,
                               SidePair<PrepackedMatrix*> prepacked) {
   profiler::ScopeLabel label("MulWithPrepacked");
@@ -85,7 +84,7 @@ void MulWithPrepackedInternal(const Mat<LhsScalar>& lhs,
   EnforceZeroPointSupport<MulParamsType>(lhs.zero_point, rhs.zero_point,
                                          dst->zero_point);
 
-  Path the_path = ContextInternal::GetPathToTake<CompiledPaths>(context);
+  Path the_path = ctx->SelectPath(CompiledPaths);
   RUY_CHECK_NE(the_path, Path::kReference);
   constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
   Mat<LhsScalar> transposed_lhs(lhs);
@@ -102,7 +101,7 @@ void MulWithPrepackedInternal(const Mat<LhsScalar>& lhs,
     }
   }
 
-  TrMul(&params, context);
+  TrMul(&params, ctx);
 }
 
 }  // namespace ruy

@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "ruy/context_internal.h"
+#include "ruy/ctx.h"
 
 #include "ruy/check_macros.h"
-#include "ruy/context.h"
+#include "ruy/ctx_impl.h"
 #include "ruy/detect_arm.h"
 #include "ruy/detect_x86.h"
 #include "ruy/have_built_path_for.h"
@@ -24,17 +24,38 @@ limitations under the License.
 
 namespace ruy {
 
-void ContextInternal::SetRuntimeEnabledPaths(Context* context, Path paths) {
-  context->runtime_enabled_paths_ = paths;
+const CtxImpl& Ctx::impl() const { return static_cast<const CtxImpl&>(*this); }
+CtxImpl* Ctx::mutable_impl() { return static_cast<CtxImpl*>(this); }
+
+Path Ctx::last_selected_path() const { return impl().last_selected_path_; }
+Tuning Ctx::explicit_tuning() const { return impl().explicit_tuning_; }
+void Ctx::set_explicit_tuning(Tuning value) {
+  mutable_impl()->explicit_tuning_ = value;
+}
+const ThreadPool& Ctx::thread_pool() const { return impl().thread_pool_; }
+ThreadPool* Ctx::mutable_thread_pool() { return &mutable_impl()->thread_pool_; }
+int Ctx::max_num_threads() const { return impl().max_num_threads_; }
+void Ctx::set_max_num_threads(int value) {
+  mutable_impl()->max_num_threads_ = value;
+}
+const TracingContext& Ctx::tracing() const { return impl().tracing_; }
+TracingContext* Ctx::mutable_tracing() { return &mutable_impl()->tracing_; }
+CachePolicy Ctx::cache_policy() const { return impl().cache_policy_; }
+void Ctx::set_cache_policy(CachePolicy value) {
+  mutable_impl()->cache_policy_ = value;
 }
 
-Path ContextInternal::GetRuntimeEnabledPaths(Context* context) {
+void Ctx::SetRuntimeEnabledPaths(Path paths) {
+  mutable_impl()->runtime_enabled_paths_ = paths;
+}
+
+Path Ctx::GetRuntimeEnabledPaths() {
   // Note, this is a reference, used to avoid exceedingly long lines in this
   // function body. Assigning to it mutates *context.
-  Path& enabled_paths = context->runtime_enabled_paths_;
+  Path& enabled_paths = mutable_impl()->runtime_enabled_paths_;
 
   // This function should always return the same value on a given machine.
-  // When runtime_enabled_paths_ has its initial value kNone, it performs
+  // When runtime_enabled_paths has its initial value kNone, it performs
   // some platform detection to resolve it to specific Path values.
 
   // Fast path: already resolved.
@@ -111,34 +132,52 @@ Path ContextInternal::GetRuntimeEnabledPaths(Context* context) {
   return enabled_paths;
 }
 
-const std::vector<std::unique_ptr<PerThreadState>>&
-ContextInternal::GetPerThreadStates(Context* context, int thread_count) {
-  while (context->per_thread_states_.size() <
-         static_cast<std::size_t>(thread_count)) {
-    context->per_thread_states_.emplace_back(new PerThreadState);
-  }
-  return context->per_thread_states_;
+Path Ctx::SelectPath(Path compiled_paths) {
+  return mutable_impl()->last_selected_path_ =
+             GetMostSignificantPath(compiled_paths & GetRuntimeEnabledPaths());
 }
 
-Allocator* ContextInternal::GetMainAllocator(Context* context) {
-  if (!context->main_allocator_) {
-    context->main_allocator_.reset(new Allocator);
+void Ctx::EnsureThreadSpecificResources(int thread_count) {
+  auto& resources = mutable_impl()->thread_specific_resources_;
+  while (thread_count > static_cast<int>(resources.size())) {
+    resources.emplace_back(new ThreadSpecificResource);
   }
-  return context->main_allocator_.get();
+  RUY_DCHECK_LE(thread_count, static_cast<int>(resources.size()));
 }
 
-PrepackedCache* ContextInternal::GetPrepackedCache(Context* context) {
-  if (!context->prepacked_cache_) {
-    context->prepacked_cache_.reset(new PrepackedCache);
-  }
-  return context->prepacked_cache_.get();
+TuningResolver* Ctx::GetThreadSpecificTuningResolver(int thread_index) const {
+  const auto& resources = impl().thread_specific_resources_;
+  RUY_DCHECK_LT(thread_index, static_cast<int>(resources.size()));
+  return &resources[thread_index]->tuning_resolver;
 }
 
-Tuning ContextInternal::GetMainThreadTuning(Context* context) {
-  const auto& per_thread_states = GetPerThreadStates(context, 1);
-  TuningResolver* tuning_resolver = &per_thread_states[0]->tuning_resolver;
-  tuning_resolver->SetTuning(context->explicit_tuning_);
+Allocator* Ctx::GetThreadSpecificAllocator(int thread_index) const {
+  const auto& resources = impl().thread_specific_resources_;
+  RUY_DCHECK_LT(thread_index, static_cast<int>(resources.size()));
+  return &resources[thread_index]->allocator;
+}
+
+Allocator* Ctx::GetMainAllocator() {
+  if (!impl().main_allocator_) {
+    mutable_impl()->main_allocator_.reset(new Allocator);
+  }
+  return impl().main_allocator_.get();
+}
+
+PrepackedCache* Ctx::GetPrepackedCache() {
+  if (!impl().prepacked_cache_) {
+    mutable_impl()->prepacked_cache_.reset(new PrepackedCache);
+  }
+  return impl().prepacked_cache_.get();
+}
+
+Tuning Ctx::GetMainThreadTuning() {
+  EnsureThreadSpecificResources(1);
+  TuningResolver* tuning_resolver = GetThreadSpecificTuningResolver(0);
+  tuning_resolver->SetTuning(explicit_tuning());
   return tuning_resolver->Resolve();
 }
+
+void Ctx::ClearPrepackedCache() { mutable_impl()->prepacked_cache_ = nullptr; }
 
 }  // namespace ruy

@@ -22,6 +22,7 @@ limitations under the License.
 #include <functional>
 
 #include "ruy/context.h"
+#include "ruy/context_get_ctx.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/path.h"
@@ -55,8 +56,8 @@ void PrePackForMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Mat<DstScalar> internal_dst = ToInternal(*dst);
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
   PrePackForMulInternal<CompiledPaths>(internal_lhs, internal_rhs, mul_params,
-                                       context, &internal_dst, prepacked,
-                                       alloc_fn);
+                                       get_ctx(context), &internal_dst,
+                                       prepacked, alloc_fn);
 }
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
@@ -72,8 +73,8 @@ void MulWithPrepacked(const Matrix<LhsScalar>& lhs,
   SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
 
   MulWithPrepackedInternal<CompiledPaths>(internal_lhs, internal_rhs,
-                                          mul_params, context, &internal_dst,
-                                          prepacked);
+                                          mul_params, get_ctx(context),
+                                          &internal_dst, prepacked);
 }
 
 }  // namespace ruy

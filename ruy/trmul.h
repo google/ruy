@@ -26,12 +26,13 @@ limitations under the License.
 #ifndef RUY_RUY_TRMUL_H_
 #define RUY_RUY_TRMUL_H_
 
-#include "ruy/context.h"
+#include "ruy/ctx.h"
 #include "ruy/trmul_params.h"
 
 namespace ruy {
 
-void TrMul(TrMulParams* params, Context* context);
+struct ContextInternal;
+void TrMul(TrMulParams* params, Ctx* ctx);
 
 }  // namespace ruy
 

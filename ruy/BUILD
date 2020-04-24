@@ -152,7 +152,9 @@ cc_test(
     name = "prepacked_cache_test",
     srcs = ["prepacked_cache_test.cc"],
     deps = [
-        ":context_internal",
+        ":context",
+        ":context_get_ctx",
+        ":ctx",
         ":gtest_wrapper",
         ":prepacked_cache",
         ":ruy",
@@ -760,6 +762,7 @@ cc_library(
 
 cc_library(
     name = "context",
+    srcs = ["context.cc"],
     hdrs = [
         "context.h",
     ],
@@ -768,6 +771,7 @@ cc_library(
     deps = [
         ":allocator",
         ":check_macros",
+        ":ctx",
         ":detect_arm",
         ":detect_x86",
         ":have_built_path_for",
@@ -785,27 +789,27 @@ cc_test(
     srcs = ["context_test.cc"],
     deps = [
         ":context",
-        ":context_internal",
         ":gtest_wrapper",
         ":path",
         ":platform",
         ":prepacked_cache",
+        ":tune",
     ],
 )
 
 cc_library(
-    name = "context_internal",
+    name = "ctx",
     srcs = [
-        "context_internal.cc",
+        "ctx.cc",
     ],
     hdrs = [
-        "context_internal.h",
+        "ctx.h",
+        "ctx_impl.h",
     ],
     copts = ruy_copts_base(),
     deps = [
         ":allocator",
         ":check_macros",
-        ":context",
         ":detect_arm",
         ":detect_x86",
         ":have_built_path_for",
@@ -818,12 +822,26 @@ cc_library(
     ],
 )
 
-cc_test(
-    name = "context_internal_test",
-    srcs = ["context_internal_test.cc"],
+cc_library(
+    name = "context_get_ctx",
+    srcs = [
+        "context_get_ctx.cc",
+    ],
+    hdrs = [
+        "context_get_ctx.h",
+    ],
+    copts = ruy_copts_base(),
     deps = [
         ":context",
-        ":context_internal",
+        ":ctx",
+    ],
+)
+
+cc_test(
+    name = "ctx_test",
+    srcs = ["ctx_test.cc"],
+    deps = [
+        ":ctx",
         ":gtest_wrapper",
         ":path",
         ":platform",
@@ -851,8 +869,7 @@ cc_library(
         ":block_map",
         ":check_macros",
         ":common",
-        ":context",
-        ":context_internal",
+        ":ctx",
         ":mat",
         ":matrix",
         ":mul_params",
@@ -884,7 +901,8 @@ cc_library(
         ":check_macros",
         ":common",
         ":context",
-        ":context_internal",
+        ":context_get_ctx",
+        ":ctx",
         ":kernel",
         ":mat",
         ":matrix",
@@ -946,6 +964,9 @@ cc_library(
         ":time",
         ":gtest_wrapper",
         ":platform",
+        ":context",
+        ":ctx",
+        ":context_get_ctx",
         "//ruy/profiler:profiler",
     ] + ruy_test_ext_deps(),
 )
