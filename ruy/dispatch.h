@@ -388,41 +388,72 @@ struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
   }
 };
 
-inline void HandlePrepackedCaching(TrMulParams* params,
-                                   const SidePair<bool>& cacheable, Ctx* ctx) {
-  if (ctx->cache_policy() == CachePolicy::kNoCache) {
-    return;
+// Returns true if the operand on the given side should use caching of the
+// packed form. This may either be explicitly dictated by its cache_policy
+// (if it is kNeverCache, the default, or kAlwaysCache), or it may depend
+// on a heuristic decision based on the other operand's width. For example,
+// in a matrix*vector product, for the LHS matrix operand, the other side is
+// the RHS vector, with a width of 1, causing the packing of the LHS to be
+// a large fraction of the overall work, so a heuristic would typically
+// decide in favor of caching, if permitted at all by the cache_policy.
+inline bool ShouldCache(const TrMulParams& params, Side side) {
+  const CachePolicy cache_policy = params.src[side].cache_policy;
+  // The width that matters is that of the other side, it is what determines
+  // the amortization of the packing work done on the present side.
+  const Side other_side = Other(side);
+  const int other_width = params.src[other_side].layout.cols;
+  const int other_kernel_width = params.packed[other_side].layout.kernel.cols;
+  switch (cache_policy) {
+    case CachePolicy::kNeverCache:
+      return false;
+    case CachePolicy::kAlwaysCache:
+      return true;
+    case CachePolicy::kCacheIfLargeSpeedup:
+      // The condition (other_width <= other_kernel_width) means that the kernel
+      // will traverse each value of the present side only once, meaning that
+      // the overhead of the packing work will be maximal, hence maximally
+      // worth caching.
+      return (other_width <= other_kernel_width);
+    case CachePolicy::kCacheIfSignificantSpeedup:
+      // Variant of the heuristic used in the kCacheIfLargeSpeedup case. The
+      // kernel will run on each value of the present side only a few times,
+      // so packing overhead will be significant.
+      return (other_width <= 4 * other_kernel_width);
+    case CachePolicy::kCacheLikeTheOldCode:
+      return other_width <= 4;
+    default:
+      RUY_DCHECK(false);
+      return false;
   }
+}
 
-  if (ctx->cache_policy() == CachePolicy::kCacheLHSOnNarrowMul) {
-    // TODO(b/149304278) Cache on dst.cols <= selected kernel width.
-    if (!cacheable[Side::kLhs] || params->dst.layout.cols > 4) {
-      return;
+inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
+  for (Side side : {Side::kLhs, Side::kRhs}) {
+    if (ShouldCache(*params, side)) {
+      // Look up in cache.
+      PrepackedCache* prepacked_cache = ctx->GetPrepackedCache();
+      auto cache_key = std::make_pair(
+          reinterpret_cast<void*>(params->run_kernel), params->src[side].data);
+      auto it = prepacked_cache->FindAndUpdate(cache_key);
+      if (it != prepacked_cache->cend()) {
+        // Already cached.
+        params->packed[side].data = it->second.first.data;
+        params->packed[side].sums = it->second.first.sums;
+        params->is_prepacked[side] = true;
+        return;
+      }
+      // Not already cached. Pack and cache now.
+      PrepackedMatrix prepacked_lhs;
+      prepacked_lhs.data_size = DataSize(params->packed[side]);
+      prepacked_lhs.sums_size = SumsSize(params->packed[side]);
+      prepacked_cache->AllocatePrepackedMatrix(&prepacked_lhs);
+      params->packed[side].data = prepacked_lhs.data;
+      params->packed[side].sums = prepacked_lhs.sums;
+      params->is_prepacked[side] = true;
+      Tuning tuning = ctx->GetMainThreadTuning();
+      params->RunPack(side, tuning, 0, params->packed[side].layout.cols);
+      prepacked_cache->Insert(cache_key, prepacked_lhs);
     }
-    PrepackedCache* prepacked_cache = ctx->GetPrepackedCache();
-    auto cache_key = std::make_pair(reinterpret_cast<void*>(params->run_kernel),
-                                    params->src[Side::kLhs].data);
-    auto it = prepacked_cache->FindAndUpdate(cache_key);
-    if (it != prepacked_cache->cend()) {
-      params->packed[Side::kLhs].data = it->second.first.data;
-      params->packed[Side::kLhs].sums = it->second.first.sums;
-      params->is_prepacked[Side::kLhs] = true;
-      return;
-    }
-
-    // Allocate the prepacked matrix.
-    PrepackedMatrix prepacked_lhs;
-    prepacked_lhs.data_size = DataSize(params->packed[Side::kLhs]);
-    prepacked_lhs.sums_size = SumsSize(params->packed[Side::kLhs]);
-    prepacked_cache->AllocatePrepackedMatrix(&prepacked_lhs);
-    params->packed[Side::kLhs].data = prepacked_lhs.data;
-    params->packed[Side::kLhs].sums = prepacked_lhs.sums;
-    params->is_prepacked[Side::kLhs] = true;
-    Tuning tuning = ctx->GetMainThreadTuning();
-    params->RunPack(Side::kLhs, tuning, 0,
-                    params->packed[Side::kLhs].layout.cols);
-    prepacked_cache->Insert(cache_key, prepacked_lhs);
-    return;
   }
 }
 
@@ -477,8 +508,7 @@ void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   TrMulParams params;
   CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
                                         the_path, &params);
-  SidePair<bool> cacheable(lhs.cacheable, rhs.cacheable);
-  HandlePrepackedCaching(&params, cacheable, ctx);
+  HandlePrepackedCaching(&params, ctx);
   TrMul(&params, ctx);
 }
 

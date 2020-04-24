@@ -40,7 +40,6 @@ class TuningResolver;
 class PrepackedCache;
 enum class Path : std::uint8_t;
 enum class Tuning;
-enum class CachePolicy;
 
 // Ctx is the internal context class used throughout ruy code. Whereas Context
 // is exposed to users, Ctx is internal to ruy. As many of ruy's internal
@@ -60,8 +59,6 @@ class Ctx /* not final, subclassed by CtxImpl */ {
   void set_max_num_threads(int value);
   const TracingContext& tracing() const;
   TracingContext* mutable_tracing();
-  CachePolicy cache_policy() const;
-  void set_cache_policy(CachePolicy value);
 
   void SetRuntimeEnabledPaths(Path paths);
   Path GetRuntimeEnabledPaths();

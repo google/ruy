@@ -40,10 +40,6 @@ void Ctx::set_max_num_threads(int value) {
 }
 const TracingContext& Ctx::tracing() const { return impl().tracing_; }
 TracingContext* Ctx::mutable_tracing() { return &mutable_impl()->tracing_; }
-CachePolicy Ctx::cache_policy() const { return impl().cache_policy_; }
-void Ctx::set_cache_policy(CachePolicy value) {
-  mutable_impl()->cache_policy_ = value;
-}
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {
   mutable_impl()->runtime_enabled_paths_ = paths;
