@@ -27,7 +27,8 @@ struct Trace;
 
 #ifdef RUY_TRACE
 
-struct TracingContext {
+class TracingContext {
+ public:
   bool initialized = false;
   bool enabled = false;
   int filter_shape_rows = 0;
@@ -53,7 +54,7 @@ void TraceRecordEnd(Trace* trace);
 
 #else
 
-struct TracingContext {};
+class TracingContext {};
 
 inline Trace* NewTraceOrNull(TracingContext*, int, int, int) { return nullptr; }
 inline void TraceRecordThreadStart(std::uint32_t, Trace*) {}
