@@ -77,7 +77,7 @@ void MulWithPrepackedInternal(const Mat<LhsScalar>& lhs,
                               const Mat<RhsScalar>& rhs,
                               const MulParamsType& mul_params, Ctx* ctx,
                               Mat<DstScalar>* dst,
-                              SidePair<PrepackedMatrix*> prepacked) {
+                              SidePair<const PrepackedMatrix*> prepacked) {
   profiler::ScopeLabel label("MulWithPrepacked");
 
   EnforceLayoutSupport<MulParamsType>(lhs.layout, rhs.layout, dst->layout);

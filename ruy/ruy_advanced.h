@@ -65,12 +65,13 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
 void MulWithPrepacked(const Matrix<LhsScalar>& lhs,
                       const Matrix<RhsScalar>& rhs,
                       const MulParamsType& mul_params, Context* context,
-                      Matrix<DstScalar>* dst, PrepackedMatrix* prepacked_lhs,
-                      PrepackedMatrix* prepacked_rhs) {
+                      Matrix<DstScalar>* dst,
+                      const PrepackedMatrix* prepacked_lhs,
+                      const PrepackedMatrix* prepacked_rhs) {
   Mat<LhsScalar> internal_lhs = ToInternal(lhs);
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
   Mat<DstScalar> internal_dst = ToInternal(*dst);
-  SidePair<PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
+  SidePair<const PrepackedMatrix*> prepacked(prepacked_lhs, prepacked_rhs);
 
   MulWithPrepackedInternal<CompiledPaths>(internal_lhs, internal_rhs,
                                           mul_params, get_ctx(context),

@@ -1950,10 +1950,10 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
           rhs.matrix.set_data(cold_rhs.Next());
           result->storage_matrix.matrix.set_data(cold_dst.Next());
           if (benchmark_prepack_lhs) {
-            result->prepacked_lhs.set_data(cold_prepacked_lhs.Next());
+            result->prepacked_lhs.data = cold_prepacked_lhs.Next();
           }
           if (benchmark_prepack_rhs) {
-            result->prepacked_rhs.set_data(cold_prepacked_rhs.Next());
+            result->prepacked_rhs.data = cold_prepacked_rhs.Next();
           }
         }
         EvalResult(result);
@@ -2014,8 +2014,8 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
     memcpy(orig_dst_data, result->storage_matrix.matrix.data(),
            StorageSize(result->storage_matrix.matrix));
     result->storage_matrix.matrix.set_data(orig_dst_data);
-    result->prepacked_lhs.set_data(orig_prepacked_lhs_data);
-    result->prepacked_rhs.set_data(orig_prepacked_rhs_data);
+    result->prepacked_lhs.data = orig_prepacked_lhs_data;
+    result->prepacked_rhs.data = orig_prepacked_rhs_data;
   }
 }
 
