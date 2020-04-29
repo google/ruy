@@ -30,6 +30,10 @@ enum class Side {
   kRhs = 1
 };
 
+inline Side Other(Side side) {
+  return side == Side::kLhs ? Side::kRhs : Side::kLhs;
+}
+
 // SidePair is a pair container where the two elements are indexed by a Side
 // enum.
 template <typename T>

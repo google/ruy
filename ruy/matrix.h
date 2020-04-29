@@ -91,9 +91,7 @@ class ConstCheckingPtr final {
     ptr_ = ptr;
     set_mutable(false);
   }
-  void set(std::nullptr_t) {
-    ptr_ = nullptr;
-  }
+  void set(std::nullptr_t) { ptr_ = nullptr; }
   T* get() /* NOT const */ {
     assert_mutable();
     return const_cast<T*>(ptr_);
@@ -115,6 +113,18 @@ class ConstCheckingPtr final {
 };
 
 }  // namespace detail
+
+enum class CachePolicy : std::uint8_t {
+  kNeverCache,
+  kCacheIfLargeSpeedup,
+  kCacheIfSignificantSpeedup,
+  kAlwaysCache,
+  // transitional value emulating old behavior
+  kCacheLikeTheOldCode,
+  // legacy values used when the CachePolicy was a Context property
+  kNoCache,
+  kCacheLHSOnNarrowMul
+};
 
 // A Matrix merely wraps existing data as a matrix. It doesn't own any buffer.
 // The purpose of Matrix is only to be used in ruy's interface -- it's just
@@ -141,8 +151,15 @@ class Matrix final {
   Layout* mutable_layout() { return &layout_; }
   Scalar zero_point() const { return zero_point_; }
   void set_zero_point(Scalar value) { zero_point_ = value; }
-  bool cacheable() const { return cacheable_; }
-  void set_cacheable(bool value) { cacheable_ = value; }
+  CachePolicy cache_policy() const { return cache_policy_; }
+  void set_cache_policy(CachePolicy value) { cache_policy_ = value; }
+
+  // legacy for compatibily, essentially preserving old behavior for existing
+  // callers during the transition to set_cache_threshold.
+  void set_cacheable(bool value) {
+    set_cache_policy(value ? CachePolicy::kCacheLikeTheOldCode
+                           : CachePolicy::kNeverCache);
+  }
 
  private:
   // The underlying buffer wrapped by this matrix.
@@ -152,10 +169,13 @@ class Matrix final {
   // The zero_point, i.e. which Scalar value is to be interpreted as zero.
   // When Scalar is floating-point, this must be 0.
   Scalar zero_point_ = 0;
-  // Clients of Ruy must set this flag to enable any caching behavior. Doesn't
-  // impact numerical results, but caching can impact observable metrics like
-  // latency, memory usage, power, etc.
-  bool cacheable_ = false;
+  // When the data pointed to by this matrix is constant data, so that it is
+  // valid to assume that equality of pointers implies equality of data,
+  // a CachePolicy may be used instead of the default kNeverCache,
+  // which will enable ruy to take advantage of this constancy of the data to
+  // cache the packing work, which can be a large speedup in matrix*vector
+  // and other narrow shapes.
+  CachePolicy cache_policy_ = CachePolicy::kNeverCache;
 };
 
 inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {

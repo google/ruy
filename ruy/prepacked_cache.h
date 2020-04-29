@@ -62,8 +62,6 @@ class SystemBlockAllocator {
 
 }  // namespace detail
 
-enum class CachePolicy { kNoCache, kCacheLHSOnNarrowMul };
-
 // "Low effort" Least Recently Used Cache for Prepacked Matrices
 // A cache mechanism for prepacked matrices that ejects oldest entries.
 // The implementation is "low effort" in the following ways:

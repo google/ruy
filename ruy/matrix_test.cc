@@ -70,7 +70,7 @@ TEST(MatrixTest, MatrixClassSanity) {
   Matrix<int> matrix;
   EXPECT_EQ(matrix.data(), nullptr);
   EXPECT_EQ(matrix.zero_point(), 0);
-  EXPECT_EQ(matrix.cacheable(), false);
+  EXPECT_EQ(matrix.cache_policy(), CachePolicy::kNeverCache);
   EXPECT_EQ(matrix.layout().rows(), 0);
   EXPECT_EQ(matrix.layout().cols(), 0);
   EXPECT_EQ(matrix.layout().stride(), 0);
@@ -78,14 +78,14 @@ TEST(MatrixTest, MatrixClassSanity) {
   const int some_const = 0;
   matrix.set_data(&some_const);
   matrix.set_zero_point(123);
-  matrix.set_cacheable(true);
+  matrix.set_cache_policy(CachePolicy::kAlwaysCache);
   MakeSimpleLayout(12, 34, Order::kRowMajor, matrix.mutable_layout());
   EXPECT_EQ(static_cast<const Matrix<int>&>(matrix).data(), &some_const);
 #ifndef NDEBUG
   RUY_ASSERT_DEATH(matrix.data(), "");
 #endif
   EXPECT_EQ(matrix.zero_point(), 123);
-  EXPECT_EQ(matrix.cacheable(), true);
+  EXPECT_EQ(matrix.cache_policy(), CachePolicy::kAlwaysCache);
   EXPECT_EQ(matrix.layout().rows(), 12);
   EXPECT_EQ(matrix.layout().cols(), 34);
   EXPECT_EQ(matrix.layout().stride(), 34);

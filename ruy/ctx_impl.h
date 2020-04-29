@@ -61,7 +61,6 @@ class CtxImpl final : public Ctx {
   ThreadPool thread_pool_;
   int max_num_threads_ = 1;
   TracingContext tracing_;
-  CachePolicy cache_policy_ = CachePolicy::kNoCache;
   // Allocator for main thread work before invoking the threadpool.
   // Our simple Allocator does not allow reserving/allocating more blocks
   // while it's already in committed state, so the main thread needs both

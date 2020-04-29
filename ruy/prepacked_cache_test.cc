@@ -136,11 +136,9 @@ TEST(PrepackedCacheTest, TestCacheEjection2) {
   EXPECT_NE(prepacked_cache.FindAndUpdate(cache_key4), prepacked_cache.cend());
 }
 
-TEST(PrepackedCacheTest, TestCacheOnCacheable) {
-  // Create context and set the cache policy
+void TestCachePolicies(CachePolicy cache_policy, bool expected_cached) {
   ruy::Context context;
   ruy::Ctx* ctx = get_ctx(&context);
-  context.set_cache_policy(ruy::CachePolicy::kCacheLHSOnNarrowMul);
   PrepackedCache* cache = ctx->GetPrepackedCache();
   EXPECT_EQ(cache->TotalSize(), 0);
 
@@ -163,17 +161,26 @@ TEST(PrepackedCacheTest, TestCacheOnCacheable) {
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, &context, &dst);
   EXPECT_EQ(cache->TotalSize(), 0);
 
-  // Set cacheable for the LHS, repeat the multiplication, and see
+  // Set cache policy for the LHS, repeat the multiplication, and see
   // that caching did occur.
-  lhs.set_cacheable(true);
+  lhs.set_cache_policy(cache_policy);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, &context, &dst);
-  EXPECT_NE(cache->TotalSize(), 0);
+  const bool actual_cached = cache->TotalSize() > 0;
+  EXPECT_EQ(actual_cached, expected_cached);
+}
+
+TEST(PrepackedCacheTest, TestCachePolicies) {
+  for (CachePolicy cache_policy :
+       {CachePolicy::kNeverCache, CachePolicy::kCacheIfLargeSpeedup,
+        CachePolicy::kCacheIfSignificantSpeedup, CachePolicy::kAlwaysCache,
+        CachePolicy::kCacheLikeTheOldCode}) {
+    TestCachePolicies(cache_policy,
+                         cache_policy != CachePolicy::kNeverCache);
+  }
 }
 
 TEST(PrepackedCacheTest, TestClearCache) {
-  // Create context and set the cache policy
   ruy::Context context;
-  context.set_cache_policy(ruy::CachePolicy::kCacheLHSOnNarrowMul);
   PrepackedCache* cache = get_ctx(&context)->GetPrepackedCache();
   EXPECT_EQ(cache->TotalSize(), 0);
 
@@ -192,8 +199,8 @@ TEST(PrepackedCacheTest, TestClearCache) {
   dst.set_data(dst_data);
 
   ruy::MulParams<float, float> mul_params;
-  // Set cacheable for the LHS and see that caching occurs.
-  lhs.set_cacheable(true);
+  // Set cache policy for the LHS and see that caching occurs.
+  lhs.set_cache_policy(CachePolicy::kAlwaysCache);
   ruy::Mul<ruy::kAllPaths>(lhs, rhs, mul_params, &context, &dst);
   EXPECT_NE(cache->TotalSize(), 0);
 

@@ -28,7 +28,7 @@ class ThreadPool;
 class TracingContext;
 enum class Path : std::uint8_t;
 enum class Tuning;
-enum class CachePolicy;
+enum class CachePolicy : std::uint8_t;
 
 // A Context holds runtime information used by Ruy. It holds runtime resources
 // such as the workers thread pool and the allocator (which holds buffers for
@@ -49,8 +49,8 @@ class Context final {
   void set_max_num_threads(int value);
   const TracingContext& tracing() const;
   TracingContext* mutable_tracing();
-  CachePolicy cache_policy() const;
-  void set_cache_policy(CachePolicy value);
+  void set_cache_policy(CachePolicy) { /* do nothing, legacy */
+  }
 
   void ClearPrepackedCache();
 

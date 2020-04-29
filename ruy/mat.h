@@ -135,7 +135,7 @@ struct Mat final {
   detail::ConstCheckingPtr<Scalar> data;
   MatLayout layout;
   Scalar zero_point = 0;
-  bool cacheable = false;
+  CachePolicy cache_policy = CachePolicy::kNeverCache;
 };
 
 template <typename Scalar>
@@ -144,7 +144,7 @@ inline Mat<Scalar> ToInternal(const Matrix<Scalar>& src) {
   ret.data.set(src.data());
   ret.layout = ToInternal(src.layout());
   ret.zero_point = src.zero_point();
-  ret.cacheable = src.cacheable();
+  ret.cache_policy = src.cache_policy();
   return ret;
 }
 
@@ -154,7 +154,7 @@ inline Mat<Scalar> ToInternal(Matrix<Scalar>& src) {
   ret.data.set(src.data());
   ret.layout = ToInternal(src.layout());
   ret.zero_point = src.zero_point();
-  ret.cacheable = src.cacheable();
+  ret.cache_policy = src.cache_policy();
   return ret;
 }
 
@@ -235,6 +235,7 @@ struct EMat final {
   void* data = nullptr;
   MatLayout layout;
   std::int32_t zero_point = 0;
+  CachePolicy cache_policy = CachePolicy::kNeverCache;
 };
 
 // Type-erased packed matrix.
@@ -277,29 +278,31 @@ EMat EraseType(const Mat<T>& matrix) {
   ret.data = ToVoidPtr(matrix.data.get());
   ret.layout = matrix.layout;
   ret.zero_point = matrix.zero_point;
+  ret.cache_policy = matrix.cache_policy;
   return ret;
 }
 
 template <typename T>
-Mat<T> UneraseType(const EMat& dmatrix) {
-  dmatrix.data_type.AssertIs<T>();
+Mat<T> UneraseType(const EMat& matrix) {
+  matrix.data_type.AssertIs<T>();
   Mat<T> ret;
-  ret.data.set(static_cast<T*>(dmatrix.data));
-  ret.layout = dmatrix.layout;
-  ret.zero_point = dmatrix.zero_point;
+  ret.data.set(static_cast<T*>(matrix.data));
+  ret.layout = matrix.layout;
+  ret.zero_point = matrix.zero_point;
+  ret.cache_policy = matrix.cache_policy;
   return ret;
 }
 
 template <typename T>
-PMat<T> UneraseType(const PEMat& pmatrix) {
+PMat<T> UneraseType(const PEMat& matrix) {
   using SumsType = typename PMat<T>::SumsType;
-  pmatrix.data_type.AssertIs<T>();
-  pmatrix.sums_type.AssertIs<SumsType>();
+  matrix.data_type.AssertIs<T>();
+  matrix.sums_type.AssertIs<SumsType>();
   PMat<T> ret;
-  ret.data = static_cast<T*>(pmatrix.data);
-  ret.sums = static_cast<SumsType*>(pmatrix.sums);
-  ret.layout = pmatrix.layout;
-  ret.zero_point = pmatrix.zero_point;
+  ret.data = static_cast<T*>(matrix.data);
+  ret.sums = static_cast<SumsType*>(matrix.sums);
+  ret.layout = matrix.layout;
+  ret.zero_point = matrix.zero_point;
   return ret;
 }
 

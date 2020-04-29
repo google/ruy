@@ -48,10 +48,6 @@ const TracingContext& Context::tracing() const { return ctx().tracing(); }
 TracingContext* Context::mutable_tracing() {
   return mutable_ctx()->mutable_tracing();
 }
-CachePolicy Context::cache_policy() const { return ctx().cache_policy(); }
-void Context::set_cache_policy(CachePolicy value) {
-  mutable_ctx()->set_cache_policy(value);
-}
 
 void Context::ClearPrepackedCache() { mutable_ctx()->ClearPrepackedCache(); }
 
