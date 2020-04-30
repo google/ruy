@@ -426,11 +426,11 @@ Scalar Element(const PMat<Scalar>& mat, int row, int col) {
 
 // Helpers for PEMat.
 
-inline int DataSize(const PEMat& packed) {
+inline int DataBytes(const PEMat& packed) {
   return FlatSize(packed.layout) * packed.data_type.size;
 }
 
-inline int SumsSize(const PEMat& packed) {
+inline int SumsBytes(const PEMat& packed) {
   // Packed matrices are only relevant for Ruy's TrMul implementations. For
   // TrMul, the number of sums is always equal to the number of columns.
   return packed.layout.cols * packed.sums_type.size;

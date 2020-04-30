@@ -442,8 +442,8 @@ inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
       }
       // Not already cached. Pack and cache now.
       PrepackedMatrix prepacked_lhs;
-      prepacked_lhs.data_size = DataSize(params->packed[side]);
-      prepacked_lhs.sums_size = SumsSize(params->packed[side]);
+      prepacked_lhs.data_size = DataBytes(params->packed[side]);
+      prepacked_lhs.sums_size = SumsBytes(params->packed[side]);
       prepacked_cache->AllocatePrepackedMatrix(&prepacked_lhs);
       params->packed[side].data = prepacked_lhs.data;
       params->packed[side].sums = prepacked_lhs.sums;

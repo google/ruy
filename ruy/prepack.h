@@ -60,8 +60,8 @@ void PrePackForMulInternal(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   Tuning tuning = ctx->GetMainThreadTuning();
   for (Side side : {Side::kLhs, Side::kRhs}) {
     if (prepacked[side]) {
-      prepacked[side]->data_size = DataSize(params.packed[side]);
-      prepacked[side]->sums_size = SumsSize(params.packed[side]);
+      prepacked[side]->data_size = DataBytes(params.packed[side]);
+      prepacked[side]->sums_size = SumsBytes(params.packed[side]);
       prepacked[side]->data = alloc_fn(prepacked[side]->data_size);
       prepacked[side]->sums = alloc_fn(prepacked[side]->sums_size);
       params.packed[side].data = prepacked[side]->data;

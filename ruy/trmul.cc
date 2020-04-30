@@ -241,8 +241,8 @@ struct TrMulTask final : Task {
 };
 
 void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
-  packed->data = allocator->AllocateBytes(DataSize(*packed));
-  packed->sums = allocator->AllocateBytes(SumsSize(*packed));
+  packed->data = allocator->AllocateBytes(DataBytes(*packed));
+  packed->sums = allocator->AllocateBytes(SumsBytes(*packed));
 }
 
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
