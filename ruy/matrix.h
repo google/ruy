@@ -119,11 +119,6 @@ enum class CachePolicy : std::uint8_t {
   kCacheIfLargeSpeedup,
   kCacheIfSignificantSpeedup,
   kAlwaysCache,
-  // transitional value emulating old behavior
-  kCacheLikeTheOldCode,
-  // legacy values used when the CachePolicy was a Context property
-  kNoCache,
-  kCacheLHSOnNarrowMul
 };
 
 // A Matrix merely wraps existing data as a matrix. It doesn't own any buffer.
@@ -153,13 +148,6 @@ class Matrix final {
   void set_zero_point(Scalar value) { zero_point_ = value; }
   CachePolicy cache_policy() const { return cache_policy_; }
   void set_cache_policy(CachePolicy value) { cache_policy_ = value; }
-
-  // legacy for compatibily, essentially preserving old behavior for existing
-  // callers during the transition to set_cache_threshold.
-  void set_cacheable(bool value) {
-    set_cache_policy(value ? CachePolicy::kCacheLikeTheOldCode
-                           : CachePolicy::kNeverCache);
-  }
 
  private:
   // The underlying buffer wrapped by this matrix.

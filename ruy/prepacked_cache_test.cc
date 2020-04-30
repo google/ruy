@@ -172,8 +172,7 @@ void TestCachePolicies(CachePolicy cache_policy, bool expected_cached) {
 TEST(PrepackedCacheTest, TestCachePolicies) {
   for (CachePolicy cache_policy :
        {CachePolicy::kNeverCache, CachePolicy::kCacheIfLargeSpeedup,
-        CachePolicy::kCacheIfSignificantSpeedup, CachePolicy::kAlwaysCache,
-        CachePolicy::kCacheLikeTheOldCode}) {
+        CachePolicy::kCacheIfSignificantSpeedup, CachePolicy::kAlwaysCache}) {
     TestCachePolicies(cache_policy,
                          cache_policy != CachePolicy::kNeverCache);
   }

@@ -419,8 +419,6 @@ inline bool ShouldCache(const TrMulParams& params, Side side) {
       // kernel will run on each value of the present side only a few times,
       // so packing overhead will be significant.
       return (other_width <= 4 * other_kernel_width);
-    case CachePolicy::kCacheLikeTheOldCode:
-      return other_width <= 4;
     default:
       RUY_DCHECK(false);
       return false;
