@@ -131,7 +131,7 @@ cc_library(
     copts = ruy_copts_base(),
     deps = [
         ":allocator",
-        ":matrix",
+        ":mat",
         ":opt_set",
         ":platform",
         ":time",
@@ -156,6 +156,7 @@ cc_test(
         ":context_get_ctx",
         ":ctx",
         ":gtest_wrapper",
+        ":mat",
         ":prepacked_cache",
         ":ruy",
         ":time",

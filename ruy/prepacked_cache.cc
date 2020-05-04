@@ -17,7 +17,7 @@ limitations under the License.
 
 #include <utility>
 
-#include "ruy/matrix.h"
+#include "ruy/mat.h"
 #include "ruy/profiler/instrumentation.h"
 
 namespace ruy {
@@ -40,10 +40,9 @@ CacheIterator PrepackedCache::FindAndUpdate(const CacheKey &key) {
 #endif
 }
 
-void PrepackedCache::Insert(const CacheKey &key,
-                            const PrepackedMatrix &matrix) {
+void PrepackedCache::Insert(const CacheKey &key, const PEMat &matrix) {
   // Calculate size of this new item.
-  const int size_bytes = matrix.data_size + matrix.sums_size;
+  const int size_bytes = DataBytes(matrix) + SumsBytes(matrix);
 
   // While we are above the threshold of ejection, eject the LRU entry.
   while (!cache_.empty() &&
@@ -51,14 +50,14 @@ void PrepackedCache::Insert(const CacheKey &key,
     EjectOne();
   }
   DoInsert(key, matrix);
-  cache_size_ += matrix.data_size + matrix.sums_size;
+  cache_size_ += size_bytes;
 }
 
 void PrepackedCache::EjectOne() {
   TimePoint oldest_time = CacheNow();
   auto oldest = cache_.begin();
   {
-    profiler::ScopeLabel label("PepackedCacheEjection");
+    profiler::ScopeLabel label("PrepackedCacheEjection");
     for (auto itr = cache_.begin(); itr != cache_.end(); ++itr) {
       if (itr->second.second < oldest_time) {
         oldest_time = itr->second.second;
@@ -66,21 +65,20 @@ void PrepackedCache::EjectOne() {
       }
     }
   }
-  PrepackedMatrix &pmatrix = oldest->second.first;
-  cache_size_ -= pmatrix.data_size;
-  cache_size_ -= pmatrix.sums_size;
-  allocator_.Free(pmatrix.data);
-  allocator_.Free(pmatrix.sums);
+  PEMat &matrix = oldest->second.first;
+  cache_size_ -= DataBytes(matrix) + SumsBytes(matrix);
+
+  allocator_.Free(matrix.data);
+  allocator_.Free(matrix.sums);
   cache_.erase(oldest);
 }
 
-void PrepackedCache::AllocatePrepackedMatrix(PrepackedMatrix *pmatrix) {
-  pmatrix->data = allocator_.Alloc(pmatrix->data_size);
-  pmatrix->sums = allocator_.Alloc(pmatrix->sums_size);
+void PrepackedCache::AllocatePrepackedMatrix(PEMat *matrix) {
+  matrix->data = allocator_.Alloc(DataBytes(*matrix));
+  matrix->sums = allocator_.Alloc(SumsBytes(*matrix));
 }
 
-void PrepackedCache::DoInsert(const CacheKey &key,
-                              const PrepackedMatrix &matrix) {
+void PrepackedCache::DoInsert(const CacheKey &key, const PEMat &matrix) {
   const TimePoint t = CacheNow();
   const MatrixWithTimeStamp mts({matrix, t});
   cache_.insert({key, mts});

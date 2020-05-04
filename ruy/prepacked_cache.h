@@ -23,7 +23,7 @@ limitations under the License.
 #include <vector>
 
 #include "ruy/allocator.h"
-#include "ruy/matrix.h"
+#include "ruy/mat.h"
 #include "ruy/time.h"
 
 namespace ruy {
@@ -81,7 +81,7 @@ class PrepackedCache {
 
   using CacheKey = std::pair<void *, void *>;
 
-  using MatrixWithTimeStamp = std::pair<PrepackedMatrix, TimePoint>;
+  using MatrixWithTimeStamp = std::pair<PEMat, TimePoint>;
 
   using CacheIterator = std::map<CacheKey, MatrixWithTimeStamp>::const_iterator;
 
@@ -109,14 +109,14 @@ class PrepackedCache {
 
   // Performs the memory allocation for the `data` and `sums` members of a
   // PrepackedMatrix.
-  void AllocatePrepackedMatrix(PrepackedMatrix *pmatrix);
+  void AllocatePrepackedMatrix(PEMat *pmatrix);
 
-  // Adds the PrepackedMatrix to the cache, possibly ejecting other values.
-  void Insert(const CacheKey &key, const PrepackedMatrix &matrix);
+  // Adds the PEMat to the cache, possibly ejecting other values.
+  void Insert(const CacheKey &key, const PEMat &matrix);
 
  private:
   void EjectOne();
-  void DoInsert(const CacheKey &key, const PrepackedMatrix &matrix);
+  void DoInsert(const CacheKey &key, const PEMat &matrix);
   detail::SystemBlockAllocator allocator_;
   std::map<CacheKey, MatrixWithTimeStamp> cache_;
   const int ejection_threshold_;

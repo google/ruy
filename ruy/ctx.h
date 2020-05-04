@@ -25,7 +25,6 @@ limitations under the License.
 
 #include "ruy/allocator.h"
 #include "ruy/path.h"
-#include "ruy/prepacked_cache.h"
 #include "ruy/thread_pool.h"
 #include "ruy/trace.h"
 #include "ruy/tune.h"

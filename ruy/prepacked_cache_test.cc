@@ -20,36 +20,55 @@ limitations under the License.
 #include "ruy/context.h"
 #include "ruy/context_get_ctx.h"
 #include "ruy/gtest_wrapper.h"
+#include "ruy/mat.h"
 #include "ruy/ruy.h"
 #include "ruy/time.h"
 
 namespace ruy {
 namespace {
 
+PEMat MakeDummyPEMat(Type data_type, int rows, int cols) {
+  PEMat ret;
+  ret.data_type = data_type;
+  if (!data_type.is_floating_point) {
+    ret.sums_type = Type::Create<std::int32_t>();
+  }
+  ret.layout.rows = rows;
+  ret.layout.cols = cols;
+  ret.layout.stride = rows;
+  ret.layout.order = Order::kColMajor;
+  // The kernel block layout is not relevant to this test, so we leave it
+  // trivial 1x1.
+  ret.layout.kernel.rows = 1;
+  ret.layout.kernel.cols = 1;
+  return ret;
+}
+
 TEST(PrepackedCacheTest, TestCacheEjection) {
   // Create the cache.
-  PrepackedCache prepacked_cache(32);
+  PrepackedCache prepacked_cache(306);
   // Allocate the prepacked matrix.
-  PrepackedMatrix mat1;
-  mat1.data_size = 16;
-  mat1.sums_size = 8;
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
   prepacked_cache.AllocatePrepackedMatrix(&mat1);
   auto cache_key1 = std::make_pair(nullptr, mat1.data);
   prepacked_cache.Insert(cache_key1, mat1);
+
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
   // Get a time point after the insertion into the cache.
   TimePoint current = CoarseNow();
+
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
   PrepackedCache::CacheIterator itr = prepacked_cache.FindAndUpdate(cache_key1);
   EXPECT_NE(itr, prepacked_cache.cend());
   // By finding mat1, we updated its timestamp. Verify that `current` is older
   // than the time stamp now associated with mat1.
   EXPECT_LT(current, itr->second.second);
-  PrepackedMatrix mat2;
-  mat2.data_size = 8;
-  mat2.sums_size = 4;
+  // DataBytes=15, SumsBytes=3*4=12, Total: 27 bytes
+  PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 5, 3);
   prepacked_cache.AllocatePrepackedMatrix(&mat2);
-
   auto cache_key2 = std::make_pair(nullptr, mat2.data);
   prepacked_cache.Insert(cache_key2, mat2);
   // The cache size was exceeded by inserting mat2. Ensure that mat1 was
@@ -59,25 +78,24 @@ TEST(PrepackedCacheTest, TestCacheEjection) {
 
 TEST(PrepackedCacheTest, TestCacheBasic) {
   // Create the cache.
-  PrepackedCache prepacked_cache(48);
+  PrepackedCache prepacked_cache(307);
   // Allocate the prepacked matrix.
-  PrepackedMatrix mat1;
-  mat1.data_size = 16;
-  mat1.sums_size = 8;
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
   prepacked_cache.AllocatePrepackedMatrix(&mat1);
-
   auto cache_key1 = std::make_pair(nullptr, mat1.data);
   prepacked_cache.Insert(cache_key1, mat1);
+
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
   EXPECT_NE(prepacked_cache.FindAndUpdate(cache_key1), prepacked_cache.cend());
-
-  PrepackedMatrix mat2;
-  mat2.data_size = 8;
-  mat2.sums_size = 4;
+  // DataBytes=15, SumsBytes=3*4=12, Total: 27 bytes
+  PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 5, 3);
   prepacked_cache.AllocatePrepackedMatrix(&mat2);
-
   auto cache_key2 = std::make_pair(nullptr, mat2.data);
+
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
   prepacked_cache.Insert(cache_key2, mat2);
   // The cache size was not exceeded by inserting mat2. Ensure that mat1 was not
   // ejected.
@@ -86,32 +104,29 @@ TEST(PrepackedCacheTest, TestCacheBasic) {
 
 TEST(PrepackedCacheTest, TestCacheEjection2) {
   // Create the cache.
-  PrepackedCache prepacked_cache(73);
+  PrepackedCache prepacked_cache(1000);
   // Allocate the prepacked matrix 1.
-  PrepackedMatrix mat1;
-  mat1.data_size = 16;
-  mat1.sums_size = 8;
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
   prepacked_cache.AllocatePrepackedMatrix(&mat1);
   auto cache_key1 = std::make_pair(nullptr, mat1.data);
   prepacked_cache.Insert(cache_key1, mat1);
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   // Allocate the prepacked matrix 2.
-  PrepackedMatrix mat2;
-  mat2.data_size = 16;
-  mat2.sums_size = 8;
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
   prepacked_cache.AllocatePrepackedMatrix(&mat2);
   auto cache_key2 = std::make_pair(nullptr, mat2.data);
   prepacked_cache.Insert(cache_key2, mat2);
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   // Allocate the prepacked matrix 3.
-  PrepackedMatrix mat31;
-  mat31.data_size = 16;
-  mat31.sums_size = 8;
-  prepacked_cache.AllocatePrepackedMatrix(&mat31);
-  auto cache_key3 = std::make_pair(nullptr, mat31.data);
-  prepacked_cache.Insert(cache_key3, mat31);
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat3 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
+  prepacked_cache.AllocatePrepackedMatrix(&mat3);
+  auto cache_key3 = std::make_pair(nullptr, mat3.data);
+  prepacked_cache.Insert(cache_key3, mat3);
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   // The next insertion will cause the cache size to go over the ejection
@@ -121,9 +136,8 @@ TEST(PrepackedCacheTest, TestCacheEjection2) {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   // Allocate the prepacked matrix 4.
-  PrepackedMatrix mat4;
-  mat4.data_size = 16;
-  mat4.sums_size = 8;
+  // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
+  PEMat mat4 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
   prepacked_cache.AllocatePrepackedMatrix(&mat4);
   auto cache_key4 = std::make_pair(nullptr, mat4.data);
   prepacked_cache.Insert(cache_key4, mat4);

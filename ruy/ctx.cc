@@ -21,6 +21,7 @@ limitations under the License.
 #include "ruy/detect_x86.h"
 #include "ruy/have_built_path_for.h"
 #include "ruy/platform.h"
+#include "ruy/prepacked_cache.h"
 
 namespace ruy {
 

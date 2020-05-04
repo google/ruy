@@ -25,9 +25,6 @@ limitations under the License.
 // useful). This is done by changing the matrix Layout -- no matrix data is
 // actually moved.
 //
-// This file is also factored to serve as a building block for the advanced API
-// as well.
-//
 // This file also performs some checking of invariants to catch user errors.
 
 #ifndef RUY_RUY_DISPATCH_H_
@@ -50,6 +47,7 @@ limitations under the License.
 #include "ruy/pack.h"
 #include "ruy/pack_common.h"
 #include "ruy/path.h"
+#include "ruy/prepacked_cache.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/side_pair.h"
 #include "ruy/size_util.h"
@@ -428,6 +426,7 @@ inline bool ShouldCache(const TrMulParams& params, Side side) {
 inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
   for (Side side : {Side::kLhs, Side::kRhs}) {
     if (ShouldCache(*params, side)) {
+      params->is_prepacked[side] = true;
       // Look up in cache.
       PrepackedCache* prepacked_cache = ctx->GetPrepackedCache();
       auto cache_key = std::make_pair(
@@ -437,20 +436,13 @@ inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
         // Already cached.
         params->packed[side].data = it->second.first.data;
         params->packed[side].sums = it->second.first.sums;
-        params->is_prepacked[side] = true;
-        return;
+      } else {
+        // Not already cached. Pack and cache now.
+        prepacked_cache->AllocatePrepackedMatrix(&params->packed[side]);
+        Tuning tuning = ctx->GetMainThreadTuning();
+        params->RunPack(side, tuning, 0, params->packed[side].layout.cols);
+        prepacked_cache->Insert(cache_key, params->packed[side]);
       }
-      // Not already cached. Pack and cache now.
-      PrepackedMatrix prepacked_lhs;
-      prepacked_lhs.data_size = DataBytes(params->packed[side]);
-      prepacked_lhs.sums_size = SumsBytes(params->packed[side]);
-      prepacked_cache->AllocatePrepackedMatrix(&prepacked_lhs);
-      params->packed[side].data = prepacked_lhs.data;
-      params->packed[side].sums = prepacked_lhs.sums;
-      params->is_prepacked[side] = true;
-      Tuning tuning = ctx->GetMainThreadTuning();
-      params->RunPack(side, tuning, 0, params->packed[side].layout.cols);
-      prepacked_cache->Insert(cache_key, prepacked_lhs);
     }
   }
 }
