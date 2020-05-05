@@ -15,10 +15,36 @@ limitations under the License.
 
 #include "ruy/prepacked_cache.h"
 
+#include "ruy/allocator.h"
 #include "ruy/mat.h"
 #include "ruy/profiler/instrumentation.h"
 
 namespace ruy {
+
+namespace {
+
+// Allocates the `data` and `sums` buffers, and sets the corresponding
+// pointer fields, in a PEMat whose other fields, particularly `layout`
+// and the runtime data types, are already populated.
+int AllocateBuffers(PEMat* packed_matrix) {
+  const int data_bytes = DataBytes(*packed_matrix);
+  packed_matrix->data = detail::SystemAlignedAlloc(data_bytes);
+  int sums_bytes = 0;
+  if (!packed_matrix->sums_type.is_floating_point) {
+    // Integer quantized matrices also need the `sums` buffer.
+    sums_bytes = SumsBytes(*packed_matrix);
+    packed_matrix->sums = detail::SystemAlignedAlloc(sums_bytes);
+  }
+  return data_bytes + sums_bytes;
+}
+
+// Frees the `data` and `sums` buffers held by a PEMat.
+void FreeBuffers(const PEMat& packed_matrix) {
+  detail::SystemAlignedFree(packed_matrix.data);
+  detail::SystemAlignedFree(packed_matrix.sums);
+}
+
+}  // end anonymous namespace
 
 std::size_t PrepackedCache::KeyHash::operator()(
     const PrepackedCache::Key& key) const {
@@ -30,6 +56,12 @@ std::size_t PrepackedCache::KeyHash::operator()(
       key.packed_layout.kernel.cols * 7 + key.packed_layout.rows * 11 +
       key.packed_layout.cols * 13;
   return src_data_hash ^ packed_layout_hash;
+}
+
+PrepackedCache::~PrepackedCache() {
+  for (const auto& pair : cache_) {
+    FreeBuffers(pair.second.packed_matrix);
+  }
 }
 
 PrepackedCache::Action PrepackedCache::Get(const void* src_data,
@@ -57,14 +89,6 @@ PrepackedCache::Action PrepackedCache::Get(const void* src_data,
   return Action::kInsertedNewEntry;
 }
 
-int PrepackedCache::AllocateBuffers(PEMat* packed_matrix) {
-  const int data_bytes = DataBytes(*packed_matrix);
-  const int sums_bytes = SumsBytes(*packed_matrix);
-  packed_matrix->data = allocator_.Alloc(data_bytes);
-  packed_matrix->sums = allocator_.Alloc(sums_bytes);
-  return data_bytes + sums_bytes;
-}
-
 void PrepackedCache::EjectUntilRoomFor(int new_bytes) {
   profiler::ScopeLabel label("PrepackedCacheEjection");
   // While we are above the threshold of ejection, eject the LRU entry.
@@ -84,11 +108,9 @@ void PrepackedCache::EjectOne() {
       }
     }
   }
-  const PEMat& matrix = oldest->second.packed_matrix;
-  buffers_bytes_ -= DataBytes(matrix) + SumsBytes(matrix);
-
-  allocator_.Free(matrix.data);
-  allocator_.Free(matrix.sums);
+  const PEMat& packed_matrix = oldest->second.packed_matrix;
+  buffers_bytes_ -= DataBytes(packed_matrix) + SumsBytes(packed_matrix);
+  FreeBuffers(packed_matrix);
   cache_.erase(oldest);
 }
 

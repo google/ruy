@@ -77,6 +77,32 @@ TEST(PrepackedCacheTest, TestCacheBasic) {
               PrepackedCache::Action::kGotExistingEntry);
 }
 
+TEST(PrepackedCacheTest, TestCacheBasicFloat) {
+  PrepackedCache prepacked_cache(860);
+  // Allocate the prepacked matrix.
+  // DataBytes=200*4, SumsBytes=0 because float, Total: 800 bytes
+  std::vector<float> data1(10 * 20);
+  PEMat mat1 = MakeDummyPEMat(Type::Create<float>(), 10, 20);
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+              PrepackedCache::Action::kInsertedNewEntry);
+  DummyPack(data1, &mat1);
+
+  // DataBytes=15*4, SumsBytes=0 because float, Total: 60 bytes
+  std::vector<float> data2(5 * 3);
+  PEMat mat2 = MakeDummyPEMat(Type::Create<float>(), 5, 3);
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+              PrepackedCache::Action::kInsertedNewEntry);
+  DummyPack(data2, &mat2);
+
+  // Both should now be in cache.
+  EXPECT_EQ(prepacked_cache.MatrixCount(), 2);
+  EXPECT_EQ(prepacked_cache.BuffersBytes(), 860);
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+              PrepackedCache::Action::kGotExistingEntry);
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+              PrepackedCache::Action::kGotExistingEntry);
+}
+
 TEST(PrepackedCacheTest, TestCacheEjection) {
   PrepackedCache prepacked_cache(306);
   // Allocate the prepacked matrix.

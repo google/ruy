@@ -19,46 +19,10 @@ limitations under the License.
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
-#include "ruy/allocator.h"
 #include "ruy/mat.h"
 
 namespace ruy {
-
-namespace detail {
-
-// Tracks a set of blocks allocated from the underlying system allocator.
-class SystemBlockAllocator {
- public:
-  void *Alloc(std::ptrdiff_t num_bytes) {
-    void *p = detail::SystemAlignedAlloc(num_bytes);
-    blocks_.push_back(p);
-    return p;
-  }
-
-  void Free(void *block) {
-    for (auto it = blocks_.begin(); it != blocks_.end(); ++it) {
-      if (*it == block) {
-        detail::SystemAlignedFree(block);
-        blocks_.erase(it);
-        return;
-      }
-    }
-    RUY_DCHECK(false);  // Trying to free pointer we did not allocate.
-  }
-
-  ~SystemBlockAllocator() {
-    for (void *block : blocks_) {
-      detail::SystemAlignedFree(block);
-    }
-  }
-
- private:
-  std::vector<void *> blocks_;
-};
-
-}  // namespace detail
 
 // "Low effort" Least Recently Used Cache for Prepacked Matrices
 // A cache mechanism for prepacked matrices that ejects oldest entries.
@@ -74,7 +38,7 @@ class SystemBlockAllocator {
 // An instance of PrepackedCache is always owned by a Context. Just like
 // Context, no "thread safety" consideration is applicable to this class:
 // no two threads may simulaneously be accessing the same instance.
-class PrepackedCache {
+class PrepackedCache final {
  public:
   enum class Action { kGotExistingEntry, kInsertedNewEntry };
 
@@ -131,10 +95,10 @@ class PrepackedCache {
     Timestamp timestamp;
   };
 
-  using AlignedAllocator = detail::AlignedAllocator;
-
   explicit PrepackedCache(int max_buffers_bytes = kDefaultMaxBuffersBytes)
       : max_buffers_bytes_(max_buffers_bytes) {}
+
+  ~PrepackedCache();
 
   // Returns the total size in bytes of buffers held in this cache.
   int BuffersBytes() const { return buffers_bytes_; }
@@ -165,9 +129,7 @@ class PrepackedCache {
  private:
   void EjectOne();
   void EjectUntilRoomFor(int new_bytes);
-  int AllocateBuffers(PEMat* packed_matrix);
 
-  detail::SystemBlockAllocator allocator_;
   std::unordered_map<Key, Entry, KeyHash> cache_;
   const int max_buffers_bytes_;
   int buffers_bytes_ = 0;
