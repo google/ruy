@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "ruy/trmul.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstdint>
 #include <cstring>
