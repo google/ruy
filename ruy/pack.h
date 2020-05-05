@@ -67,8 +67,8 @@ limitations under the License.
 // matrix (which is a constant for inference) is the one affected by significant
 // packing cost.
 //
-// Ruy provides an API in ruy_advanced.h for advanced users to pre-pack
-// input matrices that are affected by significant packing costs.
+// Ruy has an optional feature, accessed by Matrix::set_cache_policy(), to
+// cache the packed forms of constant matrices.
 //
 // # Implementation notes
 //

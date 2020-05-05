@@ -891,11 +891,9 @@ cc_library(
     name = "ruy",
     srcs = [
         "dispatch.h",
-        "prepack.h",
     ],
     hdrs = [
         "ruy.h",
-        "ruy_advanced.h",
     ],
     copts = ruy_copts_base(),
     visibility = ["//visibility:public"],
@@ -926,13 +924,6 @@ cc_library(
 cc_binary(
     name = "example",
     srcs = ["example.cc"],
-    deps = [":ruy"],
-)
-
-# Usage examples of the advanced API.
-cc_binary(
-    name = "example_advanced",
-    srcs = ["example_advanced.cc"],
     deps = [":ruy"],
 )
 

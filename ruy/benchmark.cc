@@ -54,8 +54,14 @@ std::vector<std::unique_ptr<TestResult<DstScalar>>> BenchmarkRCC(
   test_set.rhs_zero_point = SymmetricZeroPoint<RhsScalar>() + asymmetry_rhs;
   test_set.use_specified_zero_points = true;
   test_set.perchannel = GetBoolEnvVarOrFalse("PERCHANNEL");
-  test_set.benchmark_prepack_lhs = GetBoolEnvVarOrFalse("PREPACK_LHS");
-  test_set.benchmark_prepack_rhs = GetBoolEnvVarOrFalse("PREPACK_RHS");
+  if (getenv("PREPACK_LHS") || getenv("PREPACK_RHS")) {
+    fprintf(stderr,
+            "PREPACK_LHS and PREPACK_RHS are deprecated. Use CACHE_LHS and "
+            "CACHE_RHS instead.\n");
+    exit(EXIT_FAILURE);
+  }
+  test_set.cache_lhs = GetBoolEnvVarOrFalse("CACHE_LHS");
+  test_set.cache_rhs = GetBoolEnvVarOrFalse("CACHE_RHS");
   test_set.Run();
   return std::move(test_set.results);
 }

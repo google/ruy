@@ -173,15 +173,6 @@ inline void MakeSimpleLayout(int rows, int cols, Order order, Layout* layout) {
   layout->set_stride(order == Order::kColMajor ? rows : cols);
 }
 
-// Opaque data structure representing a pre-packed matrix, as obtained from
-// Ruy's advanced API.
-struct PrepackedMatrix {
-  void* data = nullptr;
-  int data_size = 0;
-  void* sums = nullptr;
-  int sums_size = 0;
-};
-
 template <typename StreamType, typename Scalar>
 StreamType& operator<<(StreamType& stream, const Matrix<Scalar>& mat) {
   for (int row = 0; row < mat.layout().rows(); row++) {

@@ -45,7 +45,6 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/pmu.h"
 #include "ruy/ruy.h"
-#include "ruy/ruy_advanced.h"
 #include "ruy/time.h"
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
@@ -458,14 +457,6 @@ struct TestResult {
   float mispred_rate;
   float frontend_stall_rate;
   float backend_stall_rate;
-
-  // Per-path data for pre-packing.
-  // This is not used by external paths or by Path::kReference.
-  Allocator allocator;
-  PrepackedMatrix prepacked_lhs;
-  PrepackedMatrix prepacked_rhs;
-  bool use_prepacked_lhs = false;
-  bool use_prepacked_rhs = false;
 };
 
 template <typename Scalar>
@@ -502,7 +493,6 @@ struct TestSet final {
     MakeMulParams();
     MakeOtherParams();
     MakeResultPaths();
-    MakePrepackedMatrices();
     Eval();
     Verify();
   }
@@ -512,7 +502,6 @@ struct TestSet final {
   void MakeLhsRhs();
   void MakeMulParams();
   void MakeResultPaths();
-  void MakePrepackedMatrices();
   void MakeOtherParams();
   void EvalAndVerify();
   void Eval();
@@ -532,15 +521,11 @@ struct TestSet final {
     kHasMulParams,
     kHasOtherParams,
     kHasResultPaths,
-    kHasPrepackedMatrices,
     kEvaluated,
     kFinal
   };
 
-  ~TestSet() {
-    RUY_CHECK_EQ(life_stage, LifeStage::kFinal);
-    LogCoveredPathsOnDestruction::Singleton();
-  }
+  ~TestSet();
 
   LifeStage life_stage = LifeStage::kInitial;
 
@@ -573,8 +558,9 @@ struct TestSet final {
   bool benchmark = false;
   bool perchannel = false;
   int max_num_threads = 0;
-  bool benchmark_prepack_lhs = false;
-  bool benchmark_prepack_rhs = false;
+
+  bool cache_lhs = false;
+  bool cache_rhs = false;
 };
 
 inline PmuEvents& GlobalPmuEvents() {
@@ -592,6 +578,13 @@ inline Context& GlobalContext() {
   return context;
 }
 
+template <typename LhsScalar, typename RhsScalar, typename SpecType>
+TestSet<LhsScalar, RhsScalar, SpecType>::~TestSet() {
+  RUY_CHECK_EQ(life_stage, LifeStage::kFinal);
+  LogCoveredPathsOnDestruction::Singleton();
+  GlobalContext().ClearPrepackedCache();
+}
+
 #if defined(__has_feature)
 #if __has_feature(thread_sanitizer)
 #define RUY_TSAN
@@ -603,33 +596,8 @@ inline Context& GlobalContext() {
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
-  Context* context = &GlobalContext();
-
-  if (!result->use_prepacked_lhs && !result->use_prepacked_rhs) {
-    Mul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params, context,
-                   &result->storage_matrix.matrix);
-    return;
-  }
-
-  // If we prepacked an input matrix, null out its data pointer to check
-  // that we don't access any data through it.
-  Matrix<LhsScalar> null_data_lhs = lhs.matrix;
-  Matrix<RhsScalar> null_data_rhs = rhs.matrix;
-  if (result->use_prepacked_lhs) {
-    null_data_lhs.set_data(nullptr);
-  }
-  if (result->use_prepacked_rhs) {
-    null_data_rhs.set_data(nullptr);
-  }
-
-  // Do the multiplication with pre-packed matrices.
-  PrepackedMatrix* prepacked_lhs_ptr =
-      result->use_prepacked_lhs ? &result->prepacked_lhs : nullptr;
-  PrepackedMatrix* prepacked_rhs_ptr =
-      result->use_prepacked_rhs ? &result->prepacked_rhs : nullptr;
-  MulWithPrepacked<kAllPaths>(null_data_lhs, null_data_rhs, mul_params, context,
-                              &result->storage_matrix.matrix, prepacked_lhs_ptr,
-                              prepacked_rhs_ptr);
+  Mul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params, &GlobalContext(),
+                 &result->storage_matrix.matrix);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
@@ -645,6 +613,11 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
   get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
   if (expected_outcome == ExpectedOutcome::kSuccess) {
     DoMul(result);
+    // If enabling caching, Mul is stateful, so we run it a second time to get
+    // coverage of these aspects.
+    if (cache_lhs || cache_rhs) {
+      DoMul(result);
+    }
     RUY_CHECK_EQ(GlobalContext().last_selected_path(), result->path);
   } else if (expected_outcome == ExpectedOutcome::kDeath) {
     // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
@@ -1548,6 +1521,16 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeLhsRhs() {
              RandomRange::kOffCenterAvoidMinValue, &lhs);
   MakeRandom(depth, cols, rhs_order, rhs_zero_point, layout_style,
              RandomRange::kGeneral, &rhs);
+  if (!benchmark) {
+    cache_lhs = (global_random_engine()() & 0xf) == 0;
+    cache_rhs = (global_random_engine()() & 0xf) == 0;
+  }
+  if (cache_lhs) {
+    lhs.matrix.set_cache_policy(CachePolicy::kAlwaysCache);
+  }
+  if (cache_rhs) {
+    rhs.matrix.set_cache_policy(CachePolicy::kAlwaysCache);
+  }
   life_stage = LifeStage::kHasLhsRhs;
 }
 
@@ -1631,55 +1614,6 @@ inline std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
 #endif
   (void)path;
   return {Tuning::kAuto};
-}
-
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakePrepackedMatrices() {
-  RUY_CHECK_EQ(life_stage, LifeStage::kHasResultPaths);
-
-  // Prepacked matrices are Path-dependent, so create them for each test result.
-  for (auto& result : results) {
-    // If this result uses an external path, then skip this entirely.
-    if (result->path == Path::kNone) {
-      continue;
-    }
-    // Pre-packing doesn't make sense for Path::kReference.
-    // TODO(silvasean): Make Path::kReference an ExternalPath?
-    if (result->path == Path::kReference) {
-      continue;
-    }
-
-    // Determine whether we should create/use prepacked matrices.
-    if (benchmark) {
-      // For benchmarking, do as requested.
-      result->use_prepacked_lhs = benchmark_prepack_lhs;
-      result->use_prepacked_rhs = benchmark_prepack_rhs;
-    } else {
-      // When testing, randomly pre-pack sometimes. But don't do it too often.
-      result->use_prepacked_lhs = (global_random_engine()() & 7) == 0;
-      result->use_prepacked_rhs = (global_random_engine()() & 7) == 0;
-    }
-
-    // Create the pre-packed matrices.
-    PrepackedMatrix* prepacked_lhs_ptr =
-        result->use_prepacked_lhs ? &result->prepacked_lhs : nullptr;
-    PrepackedMatrix* prepacked_rhs_ptr =
-        result->use_prepacked_rhs ? &result->prepacked_rhs : nullptr;
-    auto alloc_fn = [&result](int num_bytes) {
-      return result->allocator.AllocateBytes(num_bytes);
-    };
-    // Use a dst with a null data pointer to check that the pre-packing
-    // invocation doesn't write into it.
-    Matrix<DstScalar> null_data_dst = result->storage_matrix.matrix;
-    null_data_dst.set_data(nullptr);
-    get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
-    PrePackForMul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params,
-                             &GlobalContext(), &null_data_dst,
-                             prepacked_lhs_ptr, prepacked_rhs_ptr, alloc_fn);
-    RUY_CHECK_EQ(GlobalContext().last_selected_path(), result->path);
-  }
-
-  life_stage = LifeStage::kHasPrepackedMatrices;
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
@@ -1867,16 +1801,12 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
   LhsScalar* orig_lhs_data = lhs.matrix.data();
   RhsScalar* orig_rhs_data = rhs.matrix.data();
   DstScalar* orig_dst_data = result->storage_matrix.matrix.data();
-  void* orig_prepacked_lhs_data = result->prepacked_lhs.data;
-  void* orig_prepacked_rhs_data = result->prepacked_rhs.data;
 
   int num_matmul_sets = 0;
 
   RepeatedBuffer<LhsScalar> cold_lhs;
   RepeatedBuffer<RhsScalar> cold_rhs;
   RepeatedBuffer<DstScalar> cold_dst;
-  RepeatedBuffer<char> cold_prepacked_lhs;
-  RepeatedBuffer<char> cold_prepacked_rhs;
 
   if (cold) {
     const int kWorkingSetSize = 100 << 20;
@@ -1893,14 +1823,6 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
     cold_dst.Init(result->storage_matrix.matrix.data(),
                   FlatSize(result->storage_matrix.matrix.layout()),
                   num_matmul_sets);
-    if (benchmark_prepack_lhs) {
-      cold_prepacked_lhs.Init(static_cast<char*>(result->prepacked_lhs.data),
-                              result->prepacked_lhs.data_size, num_matmul_sets);
-    }
-    if (benchmark_prepack_rhs) {
-      cold_prepacked_rhs.Init(static_cast<char*>(result->prepacked_rhs.data),
-                              result->prepacked_rhs.data_size, num_matmul_sets);
-    }
   }
   const bool record_pmu = GetBoolEnvVarOrFalse("RUY_BENCHMARK_PMU");
   int repeats = GetIntEnvVarOrZero("RUY_BENCHMARK_REPEATS");
@@ -1949,12 +1871,6 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
           lhs.matrix.set_data(cold_lhs.Next());
           rhs.matrix.set_data(cold_rhs.Next());
           result->storage_matrix.matrix.set_data(cold_dst.Next());
-          if (benchmark_prepack_lhs) {
-            result->prepacked_lhs.data = cold_prepacked_lhs.Next();
-          }
-          if (benchmark_prepack_rhs) {
-            result->prepacked_rhs.data = cold_prepacked_rhs.Next();
-          }
         }
         EvalResult(result);
         iters++;
@@ -2014,14 +1930,12 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
     memcpy(orig_dst_data, result->storage_matrix.matrix.data(),
            StorageSize(result->storage_matrix.matrix));
     result->storage_matrix.matrix.set_data(orig_dst_data);
-    result->prepacked_lhs.data = orig_prepacked_lhs_data;
-    result->prepacked_rhs.data = orig_prepacked_rhs_data;
   }
 }
 
 template <typename LhsScalar, typename RhsScalar, typename SpecType>
 void TestSet<LhsScalar, RhsScalar, SpecType>::Eval() {
-  RUY_CHECK_EQ(life_stage, LifeStage::kHasPrepackedMatrices);
+  RUY_CHECK_EQ(life_stage, LifeStage::kHasResultPaths);
   for (auto& result : results) {
     if (benchmark) {
       Benchmark(result.get());

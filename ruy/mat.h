@@ -85,15 +85,6 @@ limitations under the License.
 // understandable as possible. Ideally, a user should be able to read the struct
 // definition for Matrix<T> and see a very simple definition with no internal
 // details like sums and kernel block layout.
-//
-// There is 1 additional matrix type not mentioned above, due to its low
-// importance:
-// - PrepackedMatrix: This is a user-facing version of PEMat. It has
-// the bare minimum of fields needed for representing the raw data and sums
-// buffers of a packed matrix for the "advanced" explicit pre-packing API. This
-// type plays no role in Ruy's internals and can generally by ignored. The only
-// reason it exists is so that PEMat is not exposed to users -- we
-// prefer to keep the internal matrix types hidden, even from "advanced" users.
 
 #ifndef RUY_RUY_INTERNAL_MATRIX_H_
 #define RUY_RUY_INTERNAL_MATRIX_H_
