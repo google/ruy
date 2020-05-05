@@ -157,6 +157,7 @@ cc_test(
         ":ctx",
         ":gtest_wrapper",
         ":mat",
+        ":matrix",
         ":prepacked_cache",
         ":ruy",
         ":time",

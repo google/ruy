@@ -17,14 +17,12 @@ limitations under the License.
 #define RUY_RUY_PREPACKED_CACHE_H_
 
 #include <cstddef>
-#include <iostream>
-#include <map>
-#include <queue>
+#include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include "ruy/allocator.h"
 #include "ruy/mat.h"
-#include "ruy/time.h"
 
 namespace ruy {
 
@@ -72,55 +70,108 @@ class SystemBlockAllocator {
 // and memory constraints are tight, so we devote no additional storage to the
 // LRU mechanism and accept O(n) search to eject oldest entry. In practice,
 // the number of total entries has not been shown to be large.
-// This class is not thread safe. In Ruy, memory allocation for packed matrices
-// is done in a single threaded context and the actual packing activity may
-// be done in a multi-threaded context.
+//
+// An instance of PrepackedCache is always owned by a Context. Just like
+// Context, no "thread safety" consideration is applicable to this class:
+// no two threads may simulaneously be accessing the same instance.
 class PrepackedCache {
  public:
-  static constexpr int kDefaultEjectionThresholdBytes = 1 << 28;
+  enum class Action { kGotExistingEntry, kInsertedNewEntry };
 
-  using CacheKey = std::pair<void *, void *>;
+  static constexpr int kDefaultMaxBuffersBytes = 1 << 28;
 
-  using MatrixWithTimeStamp = std::pair<PEMat, TimePoint>;
+  // A key in this key-value cache. Equality of keys implies interchangeable
+  // packed matrices, so we must be careful to make this Key type specific
+  // enough, and its equality comparison operator strict enough.
+  //
+  // These keys need to be used before the packed matrix buffers are allocated
+  // (since they are used to determine whether to allocate a new buffer).
+  // So they instead use the source matrix's data pointer. On the other hand,
+  // the packed matrix's layout structure is already available by the time we
+  // need to handle Keys, and that's fortunate because it is more specific
+  // than the source matrix's layout: it also encodes details about the kernel's
+  // small-scale block layout. In the past, we made the kernel function pointer
+  // part of the cache key, but all that is relevant here is the packed layout.
+  //
+  // The only other field that needs to be involved is the zero_point, for
+  // quantized matrices, although it seems far-fetched that the same matrix
+  // data would be reused with different zero_point values.
+  //
+  // The data types (PEMat::data_type and PEMat::sums_type) are omitted based on
+  // the "strict aliasing" model: each memory location should contain data of
+  // only one type. This could be relaxed in the future, by adding data types
+  // to this Key type, if a use case arises.
+  struct Key {
+    // The source matrix's data pointer.
+    const void* src_data;
+    // The packed matrix's layout, see PEMat::layout.
+    PMatLayout packed_layout;
+    // The packed matrix's zero point (for integer-quantized matrices only).
+    std::int32_t zero_point;
+  };
 
-  using CacheIterator = std::map<CacheKey, MatrixWithTimeStamp>::const_iterator;
+  friend bool operator==(const Key& a, const Key& b) {
+    return a.src_data == b.src_data && a.packed_layout == b.packed_layout &&
+           a.zero_point == b.zero_point;
+  }
+
+  struct KeyHash {
+    std::size_t operator()(const Key&) const;
+  };
+
+  // A dummy timestamp to associate to each entry (see struct Entry) to
+  // determine which entry is "least recently used" when ejecting entries.
+  // This is just an integer counter, not related to physical time.
+  // It does not need to be atomic because only one thread uses an instance
+  // of PrepackedCache at a time (see class comment).
+  using Timestamp = std::uint64_t;
+
+  struct Entry {
+    PEMat packed_matrix;
+    Timestamp timestamp;
+  };
 
   using AlignedAllocator = detail::AlignedAllocator;
 
-  explicit PrepackedCache(
-      int ejection_threshold = kDefaultEjectionThresholdBytes)
-      : ejection_threshold_(ejection_threshold), cache_size_(0) {}
+  explicit PrepackedCache(int max_buffers_bytes = kDefaultMaxBuffersBytes)
+      : max_buffers_bytes_(max_buffers_bytes) {}
 
-  // Looks for an entry with `key`. If found, update its time stamp.
-  CacheIterator FindAndUpdate(const CacheKey &key);
+  // Returns the total size in bytes of buffers held in this cache.
+  int BuffersBytes() const { return buffers_bytes_; }
 
-  // Returns end iterator for internal cache. The iterator type is appropriate
-  // to use with `FindAndUpdate`.
-  CacheIterator cend() const { return cache_.end(); }
+  // Returns the number of packed matrices held in this cache.
+  int MatrixCount() const { return cache_.size(); }
 
-  // Returns the total size (in bytes) of data held in this cache.
-  int TotalSize() const { return cache_size_; }
-
-  // All calls to get current TimePoints go through here.
-  // TODO(b/145625614) Profile timestamps on relevant models to see if
-  // this level of granularity is sufficient. CoarseNow is cheap so
-  // it would be nice to keep it.
-  TimePoint CacheNow() const { return CoarseNow(); }
-
-  // Performs the memory allocation for the `data` and `sums` members of a
-  // PrepackedMatrix.
-  void AllocatePrepackedMatrix(PEMat *pmatrix);
-
-  // Adds the PEMat to the cache, possibly ejecting other values.
-  void Insert(const CacheKey &key, const PEMat &matrix);
+  // This is the method by which new matrices are cached, and existing cache
+  // entries are queried.
+  // `src_data` is the source matrix data pointer.
+  // `packed_matrix` is a packed matrix structure where all fields have already
+  // been populated, except for the `data` and `sums` pointers which have not
+  // yet been allocated.
+  //
+  // This method:
+  // 1. Queries the cache for an entry matching the given `src_data` pointer and
+  //    the relevant fields of `packed_matrix`, particularly its `layout`.
+  // 2. If a matching cache entry does not exist, it is created and inserted
+  //    into the cache, and its `data` and `sums` buffers are allocated.
+  // 3. The `packed_matrix` has its `data` and `sums` pointers set to point
+  //    to the allocated buffers.
+  // 4. The cache entry's timestamp is updated so it's the most recently used
+  //    entry.
+  // 5. The return value is Action::kInsertedNewEntry if at step 2 a new
+  //    entry was created. Otherwise it is Action::kGotExistingEntry.
+  Action Get(const void* src_data, PEMat* packed_matrix);
 
  private:
   void EjectOne();
-  void DoInsert(const CacheKey &key, const PEMat &matrix);
+  void EjectUntilRoomFor(int new_bytes);
+  int AllocateBuffers(PEMat* packed_matrix);
+
   detail::SystemBlockAllocator allocator_;
-  std::map<CacheKey, MatrixWithTimeStamp> cache_;
-  const int ejection_threshold_;
-  int cache_size_;
+  std::unordered_map<Key, Entry, KeyHash> cache_;
+  const int max_buffers_bytes_;
+  int buffers_bytes_ = 0;
+  Timestamp timestamp_ = 0;
 };
 
 }  // namespace ruy

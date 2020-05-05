@@ -196,6 +196,12 @@ struct PMatLayout final {
   KernelLayout kernel;
 };
 
+inline bool operator==(const PMatLayout& a, const PMatLayout& b) {
+  return a.cols == b.cols && a.rows == b.rows && a.stride == b.stride &&
+         a.order == b.order && a.kernel.rows == b.kernel.rows &&
+         a.kernel.cols == b.kernel.cols && a.kernel.order == b.kernel.order;
+}
+
 // Dynamic representation for a type.
 //
 // The most important field in this struct is the size, which Ruy uses to know

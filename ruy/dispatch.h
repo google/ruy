@@ -426,22 +426,11 @@ inline bool ShouldCache(const TrMulParams& params, Side side) {
 inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
   for (Side side : {Side::kLhs, Side::kRhs}) {
     if (ShouldCache(*params, side)) {
-      params->is_prepacked[side] = true;
-      // Look up in cache.
-      PrepackedCache* prepacked_cache = ctx->GetPrepackedCache();
-      auto cache_key = std::make_pair(
-          reinterpret_cast<void*>(params->run_kernel), params->src[side].data);
-      auto it = prepacked_cache->FindAndUpdate(cache_key);
-      if (it != prepacked_cache->cend()) {
-        // Already cached.
-        params->packed[side].data = it->second.first.data;
-        params->packed[side].sums = it->second.first.sums;
-      } else {
-        // Not already cached. Pack and cache now.
-        prepacked_cache->AllocatePrepackedMatrix(&params->packed[side]);
-        Tuning tuning = ctx->GetMainThreadTuning();
-        params->RunPack(side, tuning, 0, params->packed[side].layout.cols);
-        prepacked_cache->Insert(cache_key, params->packed[side]);
+      auto* cache = ctx->GetPrepackedCache();
+      auto action = cache->Get(params->src[side].data, &params->packed[side]);
+      if (action == PrepackedCache::Action::kInsertedNewEntry) {
+        params->RunPack(side, ctx->GetMainThreadTuning(), 0,
+                        params->packed[side].layout.cols);
       }
     }
   }
