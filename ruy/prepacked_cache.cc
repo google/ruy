@@ -49,6 +49,18 @@ void FreeBuffers(const PEMat& packed_matrix) {
 std::size_t PrepackedCache::KeyHash::operator()(
     const PrepackedCache::Key& key) const {
   std::size_t src_data_hash = reinterpret_cast<std::size_t>(key.src_data);
+  // Naive hash of the layout. Based on some heuristic reasoning, not any
+  // benchmarking.
+  // A choice of hash function here is just an optimization matter
+  // anyway, since a hash collision only results in some Key::operator== calls
+  // to disambiguate, and even just returning src_data_hash, ignoring the layout
+  // altogether, would probably be good enough, as the case of multiple entries
+  // with the same data pointer will be uncommon.
+  // Here we multiply-add the layout fields using some small constant prime
+  // numbers as multipliers. The conventional approach of xor-ing bit-rotations
+  // would result in some hash collisions because these values are typically
+  // small positive integers, so bit-rotations are essentially bit-shifts,
+  // and powers of two are common.
   std::size_t packed_layout_hash =
       static_cast<int>(key.packed_layout.order) +
       static_cast<int>(key.packed_layout.kernel.order) * 2 +
