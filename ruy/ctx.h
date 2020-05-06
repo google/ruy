@@ -19,15 +19,7 @@ limitations under the License.
 #ifndef RUY_RUY_CTX_H_
 #define RUY_RUY_CTX_H_
 
-#include <cstddef>
-#include <memory>
-#include <vector>
-
-#include "ruy/allocator.h"
-#include "ruy/path.h"
-#include "ruy/thread_pool.h"
-#include "ruy/trace.h"
-#include "ruy/tune.h"
+#include <cstdint>
 
 namespace ruy {
 

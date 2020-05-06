@@ -817,6 +817,16 @@ cc_test(
 )
 
 cc_library(
+    name = "ctx_header_only_should_not_include_other_ruy_headers",
+    testonly = True,
+    hdrs = [
+        "ctx.h",
+    ],
+    # Intentionally no deps. This will cause the stand-alone build of ctx.h to
+    # fail if ctx.h #includes any other ruy header.
+)
+
+cc_library(
     name = "ctx",
     srcs = [
         "ctx.cc",
@@ -979,6 +989,7 @@ cc_library(
         "//conditions:default": ["-lm"],
     }),
     deps = [
+        ":allocator",
         ":reference_mul",
         ":matrix",
         ":pmu",

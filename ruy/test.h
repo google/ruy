@@ -36,6 +36,7 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
+#include "ruy/allocator.h"
 #include "ruy/context.h"
 #include "ruy/context_get_ctx.h"
 #include "ruy/ctx.h"
