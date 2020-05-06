@@ -15,9 +15,9 @@ limitations under the License.
 
 #include "ruy/prepacked_cache.h"
 
-#include "ruy/allocator.h"
 #include "ruy/mat.h"
 #include "ruy/profiler/instrumentation.h"
+#include "ruy/system_aligned_alloc.h"
 
 namespace ruy {
 

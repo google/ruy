@@ -15,37 +15,44 @@ limitations under the License.
 
 #include "ruy/allocator.h"
 
-#include <cstdint>
-#include <cstdlib>
-
-#ifdef _WIN32
-#include <malloc.h>
-#endif
+#include "ruy/system_aligned_alloc.h"
 
 namespace ruy {
 
-namespace detail {
+Allocator::~Allocator() {
+  FreeAll();
+  detail::SystemAlignedFree(ptr_);
+}
 
-void *SystemAlignedAlloc(std::ptrdiff_t num_bytes) {
-#ifdef _WIN32
-  return _aligned_malloc(num_bytes, kMinimumBlockAlignment);
-#else
-  void *ptr;
-  if (posix_memalign(&ptr, kMinimumBlockAlignment, num_bytes)) {
-    return nullptr;
+void* Allocator::AllocateSlow(std::ptrdiff_t num_bytes) {
+  void* p = detail::SystemAlignedAlloc(num_bytes);
+  fallback_blocks_total_size_ += num_bytes;
+  fallback_blocks_.push_back(p);
+  return p;
+}
+
+void Allocator::FreeAll() {
+  current_ = 0;
+  if (fallback_blocks_.empty()) {
+    return;
   }
-  return ptr;
-#endif
-}
 
-void SystemAlignedFree(void *ptr) {
-#ifdef _WIN32
-  _aligned_free(ptr);
-#else
-  free(ptr);
-#endif
-}
+  // No rounding-up of the size means linear instead of logarithmic
+  // bound on the number of allocation in some worst-case calling patterns.
+  // This is considered worth it because minimizing memory usage is important
+  // and actual calling patterns in applications that we care about still
+  // reach the no-further-allocations steady state in a small finite number
+  // of iterations.
+  std::ptrdiff_t new_size = size_ + fallback_blocks_total_size_;
+  detail::SystemAlignedFree(ptr_);
+  ptr_ = detail::SystemAlignedAlloc(new_size);
+  size_ = new_size;
 
-}  // namespace detail
+  for (void* p : fallback_blocks_) {
+    detail::SystemAlignedFree(p);
+  }
+  fallback_blocks_.clear();
+  fallback_blocks_total_size_ = 0;
+}
 
 }  // namespace ruy

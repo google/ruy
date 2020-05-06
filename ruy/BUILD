@@ -121,6 +121,17 @@ cc_library(
 )
 
 cc_library(
+    name = "system_aligned_alloc",
+    srcs = [
+        "system_aligned_alloc.cc",
+    ],
+    hdrs = [
+        "system_aligned_alloc.h",
+    ],
+    copts = ruy_copts_base(),
+)
+
+cc_library(
     name = "prepacked_cache",
     srcs = [
         "prepacked_cache.cc",
@@ -130,11 +141,8 @@ cc_library(
     ],
     copts = ruy_copts_base(),
     deps = [
-        ":allocator",
         ":mat",
-        ":opt_set",
-        ":platform",
-        ":time",
+        ":system_aligned_alloc",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -182,8 +190,8 @@ cc_library(
     ],
     copts = ruy_copts_base(),
     deps = [
-        ":check_macros",
         ":size_util",
+        ":system_aligned_alloc",
     ],
 )
 
