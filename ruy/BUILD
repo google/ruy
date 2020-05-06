@@ -396,6 +396,13 @@ cc_library(
 )
 
 cc_library(
+    name = "apply_multiplier",
+    srcs = ["apply_multiplier.cc"],
+    hdrs = ["apply_multiplier.h"],
+    copts = ruy_copts_base(),
+)
+
+cc_library(
     name = "kernel_common",
     hdrs = [
         "kernel.h",
@@ -405,6 +412,7 @@ cc_library(
     ],
     copts = ruy_copts_base(),
     deps = [
+        ":apply_multiplier",
         ":check_macros",
         ":common",
         ":mat",
@@ -701,6 +709,7 @@ cc_library(
     ],
     copts = ruy_copts_base(),
     deps = [
+        ":apply_multiplier",
         ":check_macros",
         ":common",
         ":kernel_arm",  # fixdeps: keep
@@ -937,6 +946,18 @@ cc_library(
     deps = [":check_macros"],
 )
 
+cc_library(
+    name = "reference_mul",
+    hdrs = ["reference_mul.h"],
+    copts = ruy_copts_base(),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":apply_multiplier",
+        ":matrix",
+        ":mul_params",
+    ],
+)
+
 # Testing framework.
 cc_library(
     name = "test_lib",
@@ -950,6 +971,7 @@ cc_library(
         "//conditions:default": ["-lm"],
     }),
     deps = [
+        ":reference_mul",
         ":matrix",
         ":pmu",
         ":ruy",

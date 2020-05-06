@@ -31,13 +31,7 @@ namespace ruy {
 // Different Path enum values are defined on different CPU architectures,
 // corresponding to different SIMD ISA extensions available there.
 //
-// There are two special Path's universally defined on all CPU architectures:
-// kReference and kStandardCpp. From a user's perspective, they are similar
-// in that both are slow, portable, standard-c++-only implementation paths.
-// They differ in that kStandardCpp is structurally similar to the actual
-// optimized Path's and exercises much of the same ruy code as they do, while
-// kReference is a special path bypassing most of ruy's code and implementing
-// the whole ruy::Mul as a very simple self-contained function.
+// Path::kStandardCpp is the one Path that is always available.
 //
 // Path enum values are bits and may be OR-ed to form "sets of Paths".
 // Ruy entry points such as ruy::Mul either implicitly use such a set of Paths,
@@ -61,19 +55,14 @@ namespace ruy {
 enum class Path : std::uint8_t {
   // This is a special null value, representing the absence of any path.
   kNone = 0,
-  // Reference multiplication code.
-  // The main purpose of this path is to have a very simple standalone Mul
-  // implementation to check against.
-  // This path bypasses almost all of Ruy's internal implementation details.
-  //
-  // This is intended for testing/development.
-  kReference = 0x1,
   // Standard C++ implementation of Ruy's architecture-specific parts.
-  // Unlike Path::kReference, this path exercises most of Ruy's internal logic.
   //
   // This is intended for testing/development, and as a fallback for when
   // the SIMD ISA extensions required by other paths are unavailable at runtime.
   kStandardCpp = 0x2,
+  // Legacy/transitional, to be removed as soon as TensorFlow Lite tests are
+  // updated to use ReferenceMul instead.
+  kReference = kStandardCpp,
 
 #if RUY_PLATFORM(ARM)
   // ARM architectures.
@@ -139,8 +128,11 @@ inline Path GetMostSignificantPath(Path path_mask) {
 // We define three disjoint sets of paths.
 //
 // kNonArchPaths is the set of paths that are defined regardless of
-// the CPU architecture. These paths are slow, but portable.
-constexpr Path kNonArchPaths = Path::kReference | Path::kStandardCpp;
+// the CPU architecture. These paths are slow, but portable. At the moment,
+// that is only kStandardCpp. In the past, that used to also include a
+// kReference path providing an even more basic implementation, but that has
+// been split out into a separate library, see the ReferenceMul function.
+constexpr Path kNonArchPaths = Path::kStandardCpp;
 
 // The other two are specific to each CPU architecture. Note that these sets
 // do NOT include a fallback for when none of these architecture paths are
@@ -188,15 +180,12 @@ static_assert(Disjoint(kExtraArchPaths, kNonArchPaths), "");
 // kDefaultPaths is the set of paths that we recommend most users to use.
 // It is what ruy::Mul(...), the entry point not taking an explicit Path value,
 // uses.
-// Note that kReference is left out of it: there should be no need for it in
-// user applications (not counting debugging). The need for some portable
-// fallback when no architecture-specific path can be used, is filled already by
-// kStandardCpp.
 constexpr Path kDefaultPaths = Path::kStandardCpp | kDefaultArchPaths;
 
 // kAllPaths is the set of all paths that are available to compile.
 // In addition to the Default paths, it also includes the extra
-// architecture paths, as well as the reference path.
+// architecture paths, as well as any other non-arch path besides kStandardCpp
+// (there is none at the moment).
 constexpr Path kAllPaths = kNonArchPaths | kDefaultArchPaths | kExtraArchPaths;
 
 static_assert(Disjoint(kDefaultPaths, ~kAllPaths), "");

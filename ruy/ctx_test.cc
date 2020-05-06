@@ -27,7 +27,6 @@ TEST(ContextInternalTest, EnabledPathsGeneral) {
   const auto ruy_paths_repeat = ctx.GetRuntimeEnabledPaths();
   ASSERT_EQ(ruy_paths, ruy_paths_repeat);
   EXPECT_NE(ruy_paths, Path::kNone);
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kReference);
   EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kStandardCpp);
 }
 
@@ -37,7 +36,6 @@ TEST(ContextInternalTest, EnabledPathsX86) {
   ctx.SetRuntimeEnabledPaths(Path::kSse42 | Path::kAvx2 | Path::kAvx512 |
                              Path::kAvxVnni);
   const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
 }
 #endif  // RUY_PLATFORM(X86)
@@ -47,7 +45,6 @@ TEST(ContextInternalTest, EnabledPathsArm) {
   CtxImpl ctx;
   ctx.SetRuntimeEnabledPaths(Path::kNeon | Path::kNeonDotprod);
   const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kReference, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
   EXPECT_EQ(ruy_paths & Path::kNeon, Path::kNeon);
 }

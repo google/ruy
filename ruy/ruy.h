@@ -38,6 +38,9 @@ namespace ruy {
 // application domain specific features such as a bias-vector and clamp bounds,
 // as well as integer quantization parameters.
 //
+// A simple reference implementation of the operation performed by ruy::Mul
+// is provided by the ruy::ReferenceMul function in reference_mul.h.
+//
 // The `context` argument can be any ruy::Context object as long as no other
 // thread is going to concurrently access that ruy::Context. The simplest
 // correct (but not efficient) calling pattern is

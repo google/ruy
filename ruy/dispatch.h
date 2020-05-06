@@ -173,8 +173,6 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void PopulateTrMulParams(TrMulParams* params) {
-  static_assert((ThePath & Path::kReference) == Path::kNone,
-                "Path::kReference should not do TrMul");
   // The optimized code paths don't handle the full generality of Ruy's API.
   // Fall back to Path::kStandardCpp if necessary.
   bool fallback_to_standard_cpp = false;
@@ -336,56 +334,6 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                                                                 params);
 }
 
-template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename MulParamsType>
-void ReferenceMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-                  const MulParamsType& mul_params, Mat<DstScalar>* dst) {
-  profiler::ScopeLabel label("ReferenceMul");
-  for (int i = 0; i < lhs.layout.rows; i++) {
-    for (int j = 0; j < rhs.layout.cols; j++) {
-      using AccumScalar = typename MulParamsType::AccumScalar;
-      AccumScalar accum = 0;
-      for (int k = 0; k < lhs.layout.cols; k++) {
-        AccumScalar lhs_val = Element(lhs, i, k);
-        AccumScalar rhs_val = Element(rhs, k, j);
-        accum += (lhs_val - lhs.zero_point) * (rhs_val - rhs.zero_point);
-      }
-      if (mul_params.bias()) {
-        accum += mul_params.bias()[i];
-      }
-      ApplyMultiplier(mul_params, i, &accum);
-      accum += dst->zero_point;
-      accum = std::min<AccumScalar>(accum, mul_params.clamp_max());
-      accum = std::max<AccumScalar>(accum, mul_params.clamp_min());
-      *ElementPtr(dst, i, j) = static_cast<DstScalar>(accum);
-    }
-  }
-}
-
-// Compile-time dispatch to ReferenceMul. This allows us to statically ensure
-// that there is no call to ReferenceMul in the user's binary.
-template <bool ReferenceMulIsEnabled>
-struct CompileTimeEnabledReferenceMul {
-  template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-            typename MulParamsType>
-  static void Run(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-                  const MulParamsType& mul_params, Mat<DstScalar>* dst) {
-    ReferenceMul(lhs, rhs, mul_params, dst);
-  }
-};
-
-// When this partial specialization is chosen, it ensures that ReferenceMul
-// is never compiled.
-template <>
-struct CompileTimeEnabledReferenceMul</*ReferenceMulIsEnabled=*/false> {
-  template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-            typename MulParamsType>
-  static void Run(const Mat<LhsScalar>&, const Mat<RhsScalar>&,
-                  const MulParamsType&, Mat<DstScalar>*) {
-    RUY_DCHECK(false);
-  }
-};
-
 // Returns true if the operand on the given side should use caching of the
 // packed form. This may either be explicitly dictated by its cache_policy
 // (if it is kNeverCache, the default, or kAlwaysCache), or it may depend
@@ -457,36 +405,20 @@ void DispatchMul(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
 
   // This should be a constant, for a given machine and CompiledPaths.
   // There is a back door to override it for testing, but in production it will
-  // always be the "best" Path. I.e. the one with the newest SIMD instructions
-  // available on the present machine, and avoiding Path::kReference unless
-  // no other path is compiled.
+  // always be the "best" Path, i.e. the one with the newest SIMD instructions
+  // available on the present machine.
   //
   // Unfortunately, it is not a *static* constant, since it depends on runtime
   // detection of the available SIMD instructions.
-  Path the_path = ctx->SelectPath(CompiledPaths);
-
-  // Production code should probably never execute Path::kReference.
-  // Path::kReference implements a Mul, not a TrMul like the rest of Ruy, so if
-  // that's what we need to do, then get it out of the way before going down the
-  // TrMul path.
-  if (the_path == Path::kReference) {
-    constexpr bool ReferenceMulIsEnabled =
-        (CompiledPaths & Path::kReference) != Path::kNone;
-    CompileTimeEnabledReferenceMul<ReferenceMulIsEnabled>::Run(lhs, rhs,
-                                                               mul_params, dst);
-    return;
-  }
+  const Path the_path = ctx->SelectPath(CompiledPaths);
 
   // As described in the comment at the top of this file, Ruy internally
   // converts Mul into TrMul. We handle that here.
-  //
-  // This is Ruy's main code path.
-  constexpr Path TrMulCompiledPaths = CompiledPaths & ~Path::kReference;
   Mat<LhsScalar> transposed_lhs(lhs);
   Transpose(&transposed_lhs);
   TrMulParams params;
-  CreateTrMulParams<TrMulCompiledPaths>(transposed_lhs, rhs, mul_params, dst,
-                                        the_path, &params);
+  CreateTrMulParams<CompiledPaths>(transposed_lhs, rhs, mul_params, dst,
+                                   the_path, &params);
   HandlePrepackedCaching(&params, ctx);
   TrMul(&params, ctx);
 }

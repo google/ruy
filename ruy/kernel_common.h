@@ -20,6 +20,7 @@ limitations under the License.
 #include <cstdint>
 #include <type_traits>
 
+#include "ruy/apply_multiplier.h"
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
 #include "ruy/mat.h"
@@ -90,84 +91,6 @@ void RunKernel(Tuning tuning, const SidePair<PEMat>& src, void* mul_params,
       UneraseType<RhsScalar>(src[Side::kRhs]),
       *static_cast<const MulParamsType*>(mul_params), start[Side::kLhs],
       start[Side::kRhs], end[Side::kLhs], end[Side::kRhs], &mdst);
-}
-
-// Copied from gemmlowp/fixedpoint.
-inline std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a,
-                                                      std::int32_t b) {
-  bool overflow = a == b && a == std::numeric_limits<std::int32_t>::min();
-  std::int64_t a_64(a);
-  std::int64_t b_64(b);
-  std::int64_t ab_64 = a_64 * b_64;
-  std::int32_t nudge = ab_64 >= 0 ? (1 << 30) : (1 - (1 << 30));
-  std::int32_t ab_x2_high32 =
-      static_cast<std::int32_t>((ab_64 + nudge) / (1ll << 31));
-  return overflow ? std::numeric_limits<std::int32_t>::max() : ab_x2_high32;
-}
-
-inline std::int32_t RoundingDivideByPOT(std::int32_t numerator, int exponent) {
-  std::int32_t sign = numerator >= 0 ? 1 : -1;
-  std::int32_t abs_numerator = std::abs(numerator);
-  std::int32_t mask = (1LL << exponent) - 1;
-  std::int32_t remainder = abs_numerator & mask;
-  std::int32_t threshold = mask >> 1;
-  std::int32_t abs_result =
-      (abs_numerator >> exponent) + (remainder > threshold ? 1 : 0);
-  return sign * abs_result;
-}
-
-// Copied from TF Lite code.
-inline std::int32_t MultiplyByQuantizedMultiplier(
-    std::int32_t x, std::int32_t quantized_multiplier, int shift) {
-  int left_shift = shift > 0 ? shift : 0;
-  int right_shift = shift > 0 ? 0 : -shift;
-  return RoundingDivideByPOT(SaturatingRoundingDoublingHighMul(
-                                 x * (1 << left_shift), quantized_multiplier),
-                             right_shift);
-}
-
-// Helper to apply a fixed-point multiplier.  Only 'applicable' if AccumScalar
-// is int32 (i.e. in all cases except floating-point) and if the destination is
-// not int32 (i.e. unless the user wants to get raw accumulators).
-template <typename MulParamsType,
-          bool IsApplicable = std::is_same<typename MulParamsType::AccumScalar,
-                                           std::int32_t>::value &&
-                              !std::is_same<typename MulParamsType::DstScalar,
-                                            std::int32_t>::value>
-struct ApplyMultiplierImpl {};
-
-// Specialization in non-applicable case: do nothing, just check that values
-// are default.
-template <typename MulParamsType>
-struct ApplyMultiplierImpl<MulParamsType, false> {
-  using AccumScalar = typename MulParamsType::AccumScalar;
-  using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& mul_params, int, AccumScalar*) {
-    RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
-    RUY_DCHECK_EQ(mul_params.multiplier_exponent(), 0);
-  }
-};
-
-template <typename MulParamsType>
-struct ApplyMultiplierImpl<MulParamsType, true> {
-  using AccumScalar = typename MulParamsType::AccumScalar;
-  using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& mul_params, int row,
-                  AccumScalar* accum) {
-    AccumScalar m = mul_params.multiplier_fixedpoint_perchannel()
-                        ? mul_params.multiplier_fixedpoint_perchannel()[row]
-                        : mul_params.multiplier_fixedpoint();
-    int e = mul_params.multiplier_exponent_perchannel()
-                ? mul_params.multiplier_exponent_perchannel()[row]
-                : mul_params.multiplier_exponent();
-    *accum = MultiplyByQuantizedMultiplier(*accum, m, e);
-  }
-};
-
-template <typename MulParamsType>
-void ApplyMultiplier(const MulParamsType& mul_params, int row,
-                     typename MulParamsType::AccumScalar* accum) {
-  ApplyMultiplierImpl<MulParamsType>::Run(mul_params, row, accum);
 }
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,

@@ -44,6 +44,7 @@ limitations under the License.
 #include "ruy/mul_params.h"     // IWYU pragma: export
 #include "ruy/platform.h"
 #include "ruy/pmu.h"
+#include "ruy/reference_mul.h"
 #include "ruy/ruy.h"
 #include "ruy/time.h"
 
@@ -67,7 +68,14 @@ namespace ruy {
 
 const float kClampRatio = 0.1f;
 
-enum class ExternalPath { kNone, kGemmlowp, kEigen, kEigenTensor, kOpenBlas };
+enum class ExternalPath {
+  kNone,
+  kReference,
+  kGemmlowp,
+  kEigen,
+  kEigenTensor,
+  kOpenBlas
+};
 
 inline std::vector<std::string>* CoveredPaths() {
   static std::vector<std::string> covered_paths;
@@ -79,7 +87,6 @@ inline const char* PathName(Path path) {
   case Path::NAME:              \
     return #NAME;
   switch (path) {
-    RUY_PATHNAME_CASE(kReference)
     RUY_PATHNAME_CASE(kStandardCpp)
 #if RUY_PLATFORM(NEON)
     RUY_PATHNAME_CASE(kNeon)
@@ -116,6 +123,7 @@ inline const char* PathName(ExternalPath path) {
   case ExternalPath::NAME:      \
     return #NAME;
   switch (path) {
+    RUY_PATHNAME_CASE(kReference)
     RUY_PATHNAME_CASE(kGemmlowp)
     RUY_PATHNAME_CASE(kEigen)
     RUY_PATHNAME_CASE(kEigenTensor)
@@ -1219,14 +1227,24 @@ struct EvalExternalPathImpl<TestSetType, false, true, SingleScalarType> {
   }
 };
 
+#endif  // RUY_TEST_EXTERNAL_PATHS
+
 template <typename TestSetType>
 void EvalExternalPath(
     TestSetType* test_set,
     TestResult<typename TestSetType::DstScalar>* test_result) {
-  EvalExternalPathImpl<TestSetType>::Run(test_set, test_result);
-}
-
+  if (test_result->external_path == ExternalPath::kReference) {
+    // kReference is special because it's always available (the implementation
+    // is provided by ruy) and supports all cases (quantized and float).
+    ruy::ReferenceMul(test_set->lhs.matrix, test_set->rhs.matrix,
+                      test_set->mul_params,
+                      &test_result->storage_matrix.matrix);
+  } else {
+#ifdef RUY_TEST_EXTERNAL_PATHS
+    EvalExternalPathImpl<TestSetType>::Run(test_set, test_result);
 #endif  // RUY_TEST_EXTERNAL_PATHS
+  }
+}
 
 template <typename Scalar>
 bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
@@ -1636,6 +1654,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
   RUY_CHECK_NE(paths_bitfield, Path::kNone);
   paths = PathsBitfieldAsVector(paths_bitfield);
 
+  // kReference is a special 'external path' that's always available.
+  external_paths.push_back(ExternalPath::kReference);
+
 #ifdef RUY_TEST_EXTERNAL_PATHS
 
   using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
@@ -1702,9 +1723,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalResult(
   if (result->path != Path::kNone) {
     EvalRuy(result);
   } else {
-#ifdef RUY_TEST_EXTERNAL_PATHS
     EvalExternalPath(this, result);
-#endif
   }
   const std::string& pathname = PathName(*result);
   if (std::find(CoveredPaths()->begin(), CoveredPaths()->end(), pathname) ==
