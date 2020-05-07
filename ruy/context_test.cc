@@ -30,7 +30,6 @@ TEST(ContextTest, ContextClassSanity) {
   EXPECT_EQ(&context.thread_pool(), context.mutable_thread_pool());
   EXPECT_NE(context.mutable_thread_pool(), nullptr);
   EXPECT_EQ(context.max_num_threads(), 1);
-  EXPECT_EQ(&context.tracing(), context.mutable_tracing());
   context.set_explicit_tuning(Tuning::kOutOfOrder);
   context.set_max_num_threads(2);
   EXPECT_EQ(context.explicit_tuning(), Tuning::kOutOfOrder);

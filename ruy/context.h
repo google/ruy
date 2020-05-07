@@ -25,7 +25,6 @@ namespace ruy {
 class Ctx;
 class CtxImpl;
 class ThreadPool;
-class TracingContext;
 enum class Path : std::uint8_t;
 enum class Tuning;
 
@@ -46,8 +45,6 @@ class Context final {
   ThreadPool* mutable_thread_pool();
   int max_num_threads() const;
   void set_max_num_threads(int value);
-  const TracingContext& tracing() const;
-  TracingContext* mutable_tracing();
 
   void ClearPrepackedCache();
 

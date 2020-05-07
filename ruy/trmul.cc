@@ -35,7 +35,6 @@ limitations under the License.
 #include "ruy/side_pair.h"
 #include "ruy/size_util.h"
 #include "ruy/thread_pool.h"
-#include "ruy/trace.h"
 #include "ruy/tune.h"
 
 namespace ruy {
@@ -49,8 +48,7 @@ struct TrMulTask final : Task {
             std::atomic<int>* atomic_block_id_, int thread_id_,
             bool need_atomics_,
             SidePair<std::atomic<PackingStatus>*> packing_status_,
-            TuningResolver* tuning_resolver_, Allocator* local_allocator_,
-            Trace* trace_)
+            TuningResolver* tuning_resolver_, Allocator* local_allocator_)
       : params(params_),
         block_map(block_map_),
         atomic_block_id(atomic_block_id_),
@@ -59,12 +57,9 @@ struct TrMulTask final : Task {
         packing_status(packing_status_),
         tuning_resolver(tuning_resolver_),
         local_allocator(local_allocator_),
-        trace(trace_),
         local_packed{nullptr, nullptr} {}
 
   void Run() override {
-    TraceRecordThreadStart(thread_id, trace);
-
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params->is_prepacked[side]) {
         const int size = NumBlocksPerSide(side, block_map);
@@ -73,12 +68,8 @@ struct TrMulTask final : Task {
       }
     }
 
-    const int num_blocks = NumBlocks(block_map);
-
     const Tuning tuning = tuning_resolver->Resolve();
-
-    TraceRecordThreadLoopStart(thread_id, trace);
-
+    const int num_blocks = NumBlocks(block_map);
     SidePair<int> block;
     SidePair<int> start;
     SidePair<int> end;
@@ -86,8 +77,6 @@ struct TrMulTask final : Task {
     // Each thread starts by initially reserving the block whose id
     // is the thread id.
     int block_id = thread_id;
-    TraceRecordBlockReserved(thread_id, block_id, trace);
-
     while (block_id < num_blocks) {
       // Reserve the next block to handle. In order to hide the latency
       // (typically comparable to an access to the level of data cache that
@@ -96,7 +85,6 @@ struct TrMulTask final : Task {
       // immediately depending on the `next_n` result.
       const int next_block_id =
           atomic_block_id->fetch_add(1, std::memory_order_relaxed);
-      TraceRecordBlockReserved(thread_id, next_block_id, trace);
       // Get coordinates of the current block to handle, in "block space".
       GetBlockByIndex(block_map, block_id, &block);
       // Get coordinates of the current block to handle, in matrix space.
@@ -105,15 +93,12 @@ struct TrMulTask final : Task {
       EnsurePacked(block, start, end, tuning);
       // Actually do matrix multiplication work
       params->RunKernel(tuning, start, end);
-      TraceRecordBlockFinished(thread_id, block_id, trace);
       // Move on to the next block as obtained by the atomic increment
       // at the start of this while loop iteration.
       block_id = next_block_id;
     }
 
     local_allocator->FreeAll();
-
-    TraceRecordThreadEnd(thread_id, trace);
   }
 
  private:
@@ -170,7 +155,6 @@ struct TrMulTask final : Task {
           // changed it to kInProgress as we are about to handle the packing
           // ourselves.
           params->RunPack(side, tuning, start, end);
-          TraceRecordBlockPacked(thread_id, side, block, trace);
           status.store(PackingStatus::kFinished, std::memory_order_release);
         } else if (exchanged_status == PackingStatus::kInProgress) {
           // Another thread is currently packing this block.
@@ -182,7 +166,6 @@ struct TrMulTask final : Task {
         // Single-threaded case: no need for expensive atomics, local_packed
         // is the truth already.
         params->RunPack(side, tuning, start, end);
-        TraceRecordBlockPacked(thread_id, side, block, trace);
       }
       local_packed[side][block] = true;
     }
@@ -235,7 +218,6 @@ struct TrMulTask final : Task {
   SidePair<std::atomic<PackingStatus>*> packing_status;
   TuningResolver* tuning_resolver;
   Allocator* local_allocator;
-  Trace* trace;
 
   // Local indicators of packedness to avoid the overhead of atomic ops.
   SidePair<bool*> local_packed;
@@ -332,9 +314,6 @@ void TrMul(TrMulParams* params, Ctx* ctx) {
 
   profiler::ScopeLabel label_general("TrMulImpl, general case");
 
-  auto* trace = NewTraceOrNull(ctx->mutable_tracing(), rows, depth, cols);
-  TraceRecordStart(trace);
-
   // Initialize block map.
   BlockMap block_map;
   MakeBlockMap(packed_lhs.layout.cols, packed_rhs.layout.cols, depth,
@@ -384,11 +363,10 @@ void TrMul(TrMulParams* params, Ctx* ctx) {
     auto* tuning_resolver = ctx->GetThreadSpecificTuningResolver(i);
     new (tasks + i)
         TrMulTask(params, block_map, atomic_block_id, i, need_atomics,
-                  packing_status, tuning_resolver, allocator, trace);
+                  packing_status, tuning_resolver, allocator);
   }
 
   // Do the computation.
-  TraceRecordExecute(block_map, trace);
   ctx->mutable_thread_pool()->Execute(thread_count, tasks);
 
   // Finish up.
@@ -397,7 +375,6 @@ void TrMul(TrMulParams* params, Ctx* ctx) {
   }
 
   allocator->FreeAll();
-  TraceRecordEnd(trace);
 }
 
 }  // namespace ruy

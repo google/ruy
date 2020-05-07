@@ -20,7 +20,6 @@ limitations under the License.
 #include "ruy/path.h"
 #include "ruy/prepacked_cache.h"
 #include "ruy/thread_pool.h"
-#include "ruy/trace.h"
 #include "ruy/tune.h"
 
 namespace ruy {
@@ -43,10 +42,6 @@ ThreadPool* Context::mutable_thread_pool() {
 int Context::max_num_threads() const { return ctx().max_num_threads(); }
 void Context::set_max_num_threads(int value) {
   mutable_ctx()->set_max_num_threads(value);
-}
-const TracingContext& Context::tracing() const { return ctx().tracing(); }
-TracingContext* Context::mutable_tracing() {
-  return mutable_ctx()->mutable_tracing();
 }
 
 void Context::ClearPrepackedCache() { mutable_ctx()->ClearPrepackedCache(); }

@@ -25,7 +25,6 @@ namespace ruy {
 
 class CtxImpl;
 class ThreadPool;
-class TracingContext;
 class Allocator;
 class TuningResolver;
 class PrepackedCache;
@@ -48,8 +47,6 @@ class Ctx /* not final, subclassed by CtxImpl */ {
   ThreadPool* mutable_thread_pool();
   int max_num_threads() const;
   void set_max_num_threads(int value);
-  const TracingContext& tracing() const;
-  TracingContext* mutable_tracing();
 
   void SetRuntimeEnabledPaths(Path paths);
   Path GetRuntimeEnabledPaths();

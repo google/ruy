@@ -28,7 +28,6 @@ limitations under the License.
 #include "ruy/path.h"
 #include "ruy/prepacked_cache.h"
 #include "ruy/thread_pool.h"
-#include "ruy/trace.h"
 #include "ruy/tune.h"
 
 namespace ruy {
@@ -60,7 +59,6 @@ class CtxImpl final : public Ctx {
   Tuning explicit_tuning_ = Tuning::kAuto;
   ThreadPool thread_pool_;
   int max_num_threads_ = 1;
-  TracingContext tracing_;
   // Allocator for main thread work before invoking the threadpool.
   // Our simple Allocator does not allow reserving/allocating more blocks
   // while it's already in committed state, so the main thread needs both

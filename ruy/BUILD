@@ -323,23 +323,6 @@ cc_library(
 )
 
 cc_library(
-    name = "trace",
-    srcs = [
-        "trace.cc",
-    ],
-    hdrs = [
-        "trace.h",
-    ],
-    copts = ruy_copts_base(),
-    deps = [
-        ":block_map",
-        ":check_macros",
-        ":side_pair",
-        ":time",
-    ],
-)
-
-cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
     copts = ruy_copts_base(),
@@ -798,7 +781,6 @@ cc_library(
         ":platform",
         ":prepacked_cache",
         ":thread_pool",
-        ":trace",
         ":tune",
     ],
 )
@@ -846,7 +828,6 @@ cc_library(
         ":platform",
         ":prepacked_cache",
         ":thread_pool",
-        ":trace",
         ":tune",
     ],
 )
@@ -906,7 +887,6 @@ cc_library(
         ":side_pair",
         ":size_util",
         ":thread_pool",
-        ":trace",
         ":trmul_params",
         ":tune",
         "//ruy/profiler:instrumentation",

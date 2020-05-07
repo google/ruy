@@ -39,8 +39,6 @@ int Ctx::max_num_threads() const { return impl().max_num_threads_; }
 void Ctx::set_max_num_threads(int value) {
   mutable_impl()->max_num_threads_ = value;
 }
-const TracingContext& Ctx::tracing() const { return impl().tracing_; }
-TracingContext* Ctx::mutable_tracing() { return &mutable_impl()->tracing_; }
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {
   mutable_impl()->runtime_enabled_paths_ = paths;
