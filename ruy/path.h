@@ -60,9 +60,6 @@ enum class Path : std::uint8_t {
   // This is intended for testing/development, and as a fallback for when
   // the SIMD ISA extensions required by other paths are unavailable at runtime.
   kStandardCpp = 0x2,
-  // Legacy/transitional, to be removed as soon as TensorFlow Lite tests are
-  // updated to use ReferenceMul instead.
-  kReference = kStandardCpp,
 
 #if RUY_PLATFORM(ARM)
   // ARM architectures.
