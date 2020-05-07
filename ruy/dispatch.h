@@ -380,6 +380,7 @@ inline void HandlePrepackedCaching(TrMulParams* params, Ctx* ctx) {
         params->RunPack(side, ctx->GetMainThreadTuning(), 0,
                         params->packed[side].layout.cols);
       }
+      params->is_prepacked[side] = true;
     }
   }
 }
