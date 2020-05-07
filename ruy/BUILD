@@ -1,6 +1,7 @@
 # Ruy is not BLAS
 
-load(":build_defs.oss.bzl", "ruy_copts_avx2", "ruy_copts_avxvnni", "ruy_copts_base", "ruy_copts_skylake", "ruy_copts_sse42", "ruy_linkopts_thread_standard_library")
+load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2", "ruy_copts_sse42")
+load(":build_defs.oss.bzl", "ruy_copts_avx512", "ruy_copts_avxvnni", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 
@@ -28,7 +29,7 @@ config_setting(
 cc_library(
     name = "platform",
     hdrs = ["platform.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_library(
@@ -42,13 +43,13 @@ cc_library(
 cc_library(
     name = "check_macros",
     hdrs = ["check_macros.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_test(
     name = "check_macros_test",
     srcs = ["check_macros_test.cc"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":gtest_wrapper",
@@ -58,20 +59,20 @@ cc_test(
 cc_library(
     name = "opt_set",
     hdrs = ["opt_set.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_library(
     name = "time",
     hdrs = ["time.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_library(
     name = "wait",
     srcs = ["wait.cc"],
     hdrs = ["wait.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     linkopts = ruy_linkopts_thread_standard_library(),
     deps = [":time"],
 )
@@ -90,7 +91,7 @@ cc_test(
 cc_library(
     name = "size_util",
     hdrs = ["size_util.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [":check_macros"],
 )
@@ -112,7 +113,7 @@ cc_library(
     hdrs = [
         "tune.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":opt_set",
         ":platform",
@@ -128,7 +129,7 @@ cc_library(
     hdrs = [
         "system_aligned_alloc.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_library(
@@ -139,7 +140,7 @@ cc_library(
     hdrs = [
         "prepacked_cache.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":mat",
         ":system_aligned_alloc",
@@ -188,7 +189,7 @@ cc_library(
     hdrs = [
         "allocator.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":size_util",
         ":system_aligned_alloc",
@@ -207,7 +208,7 @@ cc_test(
 cc_library(
     name = "side_pair",
     hdrs = ["side_pair.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [":check_macros"],
 )
 
@@ -219,7 +220,7 @@ cc_library(
     hdrs = [
         "block_map.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":opt_set",
@@ -249,7 +250,7 @@ cc_library(
     hdrs = [
         "blocking_counter.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":check_macros",
@@ -265,7 +266,7 @@ cc_library(
     hdrs = [
         "thread_pool.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     linkopts = ruy_linkopts_thread_standard_library(),
     visibility = ["//visibility:public"],
     deps = [
@@ -283,7 +284,7 @@ cc_library(
     hdrs = [
         "detect_arm.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
 )
 
@@ -295,7 +296,7 @@ cc_library(
     hdrs = [
         "detect_x86.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":platform",
     ],
@@ -304,7 +305,7 @@ cc_library(
 cc_library(
     name = "path",
     hdrs = ["path.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
         ":platform",
@@ -315,7 +316,7 @@ cc_library(
 cc_library(
     name = "cpu_cache_size",
     hdrs = ["cpu_cache_size.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":path",
         ":platform",
@@ -325,7 +326,7 @@ cc_library(
 cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [":check_macros"],
 )
@@ -342,7 +343,7 @@ cc_test(
 cc_library(
     name = "mul_params",
     hdrs = ["mul_params.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
         ":cpu_cache_size",
@@ -362,7 +363,7 @@ cc_test(
 cc_library(
     name = "mat",
     hdrs = ["mat.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":common",
@@ -376,7 +377,7 @@ cc_library(
     hdrs = [
         "common.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -390,7 +391,7 @@ cc_library(
     name = "apply_multiplier",
     srcs = ["apply_multiplier.cc"],
     hdrs = ["apply_multiplier.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
 )
 
 cc_library(
@@ -401,7 +402,7 @@ cc_library(
         "kernel_common.h",
         "kernel_x86.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":apply_multiplier",
         ":check_macros",
@@ -427,7 +428,7 @@ cc_library(
         "pack_common.h",
         "pack_x86.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":common",
@@ -447,7 +448,7 @@ cc_library(
         "kernel_arm32.cc",
         "kernel_arm64.cc",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":common",
         ":kernel_common",
@@ -462,7 +463,7 @@ cc_library(
     srcs = [
         "pack_arm.cc",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":common",
         ":opt_set",
@@ -472,17 +473,12 @@ cc_library(
     ],
 )
 
-# AVX-512 compilation units.
-#
-# These must use the same compiler options.
-RUY_COPTS_BUILT_FOR_AVX512 = ruy_copts_base() + ruy_copts_skylake()
-
 cc_library(
     name = "kernel_avx512",
     srcs = [
         "kernel_avx512.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX512,
+    copts = ruy_copts() + ruy_copts_avx512(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -497,7 +493,7 @@ cc_library(
     srcs = [
         "pack_avx512.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX512,
+    copts = ruy_copts() + ruy_copts_avx512(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -517,25 +513,19 @@ cc_library(
     hdrs = [
         "have_built_path_for.h",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX512,
+    copts = ruy_copts() + ruy_copts_avx512(),
     deps = [
         ":opt_set",
         ":platform",
     ],
 )
-# End: AVX-512 compilation units.
-
-# AVX2 compilation units.
-#
-# These must use the same compiler options.
-RUY_COPTS_BUILT_FOR_AVX2 = ruy_copts_base() + ruy_copts_avx2()
 
 cc_library(
     name = "kernel_avx2",
     srcs = [
         "kernel_avx2.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX2,
+    copts = ruy_copts() + ruy_copts_avx2(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -550,7 +540,7 @@ cc_library(
     srcs = [
         "pack_avx2.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX2,
+    copts = ruy_copts() + ruy_copts_avx2(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -570,29 +560,22 @@ cc_library(
     hdrs = [
         "have_built_path_for.h",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX2,
+    copts = ruy_copts() + ruy_copts_avx2(),
     deps = [
         ":opt_set",
         ":platform",
     ],
 )
-# End: AVX2 compilation units.
 
-# SSE42 compilation units.
-#
-# TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
+# TODO(b/147376783): SSE 4.2 support is incomplete / placeholder.
 # Optimization is not finished. In particular the dimensions of the kernel
 # blocks can be changed as desired.
-#
-# These must use the same compiler options.
-RUY_COPTS_BUILT_FOR_SSE42 = ruy_copts_base() + ruy_copts_sse42()
-
 cc_library(
     name = "kernel_sse42",
     srcs = [
         "kernel_sse42.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_SSE42,
+    copts = ruy_copts() + ruy_copts_sse42(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -607,7 +590,7 @@ cc_library(
     srcs = [
         "pack_sse42.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_SSE42,
+    copts = ruy_copts() + ruy_copts_sse42(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -627,29 +610,22 @@ cc_library(
     hdrs = [
         "have_built_path_for.h",
     ],
-    copts = RUY_COPTS_BUILT_FOR_SSE42,
+    copts = ruy_copts() + ruy_copts_sse42(),
     deps = [
         ":opt_set",
         ":platform",
     ],
 )
-# End: SSE42 compilation units.
 
-# AVX-VNNI compilation units.
-#
-# TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
+# TODO(b/147376783): AVX-VNNI support is incomplete / placeholder.
 # Optimization is not finished. In particular the dimensions of the kernel
 # blocks can be changed as desired.
-#
-# These must use the same compiler options.
-RUY_COPTS_BUILT_FOR_AVX_VNNI = ruy_copts_base() + ruy_copts_avxvnni()
-
 cc_library(
     name = "kernel_avxvnni",
     srcs = [
         "kernel_avxvnni.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX_VNNI,
+    copts = ruy_copts() + ruy_copts_avxvnni(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -664,7 +640,7 @@ cc_library(
     srcs = [
         "pack_avxvnni.cc",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX_VNNI,
+    copts = ruy_copts() + ruy_copts_avxvnni(),
     deps = [
         ":check_macros",
         ":matrix",
@@ -684,13 +660,12 @@ cc_library(
     hdrs = [
         "have_built_path_for.h",
     ],
-    copts = RUY_COPTS_BUILT_FOR_AVX_VNNI,
+    copts = ruy_copts() + ruy_copts_avxvnni(),
     deps = [
         ":opt_set",
         ":platform",
     ],
 )
-# End: AVX-VNNI compilation units.
 
 cc_library(
     name = "kernel",
@@ -698,7 +673,7 @@ cc_library(
         "kernel.h",
         "kernel_common.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":apply_multiplier",
         ":check_macros",
@@ -728,7 +703,7 @@ cc_library(
         "pack.h",
         "pack_common.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":check_macros",
         ":common",
@@ -768,7 +743,7 @@ cc_library(
     hdrs = [
         "context.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
         ":allocator",
@@ -817,7 +792,7 @@ cc_library(
         "ctx.h",
         "ctx_impl.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":allocator",
         ":check_macros",
@@ -840,7 +815,7 @@ cc_library(
     hdrs = [
         "context_get_ctx.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":context",
         ":ctx",
@@ -861,7 +836,7 @@ cc_test(
 cc_library(
     name = "trmul_params",
     hdrs = ["trmul_params.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":mat",
         ":side_pair",
@@ -873,7 +848,7 @@ cc_library(
     name = "trmul",
     srcs = ["trmul.cc"],
     hdrs = ["trmul.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [
         ":allocator",
         ":block_map",
@@ -902,7 +877,7 @@ cc_library(
     hdrs = [
         "ruy.h",
     ],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
         ":check_macros",
@@ -940,14 +915,14 @@ cc_library(
     testonly = True,
     srcs = ["pmu.cc"],
     hdrs = ["pmu.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     deps = [":check_macros"],
 )
 
 cc_library(
     name = "reference_mul",
     hdrs = ["reference_mul.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
         ":apply_multiplier",
@@ -961,7 +936,7 @@ cc_library(
     name = "test_lib",
     testonly = True,
     hdrs = ["test.h"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     # need defines, not copts, because it's controlling a header, test.h
     defines = ruy_test_ext_defines(),
     linkopts = select({
@@ -988,7 +963,7 @@ cc_library(
 ruy_benchmark(
     name = "benchmark",
     srcs = ["benchmark.cc"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     lhs_rhs_accum_dst = [
         ("f32", "f32", "f32", "f32"),
         ("u8", "u8", "i32", "u8"),
@@ -1006,7 +981,7 @@ ruy_benchmark(
 ruy_test(
     name = "test_fast",
     srcs = ["test_fast.cc"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     lhs_rhs_accum_dst = [
         ("f32", "f32", "f32", "f32"),
         ("f64", "f32", "f64", "f32"),
@@ -1027,7 +1002,7 @@ ruy_test(
 ruy_test(
     name = "test_slow",
     srcs = ["test_slow.cc"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     lhs_rhs_accum_dst = [
         ("f32", "f32", "f32", "f32"),
         ("u8", "u8", "i32", "u8"),
@@ -1045,7 +1020,7 @@ ruy_test(
 ruy_test(
     name = "test_special_mul_params",
     srcs = ["test_special_mul_params.cc"],
-    copts = ruy_copts_base(),
+    copts = ruy_copts(),
     lhs_rhs_accum_dst = [
         ("f32", "f32", "f32", "f32"),
         ("u8", "u8", "i32", "u8"),
