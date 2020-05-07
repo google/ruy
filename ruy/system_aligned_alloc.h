@@ -39,7 +39,7 @@ namespace detail {
 //    ARM reference manual mentions that this granule size may be as large
 //    as 2048 bytes, in practice we observe it to be 64 bytes. It can
 //    be queried cheaply, at runtime, from userspace, if needed.
-static constexpr std::ptrdiff_t kMinimumBlockAlignment = 64;
+constexpr std::ptrdiff_t kMinimumBlockAlignment = 64;
 
 // Primitive allocation functions obtaining aligned memory from the
 // operating system.
