@@ -15,6 +15,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 
 #include "ruy/check_macros.h"
 #include "ruy/kernel.h"
@@ -90,6 +91,40 @@ inline __m256i mm256_n_loadu_epi32(int n, const std::int32_t* src) {
   }
 }
 
+// Polyfill for _mm_storeu_si16(dst, v).
+inline void mm_storeu_si16(void* dst, __m128i v) {
+#if defined __clang__
+  _mm_storeu_si16(dst, v);
+#else
+  // GCC 9 lacks support for __mm_storeu_si16.
+  *static_cast<std::int16_t*>(dst) = _mm_extract_epi16(v, 0);
+#endif
+}
+
+// Polyfill for _mm_storeu_si32(dst, v).
+inline void mm_storeu_si32(void* dst, __m128i v) {
+#if defined __clang__
+  _mm_storeu_si32(dst, v);
+#else
+  // GCC 9 lacks support for __mm_storeu_si32.
+  *static_cast<std::int32_t*>(dst) = _mm_extract_epi32(v, 0);
+#endif
+}
+
+// Polyfill for _mm_loadu_si32(src).
+inline __m128i mm_loadu_si32(const void* src) {
+#if defined __clang__
+  return _mm_loadu_si32(src);
+#else
+  // GCC 9 lacks support for _mm_loadu_si32.
+  __m128i res;
+  asm("movss %[src], %[res]"
+      : [res] "=x"(res)
+      : [src] "m"(*static_cast<const int*>(src)));
+  return res;
+#endif
+}
+
 inline void mm256_n_storeu_cvtepi32_epi8(std::uint8_t* dst, int residual_rows,
                                          const __m256i v) {
   // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
@@ -107,35 +142,35 @@ inline void mm256_n_storeu_cvtepi32_epi8(std::uint8_t* dst, int residual_rows,
       dst[0] = _mm256_extract_epi8(v, 0);
       break;
     case 2:
-      _mm_storeu_si16(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si16(dst, _mm256_extracti128_si256(shuffled_v, 0));
       break;
     case 3: {
       __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 0);
-      _mm_storeu_si16(dst, trailing_packed);
+      mm_storeu_si16(dst, trailing_packed);
       dst[2] = _mm_extract_epi8(trailing_packed, 2);
       break;
     }
     case 4:
-      _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
       break;
     case 5:
-      _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
       dst[4] = _mm256_extract_epi8(shuffled_v, 16);
       break;
     case 6:
-      _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      _mm_storeu_si16(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
+      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si16(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
       break;
     case 7: {
-      _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
       __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 1);
-      _mm_storeu_si16(dst + 4, trailing_packed);
+      mm_storeu_si16(dst + 4, trailing_packed);
       dst[6] = _mm_extract_epi8(trailing_packed, 2);
       break;
     }
     case 8:
-      _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      _mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
+      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+      mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
       break;
     default:
       RUY_DCHECK_LE(residual_rows, 8);
@@ -147,8 +182,8 @@ inline void mm256_storeu_cvtepi32_epi8(std::uint8_t* dst, const __m256i v) {
   // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
   const __m256i repack_perm = _mm256_set1_epi32(0x0c080400);
   const __m256i shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-  _mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
+  mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+  mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
 }
 
 inline void mm256_n_storeu_cvtepi32_epi8(std::int8_t* dst, int residual_rows,
@@ -161,8 +196,8 @@ inline void mm256_storeu_cvtepi32_epi8(std::int8_t* dst, const __m256i v) {
   // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
   const __m256i repack_perm = _mm256_set1_epi32(0x0c080400);
   const __m256i shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  _mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-  _mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
+  mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
+  mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
 }
 
 inline void mm256_n_storeu_cvtepi32_epi16(std::int16_t* dst, int residual_rows,
@@ -182,13 +217,13 @@ inline void mm256_n_storeu_cvtepi32_epi16(std::int16_t* dst, int residual_rows,
     case 0:
       break;
     case 1:
-      _mm_storeu_si16(dst, shuffled_v_low);
+      mm_storeu_si16(dst, shuffled_v_low);
       break;
     case 2:
-      _mm_storeu_si32(dst, shuffled_v_low);
+      mm_storeu_si32(dst, shuffled_v_low);
       break;
     case 3: {
-      _mm_storeu_si32(dst, shuffled_v_low);
+      mm_storeu_si32(dst, shuffled_v_low);
       dst[2] = _mm_extract_epi16(shuffled_v_low, 2);
       break;
     }
@@ -201,12 +236,12 @@ inline void mm256_n_storeu_cvtepi32_epi16(std::int16_t* dst, int residual_rows,
       break;
     case 6:
       _mm_storeu_si64(dst, shuffled_v_low);
-      _mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
+      mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
       break;
     case 7: {
       _mm_storeu_si64(dst, shuffled_v_low);
       __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 1);
-      _mm_storeu_si32(dst + 4, trailing_packed);
+      mm_storeu_si32(dst + 4, trailing_packed);
       dst[6] = _mm_extract_epi16(trailing_packed, 2);
       break;
     }
@@ -236,7 +271,7 @@ inline void mm256_n_storeu_epi32(std::int32_t* dst, int residual_rows,
     case 0:
       break;
     case 1:
-      _mm_storeu_si32(dst, v_low);
+      mm_storeu_si32(dst, v_low);
       break;
     case 2:
       _mm_storeu_si64(dst, v_low);
@@ -310,7 +345,9 @@ inline float mm256_get1_ps(const __m256 a, int i) {
       RUY_DCHECK_LT(i, 8);
       return .0f;
   }
-  return reinterpret_cast<float&>(float_val_as_int);
+  float float_val;
+  std::memcpy(&float_val, &float_val_as_int, sizeof(float_val));
+  return float_val;
 }
 
 inline __m256 mm256_n_loadu_ps(int i, const float* src) {
@@ -363,7 +400,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
       2, 3, 6, 7, 10, 11, 14, 15   //
   };
 
-  std::int32_t dst_stride;
+  std::int32_t dst_stride = 0;
   if ((params.dst_type_id == DstTypeId<std::int8_t>::kValue) ||
       (params.dst_type_id == DstTypeId<std::uint8_t>::kValue)) {
     dst_stride = params.dst_stride;
@@ -1234,7 +1271,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
     for (int d = 0; d < params.depth; d += kAvx8bitInnerSize) {
       const __m256i lhs_data =
           _mm256_load_si256(reinterpret_cast<const __m256i*>(lhs_ptr));
-      const __m128i rhs_data_8bit = _mm_loadu_si32(rhs_ptr);
+      const __m128i rhs_data_8bit = intrin_utils::mm_loadu_si32(rhs_ptr);
 
       // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
       // For simplicity we load 4x the data that we need and process twice the

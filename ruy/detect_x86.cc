@@ -30,7 +30,7 @@ namespace {
 // See Intel docs, such as http://goo.gl/c6IkGX.
 inline void RunCpuid(std::uint32_t eax, std::uint32_t ecx,
                      std::uint32_t abcd[4]) {
-  std::uint32_t ebx, edx;
+  std::uint32_t ebx = 0, edx;
 #if defined(__i386__) && defined(__PIC__)
   /* in case of PIC under 32-bit EBX cannot be clobbered */
   asm volatile("movl %%ebx, %%edi \n\t cpuid \n\t xchgl %%ebx, %%edi"

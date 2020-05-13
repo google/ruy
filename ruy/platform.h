@@ -74,24 +74,28 @@ limitations under the License.
 #define RUY_DONOTUSEDIRECTLY_NEON_64 \
   (RUY_DONOTUSEDIRECTLY_NEON && RUY_DONOTUSEDIRECTLY_ARM_64)
 
-// Disable X86 enhancements on __APPLE__ because b/138922878, see comment #8, we
+// Determine whether to enable X86 non-portable performance improvements,
+// typically x86 SIMD paths (AVX, etc).
+#if defined(RUY_FORCE_ENABLE_X86_ENHANCEMENTS)
+#define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 1
+#elif defined(__EMSCRIPTEN__)
+// We use some x86 asm e.g. in runtime CPU detection and to implement missing
+// intrinsics. This can't build to Emscripten.
+#define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 0
+#elif defined(__ANDROID_NDK__) && defined(__NDK_MAJOR__) && \
+    (__NDK_MAJOR__ >= 20)
+// Enable on sufficiently recent Android NDK. Earlier versions had broken
+// intrinsics headers.
+#define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 1
+#elif defined(__linux__) && defined(__clang__) && (__clang_major__ >= 8)
+// Enable on recent versions of Clang on Linux. Might be possible
+// to relax this version requirement.
+// Not enabling on Apple at the moment because b/138922878, see comment #8, we
 // may only need to disable this on XCode <= 10.2.
-//
-// Disable when not using Clang-Linux, because too many user issues arise from
-// compilation variations.
-//
-// NOTE: Consider guarding by !defined(__APPLE__) when removing Linux-only
-// restriction.
-//
-// __EMSCRIPTEN__ is checked because the runtime Path resolution can use asm.
-//
-// The Android NDK logic excludes earlier and very broken versions of intrinsics
-// headers.
-#if defined(RUY_FORCE_ENABLE_X86_ENHANCEMENTS) ||                          \
-    (defined(__clang__) && (__clang_major__ >= 8) && defined(__linux__) && \
-     !defined(__EMSCRIPTEN__) &&                                           \
-     (!defined(__ANDROID_NDK__) ||                                         \
-      (defined(__NDK_MAJOR__) && (__NDK_MAJOR__ >= 20))))
+#define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 1
+#elif defined(__GNUC__) && (__GNUC__ >= 9)
+// Enable on recent versions of GCC. Might be possible
+// to relax this version requirement.
 #define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 1
 #else
 #define RUY_DONOTUSEDIRECTLY_X86_ENHANCEMENTS 0
