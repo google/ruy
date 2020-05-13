@@ -1,12 +1,5 @@
 """Build definitions for Ruy that are specific to the open-source build."""
 
-# At the moment this does nothing because only recent toolchains support
-# -march=skylake-avx512, so we can't use this by default in all open-source
-# builds. If some open-source users care about this, that could be made
-# a non-default option.
-def ruy_copts_avx512():
-    return []
-
 # TODO(b/147376783): VNNI support is incomplete / placeholder.
 # Optimization is not finished. In particular the dimensions of the kernel
 # blocks can be changed as desired.

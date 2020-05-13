@@ -55,7 +55,7 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   profiler::ScopeLabel label("Kernel kAvx512 8-bit");
 
-  std::int32_t dst_stride;
+  std::int32_t dst_stride = 0;
   if ((params.dst_type_id == DstTypeId<std::int8_t>::kValue) ||
       (params.dst_type_id == DstTypeId<std::uint8_t>::kValue)) {
     dst_stride = params.dst_stride;
@@ -88,7 +88,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
     if (has_rhs_sums_offsets) {
       const __m512i rhs_sums_offset_v =
           _mm512_mullo_epi32(_mm512_set1_epi32(lhs_zero_point),
-                             _mm512_loadu_epi32(&params.rhs_sums[col]));
+                             _mm512_loadu_si512(&params.rhs_sums[col]));
       _mm512_storeu_si512(reinterpret_cast<__m512i*>(rhs_sums_offsets),
                           rhs_sums_offset_v);
     }
@@ -124,7 +124,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       if ((params.flags & RUY_ASM_FLAG_HAS_LHS_SUMS) && rhs_zero_point) {
         const __m512i lhs_sums_offset =
             _mm512_mullo_epi32(_mm512_set1_epi32(rhs_zero_point),
-                               _mm512_loadu_epi32(&params.lhs_sums[row]));
+                               _mm512_loadu_si512(&params.lhs_sums[row]));
         initial_accum_data =
             _mm512_sub_epi32(initial_accum_data, lhs_sums_offset);
       }
@@ -191,8 +191,8 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       const std::int8_t* lhs_ptr = lhs_col_ptr;
       const std::int8_t* rhs_ptr = rhs_col_ptr;
       for (int d = 0; d < params.depth; d += 4) {
-        const __m512i lhs_data = _mm512_loadu_epi8(lhs_ptr);
-        __m512i rhs_data_8bit = _mm512_loadu_epi8(rhs_ptr);
+        const __m512i lhs_data = _mm512_loadu_si512(lhs_ptr);
+        __m512i rhs_data_8bit = _mm512_loadu_si512(rhs_ptr);
 
         // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
         std::int32_t rhs_data[32];
@@ -967,8 +967,9 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             __m512i result = accum_data_v[j];
             result = _mm512_min_epi32(result, clamp_max_v);
             result = _mm512_max_epi32(result, clamp_min_v);
-            _mm_storeu_epi8(tmp_ptr + j * block_col_offset,
-                            _mm512_cvtepi32_epi8(result));
+            _mm_storeu_si128(
+                reinterpret_cast<__m128i*>(tmp_ptr + j * block_col_offset),
+                _mm512_cvtepi32_epi8(result));
           }
         } else {
           for (int j = 0; j < residual_cols; ++j) {
@@ -988,8 +989,9 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             __m512i result = accum_data_v[j];
             result = _mm512_min_epi32(result, clamp_max_v);
             result = _mm512_max_epi32(result, clamp_min_v);
-            _mm_storeu_epi8(tmp_ptr + j * block_col_offset,
-                            _mm512_cvtepi32_epi8(result));
+            _mm_storeu_si128(
+                reinterpret_cast<__m128i*>(tmp_ptr + j * block_col_offset),
+                _mm512_cvtepi32_epi8(result));
           }
         } else {
           for (int j = 0; j < residual_cols; ++j) {
@@ -1009,8 +1011,9 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             __m512i result = accum_data_v[j];
             result = _mm512_min_epi32(result, clamp_max_v);
             result = _mm512_max_epi32(result, clamp_min_v);
-            _mm256_storeu_epi16(tmp_ptr + j * block_col_offset,
-                                _mm512_cvtepi32_epi16(result));
+            _mm256_storeu_si256(
+                reinterpret_cast<__m256i*>(tmp_ptr + j * block_col_offset),
+                _mm512_cvtepi32_epi16(result));
           }
         } else {
           for (int j = 0; j < residual_cols; ++j) {
@@ -1026,7 +1029,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         if (store_full_block) {
           std::int32_t* tmp_ptr = static_cast<std::int32_t*>(dst_ptr);
           for (int j = 0; j < 16; ++j) {
-            _mm512_storeu_epi32(tmp_ptr + j * dst_stride, accum_data_v[j]);
+            _mm512_storeu_si512(tmp_ptr + j * dst_stride, accum_data_v[j]);
           }
         } else {
           std::int32_t* tmp_ptr = static_cast<std::int32_t*>(dst_ptr);
@@ -1056,18 +1059,6 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
   RUY_DCHECK_EQ(params.last_col, 0);
   RUY_DCHECK_EQ(params.start_col, 0);
 
-  std::int32_t dst_stride;
-  if ((params.dst_type_id == DstTypeId<std::int8_t>::kValue) ||
-      (params.dst_type_id == DstTypeId<std::uint8_t>::kValue)) {
-    dst_stride = params.dst_stride;
-  } else if (params.dst_type_id == DstTypeId<std::int16_t>::kValue) {
-    dst_stride = params.dst_stride / sizeof(std::int16_t);
-  } else if (params.dst_type_id == DstTypeId<std::int32_t>::kValue) {
-    dst_stride = params.dst_stride / sizeof(std::int32_t);
-  } else {
-    RUY_DCHECK(false);
-  }
-
   int bias_ptr_block_increment = params.flags & RUY_ASM_FLAG_HAS_BIAS ? 16 : 0;
 
   const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
@@ -1088,7 +1079,7 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
   if (has_rhs_sums_offsets) {
     const __m512i rhs_sums_offset_v =
         _mm512_mullo_epi32(_mm512_set1_epi32(lhs_zero_point),
-                           _mm512_loadu_epi32(&params.rhs_sums[0]));
+                           _mm512_loadu_si512(&params.rhs_sums[0]));
     _mm512_storeu_si512(reinterpret_cast<__m512i*>(rhs_sums_offsets),
                         rhs_sums_offset_v);
   }
@@ -1108,7 +1099,7 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
     if ((params.flags & RUY_ASM_FLAG_HAS_LHS_SUMS) && rhs_zero_point) {
       const __m512i lhs_sums_offset =
           _mm512_mullo_epi32(_mm512_set1_epi32(rhs_zero_point),
-                             _mm512_loadu_epi32(&params.lhs_sums[row]));
+                             _mm512_loadu_si512(&params.lhs_sums[row]));
       initial_accum_data =
           _mm512_sub_epi32(initial_accum_data, lhs_sums_offset);
     }
@@ -1130,8 +1121,9 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
     const std::int8_t* lhs_ptr = lhs_col_ptr;
     const std::int8_t* rhs_ptr = rhs_col_ptr;
     for (int d = 0; d < params.depth; d += 4) {
-      const __m512i lhs_data = _mm512_loadu_epi8(lhs_ptr);
-      const __m128i rhs_data_8bit = _mm_loadu_epi8(rhs_ptr);
+      const __m512i lhs_data = _mm512_loadu_si512(lhs_ptr);
+      const __m128i rhs_data_8bit =
+          _mm_loadu_si128(reinterpret_cast<const __m128i*>(rhs_ptr));
 
       // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
       // For simplicity we load 4x the data that we need and process twice the
