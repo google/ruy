@@ -43,6 +43,15 @@ def ruy_copts_optimize():
 def ruy_copts():
     return ruy_copts_warnings() + ruy_copts_neon() + ruy_copts_optimize()
 
+def ruy_copts_avx512():
+    # In some clang-based toolchains, in the default compilation mode (not -c opt),
+    # heavy spillage in the AVX512 kernels results in stack frames > 50k. This issue does not exist
+    # in optimized builds (-c opt).
+    return select({
+        "//ruy:x86_64": ["-march=skylake-avx512", "$(STACK_FRAME_UNLIMITED)"],
+        "//conditions:default": [],
+    })
+
 def ruy_copts_avx2():
     return select({
         "//ruy:x86_64": ["-mavx2", "-mfma"],

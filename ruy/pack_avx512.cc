@@ -75,8 +75,11 @@ inline void ZeroHalf8bitAvx512(int src_rows, std::int8_t packed_zero_point,
 
 inline __m512i LoaduTwo(const std::int8_t* addr_lo,
                         const std::int8_t* addr_hi) {
-  __m512i lower_filled = _mm512_castsi256_si512(_mm256_loadu_epi8(addr_lo));
-  return _mm512_inserti32x8(lower_filled, _mm256_loadu_epi8(addr_hi), 1);
+  __m512i lower_filled = _mm512_castsi256_si512(
+      _mm256_loadu_si256(reinterpret_cast<const __m256i*>(addr_lo)));
+  return _mm512_inserti32x8(
+      lower_filled,
+      _mm256_loadu_si256(reinterpret_cast<const __m256i*>(addr_hi)), 1);
 }
 
 inline __m512i MaskLoaduTwo(__mmask32 row_mask, const __m256i default_value_v,
@@ -244,14 +247,22 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
               _mm512_madd_epi16(sums_8x4_16bit, ones_16bit);
           sums_8x2_32bit = _mm512_add_epi32(sums_8x2_32bit, sums_8x2_32bit_new);
 
-          _mm256_storeu_epi8(packed_ptr + 0 * 16 * 4, r0_0);
-          _mm256_storeu_epi8(packed_ptr + 2 * 16 * 4, r0_1);
-          _mm256_storeu_epi8(packed_ptr + 4 * 16 * 4, r1_0);
-          _mm256_storeu_epi8(packed_ptr + 6 * 16 * 4, r1_1);
-          _mm256_storeu_epi8(packed_ptr + 1 * 16 * 4, r2_0);
-          _mm256_storeu_epi8(packed_ptr + 3 * 16 * 4, r2_1);
-          _mm256_storeu_epi8(packed_ptr + 5 * 16 * 4, r3_0);
-          _mm256_storeu_epi8(packed_ptr + 7 * 16 * 4, r3_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 0 * 16 * 4), r0_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 2 * 16 * 4), r0_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 4 * 16 * 4), r1_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 6 * 16 * 4), r1_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 1 * 16 * 4), r2_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 3 * 16 * 4), r2_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 5 * 16 * 4), r3_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 7 * 16 * 4), r3_1);
         } else {
           __m512i t0, t1, t2, t3;
           __m512i r0, r1, r2, r3;
@@ -290,14 +301,22 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
           const __m256i r2_1 = _mm512_extracti32x8_epi32(r2, 1);
           const __m256i r3_0 = _mm512_castsi512_si256(r3);
           const __m256i r3_1 = _mm512_extracti32x8_epi32(r3, 1);
-          _mm256_storeu_epi8(packed_ptr + 0 * 16 * 4, r0_0);
-          _mm256_storeu_epi8(packed_ptr + 2 * 16 * 4, r0_1);
-          _mm256_storeu_epi8(packed_ptr + 4 * 16 * 4, r1_0);
-          _mm256_storeu_epi8(packed_ptr + 6 * 16 * 4, r1_1);
-          _mm256_storeu_epi8(packed_ptr + 1 * 16 * 4, r2_0);
-          _mm256_storeu_epi8(packed_ptr + 3 * 16 * 4, r2_1);
-          _mm256_storeu_epi8(packed_ptr + 5 * 16 * 4, r3_0);
-          _mm256_storeu_epi8(packed_ptr + 7 * 16 * 4, r3_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 0 * 16 * 4), r0_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 2 * 16 * 4), r0_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 4 * 16 * 4), r1_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 6 * 16 * 4), r1_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 1 * 16 * 4), r2_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 3 * 16 * 4), r2_1);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 5 * 16 * 4), r3_0);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(packed_ptr + 7 * 16 * 4), r3_1);
         }
       } else if (available_src_rows > 0) {
         RUY_DCHECK_LT(available_src_rows >> 2, kNumChunkedSrcRows);
@@ -379,14 +398,22 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
             _mm512_madd_epi16(sums_8x4_16bit, ones_16bit);
         sums_8x2_32bit = _mm512_add_epi32(sums_8x2_32bit, sums_8x2_32bit_new);
 
-        _mm256_storeu_epi8(trailing_buf + 0 * 16 * 4, r0_0);
-        _mm256_storeu_epi8(trailing_buf + 2 * 16 * 4, r0_1);
-        _mm256_storeu_epi8(trailing_buf + 4 * 16 * 4, r1_0);
-        _mm256_storeu_epi8(trailing_buf + 6 * 16 * 4, r1_1);
-        _mm256_storeu_epi8(trailing_buf + 1 * 16 * 4, r2_0);
-        _mm256_storeu_epi8(trailing_buf + 3 * 16 * 4, r2_1);
-        _mm256_storeu_epi8(trailing_buf + 5 * 16 * 4, r3_0);
-        _mm256_storeu_epi8(trailing_buf + 7 * 16 * 4, r3_1);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 0 * 16 * 4), r0_0);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 2 * 16 * 4), r0_1);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 4 * 16 * 4), r1_0);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 6 * 16 * 4), r1_1);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 1 * 16 * 4), r2_0);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 3 * 16 * 4), r2_1);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 5 * 16 * 4), r3_0);
+        _mm256_storeu_si256(
+            reinterpret_cast<__m256i*>(trailing_buf + 7 * 16 * 4), r3_1);
       }
 
       packed_ptr += 16 * kNumChunkedSrcRows;
@@ -404,7 +431,8 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
   if (sums_ptr) {
     const __m256i sums_adjustment_v = _mm256_set1_epi32(sums_adjustment);
 
-    __m256i sums = _mm256_loadu_epi32(sums_ptr);
+    __m256i sums =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(sums_ptr));
     const __m512i idx =
         _mm512_set_epi32(15, 13, 11, 9, 7, 5, 3, 1, 14, 12, 10, 8, 6, 4, 2, 0);
 
@@ -416,7 +444,7 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
     sums = _mm256_add_epi32(sums, _mm512_castsi512_si256(sums_2x8_32bit));
     sums = _mm256_add_epi32(sums, _mm512_extracti32x8_epi32(sums_2x8_32bit, 1));
 
-    _mm256_storeu_epi32(sums_ptr, sums);
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(sums_ptr), sums);
   }
 }
 
