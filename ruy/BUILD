@@ -92,7 +92,6 @@ cc_library(
     name = "size_util",
     hdrs = ["size_util.h"],
     copts = ruy_copts(),
-    visibility = ["//visibility:public"],
     deps = [":check_macros"],
 )
 
@@ -285,7 +284,6 @@ cc_library(
         "detect_arm.h",
     ],
     copts = ruy_copts(),
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
