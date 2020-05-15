@@ -14,33 +14,20 @@ limitations under the License.
 ==============================================================================*/
 
 /* Detection of dotprod instructions on ARM.
- * The current Linux-specific code relies on sufficiently new Linux kernels:
- * At least Linux 4.15 in general; on Android, at least Linux 4.14.111 thanks to
- * a late backport. This was backported just before the Android 10 release, so
- * this is leaving out pre-release Android 10 builds as well as earlier Android
- * versions.
+ * The current Linux-specific code relies on the feature, available in
+ * Linux 4.11 and newer, whereby the kernel allows userspace code to perform
+ * some `mrs` instructions, reading certain feature registers normally available
+ * only to privileged code. It is described here,
+ * https://www.kernel.org/doc/html/latest/arm64/cpu-feature-registers.html
  *
- * It is possible to detect instructions in other ways that don't rely on
- * an OS-provided feature identification mechanism:
- *
- *   (A) We used to have a SIGILL-handler-based method that worked at least
- *       on Linux. Its downsides were (1) crashes on a few devices where
- *       signal handler installation didn't work as intended; (2) additional
- *       complexity to generalize to other Unix-ish operating systems including
- *       iOS; (3) source code complexity and fragility of anything installing
- *       and restoring signal handlers; (4) confusing behavior under a debugger.
- *
- *   (B) We also experimented with a fork-ing approach where a subprocess
- *       tries the instruction. Compared to (A), this is much simpler and more
- *       reliable and portable, but also much higher latency on Android where
- *       an uncaught signal typically causes a 100 ms latency.
- *
- * Should there be interest in either technique again in the future,
- * code implementing both (A) and (B) can be found in earlier revisions of this
- * file - in actual code for (A) and in a comment for (B).
+ * Starting with Linux 4.15 (backported to 4.14.151), the kernel also directly
+ * exposes the bit that we need to userspace by means of HWCAP_ASIMDDP.
+ * Unfortunately, we need this on earlier 4.14.x kernels.
  */
 
 #include "ruy/detect_arm.h"
+
+#include <cstdint>
 
 #if defined __linux__ && defined __aarch64__
 #include <sys/auxv.h>
@@ -51,12 +38,19 @@ namespace ruy {
 namespace {
 
 #if defined __linux__ && defined __aarch64__
-bool DetectDotprodByLinuxAuxvMethod() {
-  // This is the value of HWCAP_ASIMDDP in sufficiently recent Linux headers,
-  // however we need to support building against older headers for the time
-  // being.
-  const int kLocalHwcapAsimddp = 1 << 20;
-  return getauxval(AT_HWCAP) & kLocalHwcapAsimddp;
+bool IsCpuidAvailable() {
+  // This is the value of HWCAP_CPUID in Linux >= 4.11, however we need to
+  // support building against older headers for the time being.
+  const int kLocalHwcapCpuid = 1 << 11;
+  return getauxval(AT_HWCAP) & kLocalHwcapCpuid;
+}
+
+bool DetectDotprodByCpuid() {
+  // The bit that we need is 'DP', which is bit 47 in ID_AA64ISAR0_EL1:
+  // https://developer.arm.com/docs/ddi0595/e/aarch64-system-registers/id_aa64isar0_el1#DP_47
+  std::uint64_t x;
+  asm("mrs %[x], ID_AA64ISAR0_EL1" : [x] "=r"(x) : :);
+  return x & (1ull << 47);
 }
 #endif
 
@@ -64,7 +58,9 @@ bool DetectDotprodByLinuxAuxvMethod() {
 
 bool DetectDotprod() {
 #if defined __linux__ && defined __aarch64__
-  return DetectDotprodByLinuxAuxvMethod();
+  if (IsCpuidAvailable()) {
+    return DetectDotprodByCpuid();
+  }
 #endif
 
   return false;
