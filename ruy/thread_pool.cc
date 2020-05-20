@@ -39,10 +39,12 @@ class Thread {
     ExitAsSoonAsPossible  // Should exit at earliest convenience.
   };
 
-  explicit Thread(BlockingCounter* counter_to_decrement_when_ready)
+  explicit Thread(BlockingCounter* counter_to_decrement_when_ready,
+                  Duration spin_duration)
       : task_(nullptr),
         state_(State::Startup),
-        counter_to_decrement_when_ready_(counter_to_decrement_when_ready) {
+        counter_to_decrement_when_ready_(counter_to_decrement_when_ready),
+        spin_duration_(spin_duration) {
     thread_.reset(new std::thread(ThreadFunc, this));
   }
 
@@ -116,7 +118,7 @@ class Thread {
       const auto& condition = [this]() {
         return state_.load(std::memory_order_acquire) != State::Ready;
       };
-      Wait(condition, &state_cond_, &state_mutex_);
+      Wait(condition, spin_duration_, &state_cond_, &state_mutex_);
 
       // Act on new state.
       switch (state_.load(std::memory_order_acquire)) {
@@ -151,6 +153,9 @@ class Thread {
   // pointer to the master's thread BlockingCounter object, to notify the
   // master thread of when this thread switches to the 'Ready' state.
   BlockingCounter* const counter_to_decrement_when_ready_;
+
+  // See ThreadPool::spin_duration_.
+  const Duration spin_duration_;
 };
 
 void ThreadPool::ExecuteImpl(int task_count, int stride, Task* tasks) {
@@ -174,7 +179,7 @@ void ThreadPool::ExecuteImpl(int task_count, int stride, Task* tasks) {
   (tasks + 0)->Run();
 
   // Wait for the threads submitted above to finish.
-  counter_to_decrement_when_ready_.Wait();
+  counter_to_decrement_when_ready_.Wait(spin_duration_);
 }
 
 // Ensures that the pool has at least the given count of threads.
@@ -188,9 +193,10 @@ void ThreadPool::CreateThreads(int threads_count) {
   }
   counter_to_decrement_when_ready_.Reset(threads_count - threads_.size());
   while (threads_.size() < unsigned_threads_count) {
-    threads_.push_back(new Thread(&counter_to_decrement_when_ready_));
+    threads_.push_back(
+        new Thread(&counter_to_decrement_when_ready_, spin_duration_));
   }
-  counter_to_decrement_when_ready_.Wait();
+  counter_to_decrement_when_ready_.Wait(spin_duration_);
 }
 
 ThreadPool::~ThreadPool() {

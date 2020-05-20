@@ -63,11 +63,6 @@ namespace ruy {
 void Wait(const std::function<bool()>& condition, const Duration& spin_duration,
           std::condition_variable* condvar, std::mutex* mutex);
 
-// Convenience overload using a default `spin_duration`.
-// TODO(benoitjacob): let this be controlled from the ruy API.
-void Wait(const std::function<bool()>& condition,
-          std::condition_variable* condvar, std::mutex* mutex);
-
 }  // namespace ruy
 
 #endif  // RUY_RUY_WAIT_H_

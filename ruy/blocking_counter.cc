@@ -39,11 +39,11 @@ bool BlockingCounter::DecrementCount() {
   return hit_zero;
 }
 
-void BlockingCounter::Wait() {
+void BlockingCounter::Wait(const Duration spin_duration) {
   const auto& condition = [this]() {
     return count_.load(std::memory_order_acquire) == 0;
   };
-  ruy::Wait(condition, &count_cond_, &count_mutex_);
+  ruy::Wait(condition, spin_duration, &count_cond_, &count_mutex_);
 }
 
 }  // namespace ruy

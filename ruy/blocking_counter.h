@@ -20,6 +20,8 @@ limitations under the License.
 #include <condition_variable>  // NOLINT(build/c++11) // IWYU pragma: keep
 #include <mutex>               // NOLINT(build/c++11) // IWYU pragma: keep
 
+#include "ruy/time.h"
+
 namespace ruy {
 
 // A BlockingCounter lets one thread to wait for N events to occur.
@@ -46,7 +48,9 @@ class BlockingCounter {
 
   // Waits for the N other threads (N having been set by Reset())
   // to hit the BlockingCounter.
-  void Wait();
+  //
+  // Will first spin-wait for `spin_duration` before reverting to passive wait.
+  void Wait(const Duration spin_duration);
 
  private:
   std::atomic<int> count_;

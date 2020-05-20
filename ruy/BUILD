@@ -253,6 +253,7 @@ cc_library(
     linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":check_macros",
+        ":time",
         ":wait",
     ],
 )
@@ -271,6 +272,7 @@ cc_library(
     deps = [
         ":blocking_counter",
         ":check_macros",
+        ":time",
         ":wait",
     ],
 )

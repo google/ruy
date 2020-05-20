@@ -57,6 +57,12 @@ inline float ToFloatSeconds(const Duration& duration) {
       .count();
 }
 
+inline float ToFloatMilliseconds(const Duration& duration) {
+  return std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(
+             duration)
+      .count();
+}
+
 inline std::int64_t ToInt64Nanoseconds(const Duration& duration) {
   return std::chrono::duration_cast<
              std::chrono::duration<std::int64_t, std::nano>>(duration)

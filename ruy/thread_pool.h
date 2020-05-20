@@ -22,6 +22,7 @@ limitations under the License.
 #include <vector>
 
 #include "ruy/blocking_counter.h"
+#include "ruy/time.h"
 
 namespace ruy {
 
@@ -76,6 +77,14 @@ class ThreadPool {
     ExecuteImpl(task_count, sizeof(TaskType), static_cast<Task*>(tasks));
   }
 
+  void set_spin_milliseconds(float milliseconds) {
+    spin_duration_ = DurationFromMilliseconds(milliseconds);
+  }
+
+  float spin_milliseconds() const {
+    return ToFloatMilliseconds(spin_duration_);
+  }
+
  private:
   // Ensures that the pool has at least the given count of threads.
   // If any new thread has to be created, this function waits for it to
@@ -95,6 +104,22 @@ class ThreadPool {
 
   // The BlockingCounter used to wait for the threads.
   BlockingCounter counter_to_decrement_when_ready_;
+
+  // This value was empirically derived with some microbenchmark, we don't have
+  // high confidence in it.
+  //
+  // That this value means that we may be sleeping substantially longer
+  // than a scheduler timeslice's duration is not necessarily surprising. The
+  // idea is to pick up quickly new work after having finished the previous
+  // workload. When it's new work within the same GEMM as the previous work, the
+  // time interval that we might be busy-waiting is very small, so for that
+  // purpose it would be more than enough to sleep for 1 ms.
+  // That is all what we would observe on a GEMM benchmark. However, in a real
+  // application, after having finished a GEMM, we might do unrelated work for
+  // a little while, then start on a new GEMM. In that case the wait interval
+  // may be a little longer. There may also not be another GEMM for a long time,
+  // in which case we'll end up passively waiting below.
+  Duration spin_duration_ = DurationFromMilliseconds(2);
 };
 
 }  // namespace ruy
