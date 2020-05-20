@@ -305,10 +305,15 @@ cc_library(
 
 cc_library(
     name = "path",
+    srcs = ["path.cc"],
     hdrs = ["path.h"],
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        ":check_macros",
+        ":detect_arm",
+        ":detect_x86",
+        ":have_built_path_for",
         ":platform",
         ":size_util",
     ],

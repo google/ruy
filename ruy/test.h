@@ -627,7 +627,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
     if (cache_lhs || cache_rhs) {
       DoMul(result);
     }
-    RUY_CHECK_EQ(GlobalContext().last_selected_path(), result->path);
+    RUY_CHECK_EQ(GlobalContext().last_used_path(), result->path);
   } else if (expected_outcome == ExpectedOutcome::kDeath) {
     // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
     // Report a bug?

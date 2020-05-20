@@ -188,6 +188,14 @@ constexpr Path kAllPaths = kNonArchPaths | kDefaultArchPaths | kExtraArchPaths;
 
 static_assert(Disjoint(kDefaultPaths, ~kAllPaths), "");
 
+// For each Path bit set in `paths_to_test`, performs runtime detection and
+// sets the corresponding bit in the return value if and only if it is
+// supported. Architecture-specific Path bits that are not set in the input
+// `paths_to_test` value are also left not set in the return value.
+// The return value will also have kNonArchPaths bits set, since by definition
+// these paths are always supported.
+Path DetectRuntimeSupportedPaths(Path paths_to_test);
+
 }  // namespace ruy
 
 #endif  // RUY_RUY_PATH_H_
