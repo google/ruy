@@ -22,6 +22,14 @@ limitations under the License.
 
 #define RUY_PLATFORM(X) ((RUY_DONOTUSEDIRECTLY_##X) != 0)
 
+// Identify Unix platforms. From https://stackoverflow.com/a/16107549
+#if defined(__unix__) || defined(__unix) || \
+    (defined(__APPLE__) && defined(__MACH__))
+#define RUY_DONOTUSEDIRECTLY_UNIX 1
+#else
+#define RUY_DONOTUSEDIRECTLY_UNIX 0
+#endif
+
 // Architecture-level platform detection.
 //
 // Ruy requires these to be mutually exclusive.
@@ -73,6 +81,12 @@ limitations under the License.
 // It still allows some conveyance of intent.
 #define RUY_DONOTUSEDIRECTLY_NEON_64 \
   (RUY_DONOTUSEDIRECTLY_NEON && RUY_DONOTUSEDIRECTLY_ARM_64)
+
+// Identify platforms where we know how to detect optional the ARM NEON dotprod
+// feature. We can detect this anywhere we can install a signal handler (i.e.
+// any UNIX) and run ARM 64bit NEON instructions.
+#define RUY_DONOTUSEDIRECTLY_NEON_DETECT_DOTPROD \
+  (RUY_DONOTUSEDIRECTLY_UNIX && RUY_DONOTUSEDIRECTLY_NEON_64)
 
 // Determine whether to enable X86 non-portable performance improvements,
 // typically x86 SIMD paths (AVX, etc).

@@ -284,6 +284,9 @@ cc_library(
         "detect_arm.h",
     ],
     copts = ruy_copts(),
+    deps = [
+        ":platform",
+    ],
 )
 
 cc_library(
