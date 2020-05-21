@@ -79,9 +79,11 @@ bool TryAsmSnippet(bool (*asm_snippet)()) {
 #include <setjmp.h>
 #include <signal.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <tuple>
 
 #ifdef __linux__
 #include <sys/auxv.h>

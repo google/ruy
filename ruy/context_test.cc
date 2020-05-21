@@ -25,7 +25,7 @@ namespace {
 
 TEST(ContextTest, ContextClassSanity) {
   Context context;
-  EXPECT_EQ(context.last_used_path(), Path::kNone);
+  EXPECT_EQ(context.last_selected_path(), Path::kNone);
   EXPECT_EQ(context.explicit_tuning(), Tuning::kAuto);
   EXPECT_EQ(&context.thread_pool(), context.mutable_thread_pool());
   EXPECT_NE(context.mutable_thread_pool(), nullptr);

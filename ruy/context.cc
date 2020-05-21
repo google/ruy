@@ -30,7 +30,7 @@ Context::~Context() { delete impl_; }
 const Ctx& Context::ctx() const { return static_cast<const Ctx&>(*impl_); }
 Ctx* Context::mutable_ctx() { return static_cast<Ctx*>(impl_); }
 
-Path Context::last_used_path() const { return ctx().last_used_path(); }
+Path Context::last_selected_path() const { return ctx().last_selected_path(); }
 Tuning Context::explicit_tuning() const { return ctx().explicit_tuning(); }
 void Context::set_explicit_tuning(Tuning value) {
   mutable_ctx()->set_explicit_tuning(value);

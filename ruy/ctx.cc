@@ -28,7 +28,7 @@ namespace ruy {
 const CtxImpl& Ctx::impl() const { return static_cast<const CtxImpl&>(*this); }
 CtxImpl* Ctx::mutable_impl() { return static_cast<CtxImpl*>(this); }
 
-Path Ctx::last_used_path() const { return impl().last_used_path_; }
+Path Ctx::last_selected_path() const { return impl().last_selected_path_; }
 Tuning Ctx::explicit_tuning() const { return impl().explicit_tuning_; }
 void Ctx::set_explicit_tuning(Tuning value) {
   mutable_impl()->explicit_tuning_ = value;
@@ -45,21 +45,90 @@ void Ctx::SetRuntimeEnabledPaths(Path paths) {
 }
 
 Path Ctx::GetRuntimeEnabledPaths() {
-  // Just a shorthand alias. Using a pointer to make it clear we're mutating
-  // this value in-place.
-  Path* paths = &mutable_impl()->runtime_enabled_paths_;
+  // Note, this is a reference, used to avoid exceedingly long lines in this
+  // function body. Assigning to it mutates *context.
+  Path& enabled_paths = mutable_impl()->runtime_enabled_paths_;
 
-  // The value Path::kNone indicates the initial state before detection has been
-  // performed.
-  if (*paths == Path::kNone) {
-    *paths = DetectRuntimeSupportedPaths(kAllPaths);
+  // This function should always return the same value on a given machine.
+  // When runtime_enabled_paths has its initial value kNone, it performs
+  // some platform detection to resolve it to specific Path values.
+
+  // Fast path: already resolved.
+  if (enabled_paths != Path::kNone) {
+    return enabled_paths;
   }
 
-  return *paths;
+  // Need to resolve now. Start by considering all paths enabled.
+  enabled_paths = kAllPaths;
+
+  // This mechanism is intended to be used for testing and benchmarking. For
+  // example, one can set RUY_FORCE_DISABLE_PATHS to Path::kAvx512 in order to
+  // evaluate AVX2 performance on an AVX-512 machine.
+#ifdef RUY_FORCE_DISABLE_PATHS
+  enabled_paths = enabled_paths & ~(RUY_FORCE_DISABLE_PATHS);
+#endif
+
+#if RUY_PLATFORM(ARM)
+  // Now selectively disable paths that aren't supported on this machine.
+  if ((enabled_paths & Path::kNeonDotprod) != Path::kNone) {
+    if (!DetectDotprod()) {
+      enabled_paths = enabled_paths & ~Path::kNeonDotprod;
+      // Sanity check.
+      RUY_DCHECK((enabled_paths & Path::kNeonDotprod) == Path::kNone);
+    }
+  }
+#endif  // RUY_PLATFORM(ARM)
+
+#if RUY_PLATFORM(X86)
+  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
+  // placeholder. Optimization is not finished. In particular the dimensions of
+  // the kernel blocks can be changed as desired.
+  //
+  if ((enabled_paths & Path::kSse42) != Path::kNone) {
+    if (!(HaveBuiltPathForSse42() && DetectCpuSse42())) {
+      enabled_paths = enabled_paths & ~Path::kSse42;
+      // Sanity check.
+      RUY_DCHECK((enabled_paths & Path::kSse42) == Path::kNone);
+    }
+  }
+
+  if ((enabled_paths & Path::kAvx2) != Path::kNone) {
+    if (!(HaveBuiltPathForAvx2() && DetectCpuAvx2())) {
+      enabled_paths = enabled_paths & ~Path::kAvx2;
+      // Sanity check.
+      RUY_DCHECK((enabled_paths & Path::kAvx2) == Path::kNone);
+    }
+  }
+
+  if ((enabled_paths & Path::kAvx512) != Path::kNone) {
+    if (!(HaveBuiltPathForAvx512() && DetectCpuAvx512())) {
+      enabled_paths = enabled_paths & ~Path::kAvx512;
+      // Sanity check.
+      RUY_DCHECK((enabled_paths & Path::kAvx512) == Path::kNone);
+    }
+  }
+
+  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
+  // placeholder. Optimization is not finished. In particular the dimensions of
+  // the kernel blocks can be changed as desired.
+  //
+  if ((enabled_paths & Path::kAvxVnni) != Path::kNone) {
+    if (!(HaveBuiltPathForAvxVnni() && DetectCpuAvxVnni())) {
+      enabled_paths = enabled_paths & ~Path::kAvxVnni;
+      // Sanity check.
+      RUY_DCHECK((enabled_paths & Path::kAvxVnni) == Path::kNone);
+    }
+  }
+#endif  // RUY_PLATFORM(X86)
+
+  // Sanity check. We can't possibly have disabled all paths, as some paths
+  // are universally available (kReference, kStandardCpp).
+  RUY_DCHECK_NE(enabled_paths, Path::kNone);
+  return enabled_paths;
 }
 
 Path Ctx::SelectPath(Path compiled_paths) {
-  return mutable_impl()->last_used_path_ =
+  return mutable_impl()->last_selected_path_ =
              GetMostSignificantPath(compiled_paths & GetRuntimeEnabledPaths());
 }
 
