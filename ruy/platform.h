@@ -30,6 +30,13 @@ limitations under the License.
 #define RUY_DONOTUSEDIRECTLY_UNIX 0
 #endif
 
+// Detect APPLE.
+#ifdef __APPLE__
+#define RUY_DONOTUSEDIRECTLY_APPLE 1
+#else
+#define RUY_DONOTUSEDIRECTLY_APPLE 0
+#endif
+
 // Architecture-level platform detection.
 //
 // Ruy requires these to be mutually exclusive.
@@ -85,8 +92,12 @@ limitations under the License.
 // Identify platforms where we know how to detect optional the ARM NEON dotprod
 // feature. We can detect this anywhere we can install a signal handler (i.e.
 // any UNIX) and run ARM 64bit NEON instructions.
-#define RUY_DONOTUSEDIRECTLY_NEON_DETECT_DOTPROD \
-  (RUY_DONOTUSEDIRECTLY_UNIX && RUY_DONOTUSEDIRECTLY_NEON_64)
+// In principle this should work on all Unix including Apple, but we've gotten a
+// report that this is crashing on iOS at the moment, so we're temporarily
+// disabling this on Apple.
+#define RUY_DONOTUSEDIRECTLY_NEON_DETECT_DOTPROD                \
+  (RUY_DONOTUSEDIRECTLY_UNIX && RUY_DONOTUSEDIRECTLY_NEON_64 && \
+   !RUY_DONOTUSEDIRECTLY_APPLE)
 
 // Determine whether to enable X86 non-portable performance improvements,
 // typically x86 SIMD paths (AVX, etc).
@@ -155,13 +166,6 @@ limitations under the License.
 #define RUY_DONOTUSEDIRECTLY_AVX_VNNI 1
 #else
 #define RUY_DONOTUSEDIRECTLY_AVX_VNNI 0
-#endif
-
-// Detect APPLE.
-#ifdef __APPLE__
-#define RUY_DONOTUSEDIRECTLY_APPLE 1
-#else
-#define RUY_DONOTUSEDIRECTLY_APPLE 0
 #endif
 
 // Detect Emscripten, typically Wasm.
