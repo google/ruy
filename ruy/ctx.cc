@@ -28,7 +28,7 @@ namespace ruy {
 const CtxImpl& Ctx::impl() const { return static_cast<const CtxImpl&>(*this); }
 CtxImpl* Ctx::mutable_impl() { return static_cast<CtxImpl*>(this); }
 
-Path Ctx::last_selected_path() const { return impl().last_selected_path_; }
+Path Ctx::last_used_path() const { return impl().last_used_path_; }
 Tuning Ctx::explicit_tuning() const { return impl().explicit_tuning_; }
 void Ctx::set_explicit_tuning(Tuning value) {
   mutable_impl()->explicit_tuning_ = value;
@@ -128,7 +128,7 @@ Path Ctx::GetRuntimeEnabledPaths() {
 }
 
 Path Ctx::SelectPath(Path compiled_paths) {
-  return mutable_impl()->last_selected_path_ =
+  return mutable_impl()->last_used_path_ =
              GetMostSignificantPath(compiled_paths & GetRuntimeEnabledPaths());
 }
 

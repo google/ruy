@@ -38,7 +38,7 @@ class Context final {
   Context();
   ~Context();
 
-  Path last_selected_path() const;
+  Path last_used_path() const;
   Tuning explicit_tuning() const;
   void set_explicit_tuning(Tuning value);
   const ThreadPool& thread_pool() const;

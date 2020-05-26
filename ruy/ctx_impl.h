@@ -55,7 +55,8 @@ class CtxImpl final : public Ctx {
  private:
   friend class Ctx;
 
-  Path last_selected_path_ = Path::kNone;
+  // Single Path bit indicating which Path was used last.
+  Path last_used_path_ = Path::kNone;
   Tuning explicit_tuning_ = Tuning::kAuto;
   ThreadPool thread_pool_;
   int max_num_threads_ = 1;
@@ -65,6 +66,8 @@ class CtxImpl final : public Ctx {
   // this allocator, and its per-thread allocator.
   std::unique_ptr<Allocator> main_allocator_;
   std::unique_ptr<PrepackedCache> prepacked_cache_;
+  // Set of Paths detected at runtime to be supported. The initial value kNone
+  // means that detection has not yet been performed.
   Path runtime_enabled_paths_ = Path::kNone;
   // State for each thread in the thread pool. Entry 0 is the main thread.
   std::vector<std::unique_ptr<ThreadSpecificResource>>
