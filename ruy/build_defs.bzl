@@ -3,9 +3,13 @@
 # Helper for ruy_copts().
 # Returns warnings flags to use for all ruy code.
 def ruy_copts_warnings():
-    # TensorFlow is C++14 at the moment.
-    language_version_warnings = ["-Wc++14-compat"]
-    return language_version_warnings + select({
+    return [
+        # TensorFlow is C++14 at the moment.
+        "-Wc++14-compat",
+        # Warn on preprocessor expansion of an undefined token, e.g. catching typos
+        # such as `#ifdef __linus__` instead of `#ifdef __linux__`.
+        "-Wundef",
+    ] + select({
         # We run into trouble on some Windows clang toolchains with -Wextra.
         "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": [

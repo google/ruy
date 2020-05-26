@@ -22,7 +22,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                             const void* src_ptr2, const void* src_ptr3,
@@ -186,7 +186,7 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 }
 #endif
 
-#if RUY_PLATFORM(NEON_32) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 #define RUY_OFFSET_SRC_PTR0 0
 #define RUY_OFFSET_SRC_PTR1 4
@@ -596,9 +596,9 @@ void Pack8bitNeonOutOfOrder2Cols(const PackParams8bit& params) {
 #undef RUY_OFFSET_SRC_ZERO_POINT
 #undef RUY_OFFSET_INPUT_XOR
 
-#endif  //  RUY_PLATFORM(NEON_32) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
-#if RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
                          const void* src_ptr2, const void* src_ptr3,
@@ -1459,9 +1459,9 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
         "v27", "v28", "v29", "v30", "v31");
 }
 
-#endif  // RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
-#if RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
                              int src_inc0, int src_inc1, int src_inc2,
@@ -1595,7 +1595,7 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 }
 #endif
 
-#if RUY_PLATFORM(NEON_32) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
                              int src_inc, int src_rows, float* packed_ptr,
@@ -1773,9 +1773,9 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
         "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11");
 }
 
-#endif  // (RUY_PLATFORM(NEON_32)
+#endif  // (RUY_PLATFORM_NEON_32
 
-#if RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
                           const float* src_ptr2, const float* src_ptr3,
                           int src_inc0, int src_inc1, int src_inc2,
@@ -1926,6 +1926,6 @@ void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
             "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21",
             "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
-#endif  // RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 }  // namespace ruy

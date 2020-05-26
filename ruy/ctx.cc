@@ -68,7 +68,7 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect) {
     }
   };
 
-#if RUY_PLATFORM(ARM)
+#if RUY_PLATFORM_ARM
   // NEON is unconditionally available on ARM64.
   // On ARM32 it's technically possible for it to be unavailable, but we've
   // always chosen to just crash on such devices. We could reevaluate that,
@@ -85,7 +85,7 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect) {
   // encode dotprod instructions, so we don't actually rely on toolchain support
   // for them.
   maybe_add(Path::kNeonDotprod, []() { return DetectDotprod(); });
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
   // x86 SIMD paths currently require both runtime detection, and detection of
   // whether we're building the path at all.
   maybe_add(Path::kSse42,

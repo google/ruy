@@ -29,7 +29,7 @@ limitations under the License.
 namespace ruy {
 namespace {
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 
 // Unless otherwise specified, these tests have been tuned on ARM Cortex-A55.
 void MakeBlockMapTuningTest(int rows, int cols, int depth, int kernel_rows,

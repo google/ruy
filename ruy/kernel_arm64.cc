@@ -23,7 +23,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 #define RUY_ASM_LABEL_STORE_UINT8 91
 #define RUY_ASM_LABEL_STORE_INT8 92
@@ -7830,6 +7830,6 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
 #undef RUY_OFFSET_RHS_BASE_PTR
 #undef RUY_OFFSET_DST_BASE_PTR
 
-#endif  // RUY_PLATFORM(NEON_64) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 }  // namespace ruy

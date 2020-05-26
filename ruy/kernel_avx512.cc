@@ -22,13 +22,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -50,7 +50,7 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   profiler::ScopeLabel label("Kernel kAvx512 8-bit");
@@ -1807,6 +1807,6 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& params) {
   }  // End handling of residual rows.
 }
 
-#endif  //  RUY_PLATFORM(AVX512) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 }  // namespace ruy

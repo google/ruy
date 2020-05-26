@@ -33,7 +33,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(X86)
+#if RUY_PLATFORM_X86
 // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
 // Optimization is not finished. In particular the dimensions of the kernel
 // blocks can be changed as desired.
@@ -383,7 +383,7 @@ struct PackImpl<Path::kAvxVnni, FixedKernelLayout<Order::kRowMajor, 1, 16>,
     }
   }
 };
-#endif  // RUY_PLATFORM(X86)
+#endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy
 

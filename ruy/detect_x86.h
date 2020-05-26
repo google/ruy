@@ -20,8 +20,8 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(X86)
-#if RUY_PLATFORM(X86_ENHANCEMENTS)
+#if RUY_PLATFORM_X86
+#if RUY_PLATFORM_X86_ENHANCEMENTS
 
 // This also checks ABM support, which implies LZCNT and POPCNT.
 bool DetectCpuSse42();
@@ -34,15 +34,15 @@ bool DetectCpuAvx512();
 // TODO(b/146646451): Introduce and activate.
 inline bool DetectCpuAvxVnni() { return false; }
 
-#else  // RUY_PLATFORM(X86_ENHANCEMENTS)
+#else  // RUY_PLATFORM_X86_ENHANCEMENTS
 
 inline bool DetectCpuSse42() { return false; }
 inline bool DetectCpuAvx2() { return false; }
 inline bool DetectCpuAvx512() { return false; }
 inline bool DetectCpuAvxVnni() { return false; }
 
-#endif  // !RUY_PLATFORM(X86_ENHANCEMENTS)
-#endif  // RUY_PLATFORM(X86)
+#endif  // !RUY_PLATFORM_X86_ENHANCEMENTS
+#endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy
 

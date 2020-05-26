@@ -18,18 +18,18 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(X86)
+#if RUY_PLATFORM_X86
 // IMPORTANT:
 // These patterns must match those in the pack and kernel cc files.
-#if !(RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
 bool HaveBuiltPathForAvx2() { return false; }
 
-#else  // RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 bool HaveBuiltPathForAvx2() { return true; }
 
-#endif  // RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
-#endif  // RUY_PLATFORM(X86)
+#endif  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy

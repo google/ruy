@@ -35,7 +35,7 @@ struct PackedTypeImpl {
   using Type = Scalar;
 };
 
-#if RUY_PLATFORM(NEON_32)
+#if RUY_PLATFORM_NEON_32
 struct PackParams8bit {
   const void* src_ptr0;
   const void* src_ptr1;
@@ -75,7 +75,7 @@ inline void MakePackParams8bit(const void* src_ptr0, const void* src_ptr1,
 }
 #endif
 
-#if RUY_PLATFORM(NEON)
+#if RUY_PLATFORM_NEON
 template <>
 struct PackedTypeImpl<Path::kNeon, std::uint8_t> {
   using Type = std::int8_t;
@@ -84,7 +84,7 @@ template <>
 struct PackedTypeImpl<Path::kNeonDotprod, std::uint8_t> {
   using Type = std::int8_t;
 };
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
 template <>
 struct PackedTypeImpl<Path::kSse42, std::uint8_t> {
   using Type = std::int8_t;
@@ -151,10 +151,10 @@ struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
   }
 };
 
-#if RUY_PLATFORM(NEON)
+#if RUY_PLATFORM_NEON
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_PACK(Path::kNeon, Path::kNeonDotprod)
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kSse42)
 RUY_INHERIT_PACK(Path::kSse42, Path::kAvx2)
 RUY_INHERIT_PACK(Path::kAvx2, Path::kAvx512)

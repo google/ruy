@@ -19,9 +19,9 @@ limitations under the License.
 #include "ruy/platform.h"
 
 // IWYU pragma: begin_exports
-#if RUY_PLATFORM(NEON)
+#if RUY_PLATFORM_NEON
 #include "ruy/kernel_arm.h"
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
 #include "ruy/kernel_x86.h"
 #else
 #include "ruy/kernel_common.h"

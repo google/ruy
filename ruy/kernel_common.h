@@ -163,10 +163,10 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
               tuning) {}                                                  \
   };
 
-#if RUY_PLATFORM(NEON)
+#if RUY_PLATFORM_NEON
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kSse42)
 RUY_INHERIT_KERNEL(Path::kSse42, Path::kAvx2)
 RUY_INHERIT_KERNEL(Path::kAvx2, Path::kAvx512)
@@ -177,9 +177,9 @@ RUY_INHERIT_KERNEL(Path::kAvx512, Path::kAvxVnni)
 //
 // In other cases, we still define (empty) versions, so that dummy kernels
 // can use the classes in function signatures.
-#if ((RUY_PLATFORM(NEON_64) || RUY_PLATFORM(NEON_32)) && \
-     RUY_OPT_ENABLED(RUY_OPT_ASM)) ||                    \
-    RUY_PLATFORM(X86)
+#if ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
+     RUY_OPT_ENABLED(RUY_OPT_ASM)) ||                  \
+    RUY_PLATFORM_X86
 
 #define RUY_ASM_FLAG_HAS_BIAS 0x1
 #define RUY_ASM_FLAG_HAS_LHS_SUMS 0x2
@@ -391,8 +391,8 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
   RUY_DCHECK_LT(params->last_col, params->dst_cols);
 }
 
-#else  // ((RUY_PLATFORM(NEON_64) || RUY_PLATFORM(NEON_32)) &&
-       // RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM(X86)
+#else  // ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) &&
+       // RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM_X86
 
 template <int LhsCols, int RhsCols>
 struct KernelParams8bit {};
@@ -400,8 +400,8 @@ struct KernelParams8bit {};
 template <int LhsCols, int RhsCols>
 struct KernelParamsFloat {};
 
-#endif  // ((RUY_PLATFORM(NEON_64) || RUY_PLATFORM(NEON_32)) &&
-        //  RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM(X86)
+#endif  // ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) &&
+        //  RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM_X86
 
 }  // namespace ruy
 

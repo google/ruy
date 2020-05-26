@@ -229,7 +229,7 @@ void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
 }
 
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
-#if RUY_PLATFORM(EMSCRIPTEN)
+#if RUY_PLATFORM_EMSCRIPTEN
   // b/139927184, std::thread constructor raises exception
   return 1;
 #endif

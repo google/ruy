@@ -24,13 +24,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
+#if RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
 void Pack8bitAvx2(const std::int8_t*, std::int8_t, const std::int8_t*, int, int,
                   int, std::int8_t*, std::int32_t*) {
@@ -43,7 +43,7 @@ void PackFloatAvx2(const float*, const float*, int, int, int, float*) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 // The first int8_t template parameter is arbitrary: this routine is common to
 // all 8-bit source matrix types.
@@ -808,6 +808,6 @@ void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
   }
 }
 
-#endif  // RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
+#endif  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_INTRINSICS)
 
 }  // namespace ruy

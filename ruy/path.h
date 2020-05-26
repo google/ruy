@@ -61,7 +61,7 @@ enum class Path : std::uint8_t {
   // the SIMD ISA extensions required by other paths are unavailable at runtime.
   kStandardCpp = 0x2,
 
-#if RUY_PLATFORM(ARM)
+#if RUY_PLATFORM_ARM
   // ARM architectures.
   //
   // Optimized path using a widely available subset of ARM NEON instructions.
@@ -69,9 +69,9 @@ enum class Path : std::uint8_t {
   // Optimized path making use of ARM NEON dot product instructions that are
   // available on newer ARM cores.
   kNeonDotprod = 0x8,
-#endif  // RUY_PLATFORM(ARM)
+#endif  // RUY_PLATFORM_ARM
 
-#if RUY_PLATFORM(X86)
+#if RUY_PLATFORM_X86
   // x86 architectures.
   //
   // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
@@ -92,7 +92,7 @@ enum class Path : std::uint8_t {
   //
   // Optimized for AVX-VNNI.
   kAvxVnni = 0x20,
-#endif  // RUY_PLATFORM(X86)
+#endif  // RUY_PLATFORM_X86
 };
 
 inline constexpr Path operator|(Path p, Path q) {
@@ -146,7 +146,7 @@ constexpr Path kNonArchPaths = Path::kStandardCpp;
 // minority hardware that isn't the best compromise of code size to performance
 // for most users.
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 #ifdef __linux__
 // We're on a platform where we know how to detect the optional NEON dotprod
 // feature.
@@ -155,10 +155,10 @@ constexpr Path kDefaultArchPaths = Path::kNeon | Path::kNeonDotprod;
 constexpr Path kDefaultArchPaths = Path::kNeon;
 #endif
 constexpr Path kExtraArchPaths = Path::kNone;
-#elif RUY_PLATFORM(NEON_32)
+#elif RUY_PLATFORM_NEON_32
 constexpr Path kDefaultArchPaths = Path::kNeon;
 constexpr Path kExtraArchPaths = Path::kNone;
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
 constexpr Path kDefaultArchPaths = Path::kAvx2 | Path::kAvx512;
 constexpr Path kExtraArchPaths = Path::kSse42 | Path::kAvxVnni;
 #else

@@ -23,13 +23,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM))
 
 void Kernel8bitAvx2(const KernelParams8bit<8, 8>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -51,7 +51,7 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 static constexpr int kAvx8bitBlockSize = 8;
 static constexpr int kAvx8bitInnerSize = 4;
@@ -1696,6 +1696,6 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params) {
   }  // End handling of residual rows.
 }
 
-#endif  //  RUY_PLATFORM(AVX2) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 }  // namespace ruy

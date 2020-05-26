@@ -17,13 +17,13 @@ limitations under the License.
 
 #include <cstdint>
 
-#if RUY_PLATFORM(X86) && RUY_PLATFORM(X86_ENHANCEMENTS)
+#if RUY_PLATFORM_X86 && RUY_PLATFORM_X86_ENHANCEMENTS
 #include <immintrin.h>  // IWYU pragma: keep
 
 #endif
 
 namespace ruy {
-#if RUY_PLATFORM(X86) && RUY_PLATFORM(X86_ENHANCEMENTS)
+#if RUY_PLATFORM_X86 && RUY_PLATFORM_X86_ENHANCEMENTS
 
 namespace {
 

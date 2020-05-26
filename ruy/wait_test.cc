@@ -64,7 +64,7 @@ class ThreadCountingUpToValue {
 };
 
 void WaitTest(const Duration& spin_duration, const Duration& delay) {
-#if RUY_PLATFORM(EMSCRIPTEN)
+#if RUY_PLATFORM_EMSCRIPTEN
   // b/139927184, std::thread constructor raises exception
   return;
 #endif

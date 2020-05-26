@@ -34,12 +34,12 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM(NEON) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params);
-#elif RUY_PLATFORM(NEON_32)
+#elif RUY_PLATFORM_NEON_32
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params);
 void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params);
 #endif
@@ -48,7 +48,7 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params);
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
 struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
@@ -75,7 +75,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 };
 #endif
 
-#if RUY_PLATFORM(NEON_32)
+#if RUY_PLATFORM_NEON_32
 template <typename DstScalar>
 struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
@@ -98,7 +98,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 };
 #endif
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
 struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
@@ -128,7 +128,7 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params);
 void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params);
 void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params);
 
-#if RUY_PLATFORM(NEON_64)
+#if RUY_PLATFORM_NEON_64
 // A Float kernel for ARM64 Neon.
 template <>
 struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
@@ -151,7 +151,7 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
 };
 #endif
 
-#if RUY_PLATFORM(NEON_32)
+#if RUY_PLATFORM_NEON_32
 // A Float kernel for ARM32 Neon.
 template <>
 struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
@@ -198,7 +198,7 @@ struct Kernel<Path::kNeonDotprod, float, float, float,
   }
 };
 
-#endif  // RUY_PLATFORM(NEON) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON && RUY_OPT_ENABLED(RUY_OPT_ASM)
 
 }  // namespace ruy
 

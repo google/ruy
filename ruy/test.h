@@ -89,10 +89,10 @@ inline const char* PathName(Path path) {
     return #NAME;
   switch (path) {
     RUY_PATHNAME_CASE(kStandardCpp)
-#if RUY_PLATFORM(NEON)
+#if RUY_PLATFORM_NEON
     RUY_PATHNAME_CASE(kNeon)
     RUY_PATHNAME_CASE(kNeonDotprod)
-#elif RUY_PLATFORM(X86)
+#elif RUY_PLATFORM_X86
     RUY_PATHNAME_CASE(kSse42)
     RUY_PATHNAME_CASE(kAvx2)
     RUY_PATHNAME_CASE(kAvx512)
@@ -170,11 +170,11 @@ struct LogCoveredPathsOnDestruction final {
     //
     // TODO: we should be able to require some x86 paths as well, at least
     // SSE4.2.
-    //
+
+#if RUY_PLATFORM_ARM
     // When testing on ARM32 or ARM64, make sure that we covered the NEON path.
     // NEON is always available on ARM64, and we treat it as always available
     // also on ARM32.
-#if RUY_PLATFORM(ARM)
     bool found_neon = false;
     for (const std::string& covered_path : *CoveredPaths()) {
       if (covered_path == "kNeon") {
@@ -192,7 +192,7 @@ struct LogCoveredPathsOnDestruction final {
     // When testing on ARM64 ChromiumOS emulator, make sure that we covered
     // the dotprod path. We're getting such coverage at the moment thanks to
     // using a sufficiently recent emulator, and we don't want to regress that.
-#if RUY_PLATFORM(ARM_64) && defined RUY_TESTING_ON_CHROMIUMOS
+#if RUY_PLATFORM_ARM_64 && defined RUY_TESTING_ON_CHROMIUMOS
     bool found_dotprod = false;
     for (const std::string& covered_path : *CoveredPaths()) {
       if (covered_path == "kNeonDotprod") {
@@ -1651,7 +1651,7 @@ inline std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
   if (benchmark) {
     return {Tuning::kAuto};
   }
-#if RUY_PLATFORM(ARM)
+#if RUY_PLATFORM_ARM
   if (path == Path::kNeon || path == Path::kNeonDotprod) {
     return {Tuning::kInOrder, Tuning::kOutOfOrder, Tuning::kAuto};
   }
@@ -1707,7 +1707,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
       }
 // We link against a generic BLAS target that only maps to OpenBLAS on specific
 // architectures.
-#if RUY_PLATFORM(ARM_32) || RUY_PLATFORM(ARM_64)
+#if RUY_PLATFORM_ARM_32 || RUY_PLATFORM_ARM_64
       // OpenBLAS multi-threading is disabled, so avoid mixing single-threaded
       // and multi-threaded benchmark results.
       if (max_num_threads == 1 && !getenv("NO_OPENBLAS")) {
