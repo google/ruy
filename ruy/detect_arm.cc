@@ -72,18 +72,18 @@ bool TryAsmSnippet(bool (*asm_snippet)()) {
 
 #include "ruy/detect_arm.h"
 
-#include "ruy/platform.h"
+#if (defined __linux__) && (defined __aarch64__)
+#define RUY_DETECT_DOTPROD
+#endif
 
-#if RUY_PLATFORM(NEON_DETECT_DOTPROD)
+#ifdef RUY_DETECT_DOTPROD
 
 #include <setjmp.h>
 #include <signal.h>
 
-#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
-#include <tuple>
 
 #ifdef __linux__
 #include <sys/auxv.h>
@@ -93,7 +93,7 @@ bool TryAsmSnippet(bool (*asm_snippet)()) {
 
 namespace ruy {
 
-#if RUY_PLATFORM(NEON_DETECT_DOTPROD)
+#ifdef RUY_DETECT_DOTPROD
 
 namespace {
 
@@ -167,14 +167,6 @@ bool TryAsmSnippet(bool (*asm_snippet)()) {
   if (!handle_sigill.success()) {
     return false;
   }
-#ifdef EXC_BAD_INSTRUCTION
-  // On Apple platforms, we also need to handle this signal, in addition to
-  // handling SIGILL.
-  ScopeSigaction handle_exc_bad_instruction(EXC_BAD_INSTRUCTION, SignalHandler);
-  if (!handle_exc_bad_instruction.success()) {
-    return false;
-  }
-#endif
 
   // Set the long jump buffer to this point in the code. This normally returns
   // 0 so we don't take this branch...
@@ -237,8 +229,8 @@ bool DetectDotprod() {
   return DetectDotprodBySignalMethod();
 }
 
-#else   // not RUY_PLATFORM(NEON_DETECT_DOTPROD)
+#else   // not defined RUY_DETECT_DOTPROD
 bool DetectDotprod() { return false; }
-#endif  // RUY_PLATFORM(NEON_DETECT_DOTPROD)
+#endif  // defined RUY_DETECT_DOTPROD
 
 }  // namespace ruy
