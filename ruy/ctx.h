@@ -48,8 +48,23 @@ class Ctx /* not final, subclassed by CtxImpl */ {
   int max_num_threads() const;
   void set_max_num_threads(int value);
 
-  void SetRuntimeEnabledPaths(Path paths);
+  // Returns the set of Path's that are available. By default, this is based on
+  // runtime detection of CPU features, as well as on which code paths were
+  // built. Detection results are stored on the context object so that
+  // subsequent calls are fast. This is overridden by SetRuntimeEnabledPaths.
   Path GetRuntimeEnabledPaths();
+
+  // Override auto-detection of supported code paths.
+  //
+  // Passing `paths == Path::kNone` means reverting to the default behavior.
+  // This will trigger auto-detection on the next use.
+  //
+  // Other values will override auto-detection with the explicitly provided set
+  // of paths.
+  //
+  // Paths in kNonArchPaths are always implicitly supported.
+  void SetRuntimeEnabledPaths(Path paths);
+
   Path SelectPath(Path compiled_paths);
   void EnsureThreadSpecificResources(int thread_count);
   TuningResolver* GetThreadSpecificTuningResolver(int thread_index) const;

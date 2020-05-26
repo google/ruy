@@ -15,11 +15,14 @@ limitations under the License.
 
 #include "ruy/ctx.h"
 
+#include <functional>
+
 #include "ruy/check_macros.h"
 #include "ruy/ctx_impl.h"
 #include "ruy/detect_arm.h"
 #include "ruy/detect_x86.h"
 #include "ruy/have_built_path_for.h"
+#include "ruy/path.h"
 #include "ruy/platform.h"
 #include "ruy/prepacked_cache.h"
 
@@ -41,90 +44,82 @@ void Ctx::set_max_num_threads(int value) {
 }
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {
-  mutable_impl()->runtime_enabled_paths_ = paths;
+  mutable_impl()->runtime_enabled_paths_ = paths | kNonArchPaths;
 }
 
-Path Ctx::GetRuntimeEnabledPaths() {
-  // Note, this is a reference, used to avoid exceedingly long lines in this
-  // function body. Assigning to it mutates *context.
-  Path& enabled_paths = mutable_impl()->runtime_enabled_paths_;
+namespace {
 
-  // This function should always return the same value on a given machine.
-  // When runtime_enabled_paths has its initial value kNone, it performs
-  // some platform detection to resolve it to specific Path values.
+// For each Path bit set in `paths_to_test`, performs runtime detection and
+// sets the corresponding bit in the return value if and only if it is
+// supported. Path bits that are not set in the input
+// `paths_to_detect` value are also left not set in the return value.
+Path DetectRuntimeSupportedPaths(Path paths_to_detect) {
+  // Paths in kNonArchPaths are always implicitly supported.
+  // Further logic below may add more bits to `results`.
+  Path result = kNonArchPaths;
 
-  // Fast path: already resolved.
-  if (enabled_paths != Path::kNone) {
-    return enabled_paths;
-  }
-
-  // Need to resolve now. Start by considering all paths enabled.
-  enabled_paths = kAllPaths;
-
-  // This mechanism is intended to be used for testing and benchmarking. For
-  // example, one can set RUY_FORCE_DISABLE_PATHS to Path::kAvx512 in order to
-  // evaluate AVX2 performance on an AVX-512 machine.
-#ifdef RUY_FORCE_DISABLE_PATHS
-  enabled_paths = enabled_paths & ~(RUY_FORCE_DISABLE_PATHS);
-#endif
+  // Conditionally sets the `path` bit in `result`, if reported as supported
+  // by the `is_supported` predicate.
+  auto maybe_add = [&](Path path, std::function<bool(void)> is_supported) {
+    if ((paths_to_detect & path) != Path::kNone) {
+      if (is_supported()) {
+        result = result | path;
+      }
+    }
+  };
 
 #if RUY_PLATFORM(ARM)
-  // Now selectively disable paths that aren't supported on this machine.
-  if ((enabled_paths & Path::kNeonDotprod) != Path::kNone) {
-    if (!DetectDotprod()) {
-      enabled_paths = enabled_paths & ~Path::kNeonDotprod;
-      // Sanity check.
-      RUY_DCHECK((enabled_paths & Path::kNeonDotprod) == Path::kNone);
-    }
-  }
-#endif  // RUY_PLATFORM(ARM)
+  // NEON is unconditionally available on ARM64.
+  // On ARM32 it's technically possible for it to be unavailable, but we've
+  // always chosen to just crash on such devices. We could reevaluate that,
+  // however for non-NEON devices to be actually supported, we would need to
+  // address also compiler-generated NEON code. That would mean to remove
+  // -mfpu=neon from ruy_copts and only use this flag in select NEON translation
+  // units, and implement have_built_path_for_neon, similar to the x86 SIMD
+  // paths.
+  maybe_add(Path::kNeon, []() { return true; });
 
-#if RUY_PLATFORM(X86)
-  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
-  // placeholder. Optimization is not finished. In particular the dimensions of
-  // the kernel blocks can be changed as desired.
-  //
-  if ((enabled_paths & Path::kSse42) != Path::kNone) {
-    if (!(HaveBuiltPathForSse42() && DetectCpuSse42())) {
-      enabled_paths = enabled_paths & ~Path::kSse42;
-      // Sanity check.
-      RUY_DCHECK((enabled_paths & Path::kSse42) == Path::kNone);
-    }
+  // NEON dotprod requires runtime detection, however unlike the x86 SIMD paths
+  // it still does not require have_built_path_for because we unconditionally
+  // build it at the moment. That is largely because we have had to machine
+  // encode dotprod instructions, so we don't actually rely on toolchain support
+  // for them.
+  maybe_add(Path::kNeonDotprod, []() { return DetectDotprod(); });
+#elif RUY_PLATFORM(X86)
+  // x86 SIMD paths currently require both runtime detection, and detection of
+  // whether we're building the path at all.
+  maybe_add(Path::kSse42,
+            []() { return HaveBuiltPathForSse42() && DetectCpuSse42(); });
+  maybe_add(Path::kAvx2,
+            []() { return HaveBuiltPathForAvx2() && DetectCpuAvx2(); });
+  maybe_add(Path::kAvx512,
+            []() { return HaveBuiltPathForAvx512() && DetectCpuAvx512(); });
+  maybe_add(Path::kAvxVnni,
+            []() { return HaveBuiltPathForAvxVnni() && DetectCpuAvxVnni(); });
+#else
+  (void)maybe_add;
+#endif
+
+  // Sanity checks
+  RUY_DCHECK_EQ(kNonArchPaths & ~result, Path::kNone);
+  RUY_DCHECK_EQ(result & ~(kNonArchPaths | paths_to_detect), Path::kNone);
+  return result;
+}
+
+}  // namespace
+
+Path Ctx::GetRuntimeEnabledPaths() {
+  // Just a shorthand alias. Using a pointer to make it clear we're mutating
+  // this value in-place.
+  Path* paths = &mutable_impl()->runtime_enabled_paths_;
+
+  // The value Path::kNone indicates the initial state before detection has been
+  // performed.
+  if (*paths == Path::kNone) {
+    *paths = DetectRuntimeSupportedPaths(kAllPaths);
   }
 
-  if ((enabled_paths & Path::kAvx2) != Path::kNone) {
-    if (!(HaveBuiltPathForAvx2() && DetectCpuAvx2())) {
-      enabled_paths = enabled_paths & ~Path::kAvx2;
-      // Sanity check.
-      RUY_DCHECK((enabled_paths & Path::kAvx2) == Path::kNone);
-    }
-  }
-
-  if ((enabled_paths & Path::kAvx512) != Path::kNone) {
-    if (!(HaveBuiltPathForAvx512() && DetectCpuAvx512())) {
-      enabled_paths = enabled_paths & ~Path::kAvx512;
-      // Sanity check.
-      RUY_DCHECK((enabled_paths & Path::kAvx512) == Path::kNone);
-    }
-  }
-
-  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
-  // placeholder. Optimization is not finished. In particular the dimensions of
-  // the kernel blocks can be changed as desired.
-  //
-  if ((enabled_paths & Path::kAvxVnni) != Path::kNone) {
-    if (!(HaveBuiltPathForAvxVnni() && DetectCpuAvxVnni())) {
-      enabled_paths = enabled_paths & ~Path::kAvxVnni;
-      // Sanity check.
-      RUY_DCHECK((enabled_paths & Path::kAvxVnni) == Path::kNone);
-    }
-  }
-#endif  // RUY_PLATFORM(X86)
-
-  // Sanity check. We can't possibly have disabled all paths, as some paths
-  // are universally available (kReference, kStandardCpp).
-  RUY_DCHECK_NE(enabled_paths, Path::kNone);
-  return enabled_paths;
+  return *paths;
 }
 
 Path Ctx::SelectPath(Path compiled_paths) {

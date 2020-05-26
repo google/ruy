@@ -164,6 +164,31 @@ struct LogCoveredPathsOnDestruction final {
   ~LogCoveredPathsOnDestruction() {
     std::cerr << "Covered paths: " << Join(*CoveredPaths()) << std::endl;
 
+    // When we know that it would be abnormal for some path not to be covered,
+    // we check it here. Accidentally disabling SIMD paths has occurred in the
+    // past and is one of the biggest performance regressions imaginable.
+    //
+    // TODO: we should be able to require some x86 paths as well, at least
+    // SSE4.2.
+    //
+    // When testing on ARM32 or ARM64, make sure that we covered the NEON path.
+    // NEON is always available on ARM64, and we treat it as always available
+    // also on ARM32.
+#if RUY_PLATFORM(ARM)
+    bool found_neon = false;
+    for (const std::string& covered_path : *CoveredPaths()) {
+      if (covered_path == "kNeon") {
+        found_neon = true;
+      }
+    }
+    if (!found_neon) {
+      std::cerr
+          << "Error: we haven't tested the kNeon path as we should have.\n"
+          << std::endl;
+      abort();
+    }
+#endif
+
     // When testing on ARM64 ChromiumOS emulator, make sure that we covered
     // the dotprod path. We're getting such coverage at the moment thanks to
     // using a sufficiently recent emulator, and we don't want to regress that.

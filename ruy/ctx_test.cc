@@ -31,21 +31,27 @@ TEST(ContextInternalTest, EnabledPathsGeneral) {
 }
 
 #if RUY_PLATFORM(X86)
-TEST(ContextInternalTest, EnabledPathsX86) {
+TEST(ContextInternalTest, EnabledPathsX86Explicit) {
   CtxImpl ctx;
-  ctx.SetRuntimeEnabledPaths(Path::kSse42 | Path::kAvx2 | Path::kAvx512 |
-                             Path::kAvxVnni);
+  ctx.SetRuntimeEnabledPaths(Path::kAvx2);
   const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
+  EXPECT_EQ(ruy_paths, Path::kStandardCpp | Path::kAvx2);
 }
 #endif  // RUY_PLATFORM(X86)
 
 #if RUY_PLATFORM(ARM)
-TEST(ContextInternalTest, EnabledPathsArm) {
+TEST(ContextInternalTest, EnabledPathsX86Explicit) {
   CtxImpl ctx;
-  ctx.SetRuntimeEnabledPaths(Path::kNeon | Path::kNeonDotprod);
+  ctx.SetRuntimeEnabledPaths(Path::kNeonDotprod);
   const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kNone);
+  EXPECT_EQ(ruy_paths, Path::kStandardCpp | Path::kNeonDotprod);
+}
+
+TEST(ContextInternalTest, EnabledPathsArmDefault) {
+  CtxImpl ctx;
+  const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
+  EXPECT_EQ(ruy_paths & Path::kStandardCpp, Path::kStandardCpp);
+  // NEON is always assumed to be supported at the moment.
   EXPECT_EQ(ruy_paths & Path::kNeon, Path::kNeon);
 }
 #endif  // RUY_PLATFORM(ARM)
