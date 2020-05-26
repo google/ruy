@@ -28,6 +28,7 @@ class ThreadPool;
 class Allocator;
 class TuningResolver;
 class PrepackedCache;
+class CpuInfo;
 enum class Path : std::uint8_t;
 enum class Tuning;
 
@@ -47,6 +48,7 @@ class Ctx /* not final, subclassed by CtxImpl */ {
   ThreadPool* mutable_thread_pool();
   int max_num_threads() const;
   void set_max_num_threads(int value);
+  CpuInfo* mutable_cpuinfo();
 
   // Returns the set of Path's that are available. By default, this is based on
   // runtime detection of CPU features, as well as on which code paths were

@@ -18,9 +18,8 @@ limitations under the License.
 #include <functional>
 
 #include "ruy/check_macros.h"
+#include "ruy/cpuinfo.h"
 #include "ruy/ctx_impl.h"
-#include "ruy/detect_arm.h"
-#include "ruy/detect_x86.h"
 #include "ruy/have_built_path_for.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
@@ -47,13 +46,15 @@ void Ctx::SetRuntimeEnabledPaths(Path paths) {
   mutable_impl()->runtime_enabled_paths_ = paths | kNonArchPaths;
 }
 
+CpuInfo* Ctx::mutable_cpuinfo() { return &mutable_impl()->cpuinfo_; }
+
 namespace {
 
 // For each Path bit set in `paths_to_test`, performs runtime detection and
 // sets the corresponding bit in the return value if and only if it is
 // supported. Path bits that are not set in the input
 // `paths_to_detect` value are also left not set in the return value.
-Path DetectRuntimeSupportedPaths(Path paths_to_detect) {
+Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
   // Paths in kNonArchPaths are always implicitly supported.
   // Further logic below may add more bits to `results`.
   Path result = kNonArchPaths;
@@ -84,20 +85,21 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect) {
   // build it at the moment. That is largely because we have had to machine
   // encode dotprod instructions, so we don't actually rely on toolchain support
   // for them.
-  maybe_add(Path::kNeonDotprod, []() { return DetectDotprod(); });
+  maybe_add(Path::kNeonDotprod, [=]() { return cpuinfo->NeonDotprod(); });
 #elif RUY_PLATFORM_X86
   // x86 SIMD paths currently require both runtime detection, and detection of
   // whether we're building the path at all.
   maybe_add(Path::kSse42,
-            []() { return HaveBuiltPathForSse42() && DetectCpuSse42(); });
+            [=]() { return HaveBuiltPathForSse42() && cpuinfo->Sse42(); });
   maybe_add(Path::kAvx2,
-            []() { return HaveBuiltPathForAvx2() && DetectCpuAvx2(); });
+            [=]() { return HaveBuiltPathForAvx2() && cpuinfo->Avx2(); });
   maybe_add(Path::kAvx512,
-            []() { return HaveBuiltPathForAvx512() && DetectCpuAvx512(); });
+            [=]() { return HaveBuiltPathForAvx512() && cpuinfo->Avx512(); });
   maybe_add(Path::kAvxVnni,
-            []() { return HaveBuiltPathForAvxVnni() && DetectCpuAvxVnni(); });
+            [=]() { return HaveBuiltPathForAvxVnni() && cpuinfo->AvxVnni(); });
 #else
   (void)maybe_add;
+  (void)cpuinfo;
 #endif
 
   // Sanity checks
@@ -116,7 +118,7 @@ Path Ctx::GetRuntimeEnabledPaths() {
   // The value Path::kNone indicates the initial state before detection has been
   // performed.
   if (*paths == Path::kNone) {
-    *paths = DetectRuntimeSupportedPaths(kAllPaths);
+    *paths = DetectRuntimeSupportedPaths(kAllPaths, mutable_cpuinfo());
   }
 
   return *paths;
