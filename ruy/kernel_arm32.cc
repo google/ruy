@@ -20,7 +20,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 
 #define RUY_ASM_LABEL_STORE_UINT8 91
 #define RUY_ASM_LABEL_STORE_INT8 92
@@ -1000,7 +1000,7 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
         // data centered at zero, which was likely the case in that model,
         // but is not always the case. If we wanted something more consistently
         // unbiased then we should try breaking ties toward-nearest-even.
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
         // Fix up values to be right-shifted, so that the (round to nearest,
         // break ties upward) behavior of srshl applied to these fixed-up
         // values, produces the same result as the desired (round to nearest,
@@ -1951,7 +1951,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
         // data centered at zero, which was likely the case in that model,
         // but is not always the case. If we wanted something more consistently
         // unbiased then we should try breaking ties toward-nearest-even.
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
         // Fix up values to be right-shifted, so that the (round to nearest,
         // break ties upward) behavior of srshl applied to these fixed-up
         // values, produces the same result as the desired (round to nearest,
@@ -2495,5 +2495,5 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
 #undef RUY_STACK_OFFSET_LHS_COL_PTR
 #undef RUY_STACK_OFFSET_RHS_COL_PTR
 
-#endif  // RUY_PLATFORM_NEON_32 && (RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON_32 && (RUY_OPT(ASM)
 }  // namespace ruy

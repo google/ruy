@@ -34,7 +34,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON && RUY_OPT(ASM)
 
 #if RUY_PLATFORM_NEON_64
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params);
@@ -198,7 +198,7 @@ struct Kernel<Path::kNeonDotprod, float, float, float,
   }
 };
 
-#endif  // RUY_PLATFORM_NEON && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_NEON && RUY_OPT(ASM)
 
 }  // namespace ruy
 

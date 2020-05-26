@@ -22,13 +22,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_AVX_VNNI && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_AVX_VNNI && RUY_OPT(ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_AVX_VNNI && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX_VNNI && RUY_OPT(ASM))
 
 void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -40,7 +40,7 @@ void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_AVX_VNNI && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX_VNNI && RUY_OPT(ASM)
 
 static constexpr int kAvxFloatBlockSize = 16;
 static constexpr int kAvx8bitBlockSize = 16;
@@ -430,6 +430,6 @@ void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>& params) {
   }  // End col-block loop.
 }
 
-#endif  //  RUY_PLATFORM_AVX_VNNI && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_AVX_VNNI && RUY_OPT(ASM)
 
 }  // namespace ruy

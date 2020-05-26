@@ -22,13 +22,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_AVX512 && RUY_OPT(ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX512 && RUY_OPT(ASM))
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -50,7 +50,7 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX512 && RUY_OPT(ASM)
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   profiler::ScopeLabel label("Kernel kAvx512 8-bit");
@@ -905,7 +905,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
           accum_data_vf = _mm512_inserti32x8(
               accum_data_vf, _mm512_cvtepi64_epi32(scaled_v_high), 1);
         }
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
         RUY_DCHECK(false);
 #endif
 
@@ -1220,7 +1220,7 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
           _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
       accum_data_v0 = _mm512_inserti32x8(
           accum_data_v0, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
       RUY_DCHECK(false);
 #endif
 
@@ -1807,6 +1807,6 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& params) {
   }  // End handling of residual rows.
 }
 
-#endif  //  RUY_PLATFORM_AVX512 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_AVX512 && RUY_OPT(ASM)
 
 }  // namespace ruy

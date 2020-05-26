@@ -21,11 +21,11 @@ namespace ruy {
 #if RUY_PLATFORM_X86
 // IMPORTANT:
 // These patterns must match those in the pack and kernel cc files.
-#if !(RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_SSE42 && RUY_OPT(ASM))
 
 bool HaveBuiltPathForSse42() { return false; }
 
-#else  // RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_SSE42 && RUY_OPT(ASM)
 
 // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
 // Optimization is not finished. In particular the dimensions of the kernel
@@ -33,7 +33,7 @@ bool HaveBuiltPathForSse42() { return false; }
 //
 bool HaveBuiltPathForSse42() { return true; }
 
-#endif  // RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // RUY_PLATFORM_SSE42 && RUY_OPT(ASM)
 #endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy

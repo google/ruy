@@ -82,8 +82,7 @@ limitations under the License.
 // and NEON `ins` instructions).
 //
 // When tuning is not implemented, we simply always use Tuning::kOutOfOrder.
-#if RUY_OPT_ENABLED(RUY_OPT_TUNING) && RUY_PLATFORM_NEON_64 && \
-    !RUY_PLATFORM_APPLE
+#if RUY_OPT(TUNING) && RUY_PLATFORM_NEON_64 && !RUY_PLATFORM_APPLE
 #define RUY_IMPLEMENT_TUNING
 #endif
 

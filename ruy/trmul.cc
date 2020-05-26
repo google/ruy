@@ -178,7 +178,7 @@ struct TrMulTask final : Task {
   // waiting for that other thread to finish packing the requested block.
   void EnsurePacked(const SidePair<int>& block, const SidePair<int>& start,
                     const SidePair<int>& end, Tuning tuning) {
-#if RUY_OPT_ENABLED(RUY_OPT_PACK_AHEAD)
+#if RUY_OPT(PACK_AHEAD)
     SidePair<int> next_runahead_block{block[Side::kLhs] + 1,
                                       block[Side::kRhs] + 1};
     Side next_runahead_side = Side::kLhs;
@@ -192,7 +192,7 @@ struct TrMulTask final : Task {
       if (both_sides_packed) {
         break;
       }
-#if RUY_OPT_ENABLED(RUY_OPT_PACK_AHEAD)
+#if RUY_OPT(PACK_AHEAD)
       const Side runahead_side = next_runahead_side;
       const int runahead_block = next_runahead_block[runahead_side];
       next_runahead_side =

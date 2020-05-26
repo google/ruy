@@ -32,7 +32,7 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                             const void* src_ptr2, const void* src_ptr3,
                             int src_inc0, int src_inc1, int src_inc2,
@@ -58,13 +58,12 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
                                 std::int8_t* packed_ptr, std::int32_t* sums_ptr,
                                 int input_xor);
 
-#elif RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 void Pack8bitNeonOutOfOrder4Cols(const PackParams8bit& params);
 void Pack8bitNeonOutOfOrder2Cols(const PackParams8bit& params);
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
 
-#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && \
-    RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
 
 template <typename Scalar>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
@@ -144,9 +143,9 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
 };
 
 #endif  // (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) &&
-        // RUY_OPT_ENABLED(RUY_OPT_ASM)
+        // RUY_OPT(ASM)
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 // The 32-bit float kernel is 4 rows X 2 columns, so we need an additional
 // partial specialization for the RHS, which has a FixedKernelLayout with 2
 // columns.
@@ -195,9 +194,9 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
     }
   }
 };
-#endif  // (RUY_PLATFORM_NEON_32) && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // (RUY_PLATFORM_NEON_32) && RUY_OPT(ASM)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 template <typename Scalar>
 struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
                 Scalar, std::int8_t, std::int32_t> {
@@ -263,9 +262,9 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
     }
   }
 };
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
                              int src_inc0, int src_inc1, int src_inc2,
@@ -275,15 +274,14 @@ void PackFloatNeonInOrder(const float* src_ptr0, const float* src_ptr1,
                           int src_inc0, int src_inc1, int src_inc2,
                           int src_inc3, int src_rows, float* packed_ptr);
 
-#elif RUY_PLATFORM_NEON_32 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
                              const float* src_ptr2, const float* src_ptr3,
                              int src_inc, int src_rows, float* packed_ptr,
                              int stride);
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
 
-#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && \
-    RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
 
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
@@ -416,7 +414,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
 };
 #endif  // (RUY_PLATFORM_NEON_32)
 #endif  // (RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
-        // RUY_OPT_ENABLED(RUY_OPT_ASM)
+        // RUY_OPT(ASM)
 
 }  // namespace ruy
 

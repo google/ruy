@@ -65,7 +65,7 @@ void RunKernelTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
   RUY_DCHECK_LE(start_col, end_col);
   RUY_DCHECK_LT(end_col, dst->layout.cols + RhsLayout::kCols);
   RUY_DCHECK_EQ((end_col - start_col) % RhsLayout::kCols, 0);
-#if RUY_OPT_ENABLED(RUY_OPT_FAT_KERNEL)
+#if RUY_OPT(FAT_KERNEL)
   kernel.Run(lhs, rhs, mul_params, start_row, start_col, end_row, end_col, dst);
 #else
   for (int col = start_col; col < end_col; col += RhsLayout::kCols) {
@@ -177,8 +177,7 @@ RUY_INHERIT_KERNEL(Path::kAvx512, Path::kAvxVnni)
 //
 // In other cases, we still define (empty) versions, so that dummy kernels
 // can use the classes in function signatures.
-#if ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
-     RUY_OPT_ENABLED(RUY_OPT_ASM)) ||                  \
+#if ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && RUY_OPT(ASM)) || \
     RUY_PLATFORM_X86
 
 #define RUY_ASM_FLAG_HAS_BIAS 0x1
@@ -392,7 +391,7 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
 }
 
 #else  // ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) &&
-       // RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM_X86
+       // RUY_OPT(ASM)) || RUY_PLATFORM_X86
 
 template <int LhsCols, int RhsCols>
 struct KernelParams8bit {};
@@ -401,7 +400,7 @@ template <int LhsCols, int RhsCols>
 struct KernelParamsFloat {};
 
 #endif  // ((RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) &&
-        //  RUY_OPT_ENABLED(RUY_OPT_ASM)) || RUY_PLATFORM_X86
+        //  RUY_OPT(ASM)) || RUY_PLATFORM_X86
 
 }  // namespace ruy
 

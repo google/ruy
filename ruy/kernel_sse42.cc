@@ -22,13 +22,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_SSE42 && RUY_OPT(ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_SSE42 && RUY_OPT(ASM))
 
 void Kernel8bitSse42(const KernelParams8bit<8, 8>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -40,7 +40,7 @@ void KernelFloatSse42(const KernelParamsFloat<8, 8>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_SSE42 && RUY_OPT(ASM)
 
 static constexpr int kAvxFloatBlockSize = 8;
 static constexpr int kAvx8bitBlockSize = 8;
@@ -423,6 +423,6 @@ void KernelFloatSse42(const KernelParamsFloat<8, 8>& params) {
   }  // End col-block loop.
 }
 
-#endif  //  RUY_PLATFORM_SSE42 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_SSE42 && RUY_OPT(ASM)
 
 }  // namespace ruy

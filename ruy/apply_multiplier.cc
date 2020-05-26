@@ -46,7 +46,7 @@ std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a, std::int32_t b) {
 // Copied from gemmlowp/fixedpoint.
 // Returns numerator/2^exponent, with correct round-to-nearest, breaking ties
 // away-from-zero. That particular tie-breaking behavior is not particularly
-// important in practice. When RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING),
+// important in practice. When RUY_OPT(NATIVE_ROUNDING),
 // optimized code paths may use whatever tie-breaking
 // behavior is more friendly to the target instruction set, typically breaking
 // ties upward.

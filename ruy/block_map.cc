@@ -131,16 +131,15 @@ BlockMapTraversalOrder GetTraversalOrder(int rows, int cols, int depth,
                                          int rhs_scalar_size,
                                          int local_data_cache_size,
                                          int shared_data_cache_size) {
-  const int kFractalOptSets =
-      RUY_OPT_FRACTAL_Z | RUY_OPT_FRACTAL_U | RUY_OPT_FRACTAL_HILBERT;
+  static constexpr bool kAnyFractal =
+      RUY_OPT(FRACTAL_Z) | RUY_OPT(FRACTAL_U) | RUY_OPT(FRACTAL_HILBERT);
   const int working_set_size =
       (lhs_scalar_size * rows + rhs_scalar_size * cols) * depth;
-  if (RUY_OPT_ENABLED(kFractalOptSets) &&
-      (working_set_size > local_data_cache_size)) {
-    if (RUY_OPT_ENABLED(RUY_OPT_FRACTAL_HILBERT) &&
+  if (kAnyFractal && (working_set_size > local_data_cache_size)) {
+    if (RUY_OPT(FRACTAL_HILBERT) &&
         (working_set_size > shared_data_cache_size)) {
       return BlockMapTraversalOrder::kFractalHilbert;
-    } else if (RUY_OPT_ENABLED(RUY_OPT_FRACTAL_U)) {
+    } else if (RUY_OPT(FRACTAL_U)) {
       return BlockMapTraversalOrder::kFractalU;
     } else {
       return BlockMapTraversalOrder::kFractalZ;

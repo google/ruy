@@ -23,13 +23,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#if RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM))
+#if !(RUY_PLATFORM_AVX2 && RUY_OPT(ASM))
 
 void Kernel8bitAvx2(const KernelParams8bit<8, 8>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -51,7 +51,7 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#else  // RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
 
 static constexpr int kAvx8bitBlockSize = 8;
 static constexpr int kAvx8bitInnerSize = 4;
@@ -738,7 +738,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
               _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
         }
 
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
         RUY_DCHECK(false);
 #endif
         const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
@@ -1376,7 +1376,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
             _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
       }
 
-#if !RUY_OPT_ENABLED(RUY_OPT_NATIVE_ROUNDING)
+#if !RUY_OPT(NATIVE_ROUNDING)
       RUY_DCHECK(false);
 #endif
       const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
@@ -1696,6 +1696,6 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params) {
   }  // End handling of residual rows.
 }
 
-#endif  //  RUY_PLATFORM_AVX2 && RUY_OPT_ENABLED(RUY_OPT_ASM)
+#endif  //  RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
 
 }  // namespace ruy

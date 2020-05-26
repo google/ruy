@@ -27,13 +27,13 @@ limitations under the License.
 #include "ruy/path.h"
 #include "ruy/platform.h"
 
-#if RUY_OPT_ENABLED(RUY_OPT_PREFETCH_LOAD)
+#if RUY_OPT(PREFETCH_LOAD)
 #define RUY_PREFETCH_LOAD(X) X
 #else
 #define RUY_PREFETCH_LOAD(X)
 #endif
 
-#if RUY_OPT_ENABLED(RUY_OPT_PREFETCH_STORE)
+#if RUY_OPT(PREFETCH_STORE)
 #define RUY_PREFETCH_STORE(X) X
 #else
 #define RUY_PREFETCH_STORE(X)
