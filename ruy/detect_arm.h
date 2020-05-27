@@ -1,4 +1,4 @@
-/* Copyright 2020 Google LLC. All Rights Reserved.
+/* Copyright 2019 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,37 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef RUY_RUY_CPUINFO_H_
-#define RUY_RUY_CPUINFO_H_
+// Temporary dotprod-detection code until we can rely on getauxval.
+
+#ifndef RUY_RUY_DETECT_ARM_H_
+#define RUY_RUY_DETECT_ARM_H_
 
 namespace ruy {
 
-// Wraps the functionality that ruy needs from the cpuinfo library.
-class CpuInfo final {
- public:
-  CpuInfo() {}
-  ~CpuInfo();
-
-  // ARM features
-  bool NeonDotprod();
-
-  // X86 features
-  bool Sse42();
-  bool Avx2();
-  bool Avx512();
-  bool AvxVnni();
-
- private:
-  enum class InitStatus {
-    kNotYetAttempted,
-    kInitialized,
-    kFailed,
-  };
-  InitStatus init_status_ = InitStatus::kNotYetAttempted;
-  bool EnsureInitialized();
-  CpuInfo(const CpuInfo&) = delete;
-};
+// On A64, returns true if the dotprod extension is present.
+// On other architectures, returns false unconditionally.
+bool DetectDotprod();
 
 }  // namespace ruy
 
-#endif  // RUY_RUY_CPUINFO_H_
+#endif  // RUY_RUY_DETECT_ARM_H_

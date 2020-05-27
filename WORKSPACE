@@ -27,26 +27,3 @@ http_archive(
         "https://github.com/google/googletest/archive/release-1.8.1.tar.gz",
     ],
 )
-
-# clog library, used by cpuinfo for logging
-http_archive(
-    name = "clog",
-    strip_prefix = "cpuinfo-d5e37adf1406cf899d7d9ec1d317c47506ccb970",
-    sha256 = "3f2dc1970f397a0e59db72f9fca6ff144b216895c1d606f6c94a507c1e53a025",
-    urls = [
-        "https://github.com/pytorch/cpuinfo/archive/d5e37adf1406cf899d7d9ec1d317c47506ccb970.tar.gz",
-    ],
-    build_file = "@//third_party:clog.BUILD",
-)
-
-# cpuinfo library, used for detecting processor characteristics
-http_archive(
-    name = "cpuinfo",
-    strip_prefix = "cpuinfo-c2092219e7c874783a00a62edb94ddc672f57ab3",
-    sha256 = "ea56c399a4f6ca5f749e71acb6a7bfdc653eb65d8f658cb2e414a2fcdca1fe8b",
-    urls = [
-        "https://github.com/pytorch/cpuinfo/archive/c2092219e7c874783a00a62edb94ddc672f57ab3.zip",
-    ],
-    build_file = "@//third_party:cpuinfo.BUILD",
-    patches = ["@//third_party:cpuinfo.patch"],
-)

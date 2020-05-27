@@ -20,13 +20,6 @@ config_setting(
 )
 
 config_setting(
-    name = "ppc",
-    values = {
-        "cpu": "ppc",
-    },
-)
-
-config_setting(
     name = "optimized",
     values = {
         "compilation_mode": "opt",
@@ -285,22 +278,31 @@ cc_library(
 )
 
 cc_library(
-    name = "cpuinfo",
+    name = "detect_arm",
     srcs = [
-        "cpuinfo.cc",
+        "detect_arm.cc",
     ],
     hdrs = [
-        "cpuinfo.h",
+        "detect_arm.h",
     ],
-    copts = ruy_copts() + [
-        # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
-        "-Wno-undef",
+    copts = ruy_copts(),
+    deps = [
+        ":platform",
     ],
-    deps = [":platform"] + select({
-        # cpuinfo does not build on ppc.
-        ":ppc": [],
-        "//conditions:default": ["@cpuinfo"],
-    }),
+)
+
+cc_library(
+    name = "detect_x86",
+    srcs = [
+        "detect_x86.cc",
+    ],
+    hdrs = [
+        "detect_x86.h",
+    ],
+    copts = ruy_copts(),
+    deps = [
+        ":platform",
+    ],
 )
 
 cc_library(
@@ -750,6 +752,8 @@ cc_library(
         ":allocator",
         ":check_macros",
         ":ctx",
+        ":detect_arm",
+        ":detect_x86",
         ":have_built_path_for",
         ":path",
         ":platform",
@@ -795,7 +799,8 @@ cc_library(
     deps = [
         ":allocator",
         ":check_macros",
-        ":cpuinfo",
+        ":detect_arm",
+        ":detect_x86",
         ":have_built_path_for",
         ":path",
         ":platform",
@@ -954,7 +959,7 @@ cc_library(
         ":context",
         ":ctx",
         ":context_get_ctx",
-        "//ruy/profiler",
+        "//ruy/profiler:profiler",
     ] + ruy_test_ext_deps(),
 )
 

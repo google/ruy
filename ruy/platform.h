@@ -32,13 +32,6 @@ limitations under the License.
 #define RUY_PLATFORM_APPLE 0
 #endif
 
-// Detect APPLE.
-#ifdef __ppc__
-#define RUY_PPC 1
-#else
-#define RUY_PPC 0
-#endif
-
 // Architecture-level platform detection.
 //
 // Ruy requires these to be mutually exclusive.

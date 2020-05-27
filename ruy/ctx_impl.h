@@ -24,7 +24,6 @@ limitations under the License.
 #include <vector>
 
 #include "ruy/allocator.h"
-#include "ruy/cpuinfo.h"
 #include "ruy/ctx.h"
 #include "ruy/path.h"
 #include "ruy/prepacked_cache.h"
@@ -67,11 +66,9 @@ class CtxImpl final : public Ctx {
   // this allocator, and its per-thread allocator.
   std::unique_ptr<Allocator> main_allocator_;
   std::unique_ptr<PrepackedCache> prepacked_cache_;
-  // Set of Paths enabled at runtime. By default, that is based on runtime
-  // detection, but may be overridden. The initial value kNone
+  // Set of Paths detected at runtime to be supported. The initial value kNone
   // means that detection has not yet been performed.
   Path runtime_enabled_paths_ = Path::kNone;
-  CpuInfo cpuinfo_;
   // State for each thread in the thread pool. Entry 0 is the main thread.
   std::vector<std::unique_ptr<ThreadSpecificResource>>
       thread_specific_resources_;
