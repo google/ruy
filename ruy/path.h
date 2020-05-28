@@ -147,13 +147,7 @@ constexpr Path kNonArchPaths = Path::kStandardCpp;
 // for most users.
 
 #if RUY_PLATFORM_NEON_64
-#ifdef __linux__
-// We're on a platform where we know how to detect the optional NEON dotprod
-// feature.
 constexpr Path kDefaultArchPaths = Path::kNeon | Path::kNeonDotprod;
-#else
-constexpr Path kDefaultArchPaths = Path::kNeon;
-#endif
 constexpr Path kExtraArchPaths = Path::kNone;
 #elif RUY_PLATFORM_NEON_32
 constexpr Path kDefaultArchPaths = Path::kNeon;
