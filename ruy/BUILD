@@ -32,6 +32,11 @@ config_setting(
 )
 
 config_setting(
+    name = "windows",
+    flag_values = {"//tools/cpp:cc_target_os": "windows"},
+)
+
+config_setting(
     name = "optimized",
     values = {
         "compilation_mode": "opt",
@@ -944,7 +949,7 @@ cc_library(
     # need defines, not copts, because it's controlling a header, test.h
     defines = ruy_test_ext_defines(),
     linkopts = select({
-        "@bazel_tools//src/conditions:windows": [],
+        ":windows": [],
         "//conditions:default": ["-lm"],
     }),
     deps = [
