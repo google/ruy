@@ -3,16 +3,15 @@
 # Helper for ruy_copts().
 # Returns warnings flags to use for all ruy code.
 def ruy_copts_warnings():
-    return [
-        # TensorFlow is C++14 at the moment.
-        "-Wc++14-compat",
-        # Warn on preprocessor expansion of an undefined token, e.g. catching typos
-        # such as `#ifdef __linus__` instead of `#ifdef __linux__`.
-        "-Wundef",
-    ] + select({
+    return select({
         # We run into trouble on some Windows clang toolchains with -Wextra.
         "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": [
+            # TensorFlow is C++14 at the moment.
+            "-Wc++14-compat",
+            # Warn on preprocessor expansion of an undefined token, e.g. catching typos
+            # such as `#ifdef __linus__` instead of `#ifdef __linux__`.
+            "-Wundef",
             "-Wall",
             "-Wextra",
         ],
