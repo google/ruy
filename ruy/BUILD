@@ -32,11 +32,6 @@ config_setting(
 )
 
 config_setting(
-    name = "windows",
-    flag_values = {"//tools/cpp:cc_target_os": "windows"},
-)
-
-config_setting(
     name = "optimized",
     values = {
         "compilation_mode": "opt",
@@ -304,7 +299,7 @@ cc_library(
     ],
     copts = ruy_copts() +
             select({
-                ":windows": [],
+                "@bazel_tools//src/conditions:windows": [],
                 "//conditions:default": [
                     # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
                     "-Wno-undef",
@@ -953,7 +948,7 @@ cc_library(
     # need defines, not copts, because it's controlling a header, test.h
     defines = ruy_test_ext_defines(),
     linkopts = select({
-        ":windows": [],
+        "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": ["-lm"],
     }),
     deps = [

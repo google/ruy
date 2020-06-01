@@ -4,7 +4,7 @@
 # Returns warnings flags to use for all ruy code.
 def ruy_copts_warnings():
     return select({
-        "//ruy:windows": [
+        "@bazel_tools//src/conditions:windows": [
             # We run into trouble on Windows toolchains with warning flags,
             # as mentioned in the comments below on each flag.
             # We could be more aggressive in enabling supported warnings on each
