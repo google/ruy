@@ -297,10 +297,14 @@ cc_library(
     hdrs = [
         "cpuinfo.h",
     ],
-    copts = ruy_copts() + [
-        # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
-        "-Wno-undef",
-    ],
+    copts = ruy_copts() +
+            select({
+                "@bazel_tools//src/conditions:windows": [],
+                "//conditions:default": [
+                    # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
+                    "-Wno-undef",
+                ],
+            }),
     deps = [":platform"] + select({
         # cpuinfo does not build on ppc.
         ":ppc": [],
