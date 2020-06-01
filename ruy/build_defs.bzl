@@ -4,16 +4,24 @@
 # Returns warnings flags to use for all ruy code.
 def ruy_copts_warnings():
     return select({
-        # We run into trouble on some Windows clang toolchains with -Wextra.
-        "@bazel_tools//src/conditions:windows": [],
+        "//ruy:windows": [
+            # We run into trouble on Windows toolchains with warning flags,
+            # as mentioned in the comments below on each flag.
+            # We could be more aggressive in enabling supported warnings on each
+            # Windows toolchain, but we compromise with keeping BUILD files simple
+            # by limiting the number of config_setting's.
+        ],
         "//conditions:default": [
-            # TensorFlow is C++14 at the moment.
-            "-Wc++14-compat",
-            # Warn on preprocessor expansion of an undefined token, e.g. catching typos
-            # such as `#ifdef __linus__` instead of `#ifdef __linux__`.
-            "-Wundef",
             "-Wall",
+            # Some clang-based Windows toolchains have more warnings in -Wextra.
             "-Wextra",
+            # TensorFlow is C++14 at the moment. This flag ensures that we warn
+            # on any code that isn't C++14, but MSVC does not support it.
+            "-Wc++14-compat",
+            # Warn on preprocessor expansion of an undefined token, e.g. catching
+            # typos such as `#ifdef __linus__` instead of `#ifdef __linux__`.
+            # Not supported by MSVC.
+            "-Wundef",
         ],
     })
 
