@@ -126,18 +126,16 @@ void GetBlockByIndex(const BlockMap& block_map, int index,
   }
 }
 
-BlockMapTraversalOrder GetTraversalOrder(int rows, int cols, int depth,
-                                         int lhs_scalar_size,
-                                         int rhs_scalar_size,
-                                         int local_data_cache_size,
-                                         int shared_data_cache_size) {
+BlockMapTraversalOrder GetTraversalOrder(
+    int rows, int cols, int depth, int lhs_scalar_size, int rhs_scalar_size,
+    const CpuCacheParams& cpu_cache_params) {
   static constexpr bool kAnyFractal =
       RUY_OPT(FRACTAL_Z) | RUY_OPT(FRACTAL_U) | RUY_OPT(FRACTAL_HILBERT);
   const int working_set_size =
       (lhs_scalar_size * rows + rhs_scalar_size * cols) * depth;
-  if (kAnyFractal && (working_set_size > local_data_cache_size)) {
+  if (kAnyFractal && (working_set_size > cpu_cache_params.local_cache_size)) {
     if (RUY_OPT(FRACTAL_HILBERT) &&
-        (working_set_size > shared_data_cache_size)) {
+        (working_set_size > cpu_cache_params.last_level_cache_size)) {
       return BlockMapTraversalOrder::kFractalHilbert;
     } else if (RUY_OPT(FRACTAL_U)) {
       return BlockMapTraversalOrder::kFractalU;
@@ -245,7 +243,7 @@ int GetMultithreadingScore(int block_size_log2, int rows, int cols,
 int GetCacheLocalityScore(int block_size_log2, int rows, int cols, int depth,
                           int kernel_rows_log2, int kernel_cols_log2,
                           int lhs_scalar_size, int rhs_scalar_size,
-                          int local_data_cache_size) {
+                          const CpuCacheParams& cpu_cache_params) {
   // In the narrow case (e.g. matrix*vector), each byte of the big operand
   // matrix (either LHS or RHS) is traversed only once, so any notion of data
   // locality is irrelevant. Ignore the 'cache locality score' by forcing it to
@@ -259,7 +257,7 @@ int GetCacheLocalityScore(int block_size_log2, int rows, int cols, int depth,
       (lhs_scalar_size * block_rows + rhs_scalar_size * block_cols) * depth;
   const int total_read_bytes_log2 = ceil_log2(total_read_bytes);
   const int nonlocality_log2 =
-      total_read_bytes_log2 - floor_log2(local_data_cache_size);
+      total_read_bytes_log2 - floor_log2(cpu_cache_params.local_cache_size);
   // The values here have been tuned on ARM Cortex-A55.
   // We expect this to have to be tuned differently for other CPUs.
   if (nonlocality_log2 < -1) {
@@ -317,8 +315,8 @@ int GetKernelAmortizationScore(int block_size_log2, int rows, int cols,
 
 void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
                   int kernel_cols, int lhs_scalar_size, int rhs_scalar_size,
-                  int tentative_thread_count, int local_data_cache_size,
-                  int shared_data_cache_size, BlockMap* block_map) {
+                  int tentative_thread_count,
+                  const CpuCacheParams& cpu_cache_params, BlockMap* block_map) {
   profiler::ScopeLabel label("MakeBlockMap");
 
 #ifdef RUY_MAKEBLOCKMAP_DEBUG
@@ -343,9 +341,8 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
   RUY_DCHECK_EQ(rows % kernel_rows, 0);
   RUY_DCHECK_EQ(cols % kernel_cols, 0);
 
-  block_map->traversal_order =
-      GetTraversalOrder(rows, cols, depth, lhs_scalar_size, rhs_scalar_size,
-                        local_data_cache_size, shared_data_cache_size);
+  block_map->traversal_order = GetTraversalOrder(
+      rows, cols, depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
 
   int rows_rectangularness_log2 = 0;
   int cols_rectangularness_log2 = 0;
@@ -383,7 +380,7 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
         block_size_log2, rows, cols, tentative_thread_count);
     const int cache_locality_score = GetCacheLocalityScore(
         block_size_log2, rows, cols, depth, kernel_rows_log2, kernel_cols_log2,
-        lhs_scalar_size, rhs_scalar_size, local_data_cache_size);
+        lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
     const int kernel_amortization_score = GetKernelAmortizationScore(
         block_size_log2, rows, cols, kernel_rows_log2, kernel_cols_log2);
     const int score =
