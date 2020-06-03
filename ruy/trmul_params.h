@@ -43,11 +43,6 @@ struct TrMulParams {
   // cache sizes when not runtime-detectable.
   Path path;
 
-  // See MulParamsType::local_data_cache_size().
-  int local_data_cache_size = 0;
-  // See MulParamsType::shared_data_cache_size().
-  int shared_data_cache_size = 0;
-
   // Function pointers to type-erased entry points for kernels and packers.
   SidePair<RunPackFn*> run_pack;
   RunKernelFn* run_kernel = nullptr;

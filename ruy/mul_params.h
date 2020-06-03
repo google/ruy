@@ -19,7 +19,6 @@ limitations under the License.
 #include <limits>
 #include <type_traits>
 
-#include "ruy/cpu_cache_size.h"
 #include "ruy/matrix.h"
 
 namespace ruy {
@@ -134,15 +133,6 @@ class MulParams /* not final, legitimate to subclass */ {
   // Used for testing of various kernel layouts.
   using StandardCppKernelLhsLayout = FixedKernelLayout<Order::kColMajor, 1, 1>;
   using StandardCppKernelRhsLayout = FixedKernelLayout<Order::kColMajor, 1, 1>;
-  // Returns (a reasonable estimate of) the local CPU cache size.
-  // See ruy::LocalDataCacheSize() which returns some coarse, sane default for
-  // each CPU architecture.
-  // This may be overridden, either to provide more accurate/runtime values,
-  // or to test with other values to let testcases have more coverage.
-  static int local_data_cache_size() { return LocalDataCacheSize(); }
-  // Same as local_data_cache_size but for the total data cache size accessible
-  // to each CPU core. See ruy::SharedDataCacheSize().
-  static int shared_data_cache_size() { return SharedDataCacheSize(); }
 };
 
 template <typename tAccumScalar, typename tDstScalar>

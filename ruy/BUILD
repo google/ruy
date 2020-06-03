@@ -106,6 +106,7 @@ cc_library(
 cc_test(
     name = "wait_test",
     srcs = ["wait_test.cc"],
+    copts = ruy_copts(),
     linkopts = ruy_linkopts_thread_standard_library(),
     deps = [
         ":gtest_wrapper",
@@ -124,6 +125,7 @@ cc_library(
 cc_test(
     name = "size_util_test",
     srcs = ["size_util_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":gtest_wrapper",
         ":size_util",
@@ -176,6 +178,7 @@ cc_library(
 cc_test(
     name = "tune_test",
     srcs = ["tune_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":gtest_wrapper",
         ":tune",
@@ -185,6 +188,7 @@ cc_test(
 cc_test(
     name = "prepacked_cache_test",
     srcs = ["prepacked_cache_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":context",
         ":context_get_ctx",
@@ -224,6 +228,7 @@ cc_library(
 cc_test(
     name = "allocator_test",
     srcs = ["allocator_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":allocator",
         ":gtest_wrapper",
@@ -248,6 +253,7 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":check_macros",
+        ":cpu_cache_params",
         ":opt_set",
         ":side_pair",
         ":size_util",
@@ -258,11 +264,13 @@ cc_library(
 cc_test(
     name = "block_map_test",
     srcs = ["block_map_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":block_map",
-        ":cpu_cache_size",
+        ":cpu_cache_params",
         ":gtest_wrapper",
         ":path",
+        ":platform",
         ":side_pair",
     ],
 )
@@ -304,6 +312,12 @@ cc_library(
 )
 
 cc_library(
+    name = "cpu_cache_params",
+    hdrs = ["cpu_cache_params.h"],
+    copts = ruy_copts(),
+)
+
+cc_library(
     name = "cpuinfo",
     srcs = [
         "cpuinfo.cc",
@@ -319,8 +333,11 @@ cc_library(
                     "-Wno-undef",
                 ],
             }),
-    deps = [":platform"] + select({
-        # cpuinfo does not build on ppc.
+    deps = [
+        ":platform",
+        ":check_macros",
+        ":cpu_cache_params",
+    ] + select({
         ":ppc": [],
         ":fuchsia": [],
         "//conditions:default": ["@cpuinfo"],
@@ -339,16 +356,6 @@ cc_library(
 )
 
 cc_library(
-    name = "cpu_cache_size",
-    hdrs = ["cpu_cache_size.h"],
-    copts = ruy_copts(),
-    deps = [
-        ":path",
-        ":platform",
-    ],
-)
-
-cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
     copts = ruy_copts(),
@@ -359,6 +366,7 @@ cc_library(
 cc_test(
     name = "matrix_test",
     srcs = ["matrix_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":gtest_wrapper",
         ":matrix",
@@ -371,7 +379,6 @@ cc_library(
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        ":cpu_cache_size",
         ":matrix",
     ],
 )
@@ -379,6 +386,7 @@ cc_library(
 cc_test(
     name = "mul_params_test",
     srcs = ["mul_params_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":gtest_wrapper",
         ":mul_params",
@@ -786,6 +794,7 @@ cc_library(
 cc_test(
     name = "context_test",
     srcs = ["context_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":context",
         ":gtest_wrapper",
@@ -847,6 +856,7 @@ cc_library(
 cc_test(
     name = "ctx_test",
     srcs = ["ctx_test.cc"],
+    copts = ruy_copts(),
     deps = [
         ":ctx",
         ":gtest_wrapper",
@@ -876,6 +886,8 @@ cc_library(
         ":block_map",
         ":check_macros",
         ":common",
+        ":cpu_cache_params",
+        ":cpuinfo",
         ":ctx",
         ":mat",
         ":matrix",

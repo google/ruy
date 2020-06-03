@@ -41,8 +41,6 @@ template <typename AccumScalar, typename DstScalar, typename LhsKernelLayout,
 struct StandardCppKernelLayoutMulParams : MulParams<AccumScalar, DstScalar> {
   using StandardCppKernelLhsLayout = LhsKernelLayout;
   using StandardCppKernelRhsLayout = RhsKernelLayout;
-  static int local_data_cache_size() { return 1; }
-  static int shared_data_cache_size() { return 1; }
 };
 
 using LhsScalar = RUY_TEST_LHSSCALAR;

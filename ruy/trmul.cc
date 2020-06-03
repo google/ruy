@@ -26,6 +26,8 @@ limitations under the License.
 #include "ruy/block_map.h"
 #include "ruy/check_macros.h"
 #include "ruy/common.h"
+#include "ruy/cpu_cache_params.h"
+#include "ruy/cpuinfo.h"
 #include "ruy/ctx.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
@@ -244,12 +246,11 @@ int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
 
 LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
                                int depth, int lhs_scalar_size,
-                               int rhs_scalar_size, int local_data_cache_size,
-                               int shared_data_cache_size) {
+                               int rhs_scalar_size,
+                               const CpuCacheParams& cpu_cache_params) {
   if (tentative_thread_count == 1) {
-    const BlockMapTraversalOrder traversal_order =
-        GetTraversalOrder(rows, cols, depth, lhs_scalar_size, rhs_scalar_size,
-                          local_data_cache_size, shared_data_cache_size);
+    const BlockMapTraversalOrder traversal_order = GetTraversalOrder(
+        rows, cols, depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
     // If we are in the GEMV case or the block_map would be using linear
     // traversal anyway, use the simple loop.
     if ((cols == 1) || traversal_order == BlockMapTraversalOrder::kLinear) {
@@ -277,10 +278,10 @@ void TrMul(TrMulParams* params, Ctx* ctx) {
   const int depth = lhs.layout.rows;
 
   const int tentative_thread_count = GetThreadCount(ctx, rows, cols, depth);
+  const auto& cpu_cache_params = ctx->mutable_cpuinfo()->CacheParams();
   const auto loop_structure = GetLoopStructure(
       tentative_thread_count, rows, cols, depth, lhs.data_type.size,
-      rhs.data_type.size, params->local_data_cache_size,
-      params->shared_data_cache_size);
+      rhs.data_type.size, cpu_cache_params);
   Allocator* allocator = ctx->GetMainAllocator();
 
   // Allocate packed matrices
@@ -319,8 +320,7 @@ void TrMul(TrMulParams* params, Ctx* ctx) {
   MakeBlockMap(packed_lhs.layout.cols, packed_rhs.layout.cols, depth,
                packed_lhs.layout.kernel.cols, packed_rhs.layout.kernel.cols,
                packed_lhs.data_type.size, packed_rhs.data_type.size,
-               tentative_thread_count, params->local_data_cache_size,
-               params->shared_data_cache_size, &block_map);
+               tentative_thread_count, cpu_cache_params, &block_map);
 
   // Initialize per-thread state.
   const int thread_count = block_map.thread_count;

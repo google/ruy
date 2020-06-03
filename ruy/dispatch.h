@@ -199,9 +199,6 @@ void PopulateTrMulParams(TrMulParams* params) {
 
   params->path = ThePath;
 
-  params->local_data_cache_size = MulParamsType::local_data_cache_size();
-  params->shared_data_cache_size = MulParamsType::shared_data_cache_size();
-
   CreatePackedMatrix<LhsScalar, PackedLhsScalar>(
       Side::kLhs, ToKernelLayout<LhsKernelLayout>(), params);
   CreatePackedMatrix<RhsScalar, PackedRhsScalar>(

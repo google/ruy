@@ -16,6 +16,8 @@ limitations under the License.
 #ifndef RUY_RUY_CPUINFO_H_
 #define RUY_RUY_CPUINFO_H_
 
+#include "ruy/cpu_cache_params.h"
+
 namespace ruy {
 
 // Wraps the functionality that ruy needs from the cpuinfo library.
@@ -33,14 +35,22 @@ class CpuInfo final {
   bool Avx512();
   bool AvxVnni();
 
+  // Common features
+  const CpuCacheParams& CacheParams();
+
  private:
   enum class InitStatus {
     kNotYetAttempted,
     kInitialized,
     kFailed,
   };
+
   InitStatus init_status_ = InitStatus::kNotYetAttempted;
+  CpuCacheParams cache_params_;
+
   bool EnsureInitialized();
+  InitStatus Initialize();
+
   CpuInfo(const CpuInfo&) = delete;
 };
 
