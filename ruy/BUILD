@@ -1,5 +1,6 @@
 # Ruy is not BLAS
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
 load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2", "ruy_copts_avx512", "ruy_copts_sse42")
 load(":build_defs.oss.bzl", "ruy_copts_avxvnni", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
@@ -15,8 +16,21 @@ config_setting(
 )
 
 config_setting(
-    name = "x86_64",
+    name = "x86_64_k8",
     values = {"cpu": "k8"},
+)
+
+config_setting(
+    name = "x86_64_haswell",
+    values = {"cpu": "haswell"},
+)
+
+selects.config_setting_group(
+    name = "x86_64",
+    match_any = [
+        ":x86_64_k8",
+        ":x86_64_haswell",
+    ],
 )
 
 config_setting(

@@ -50,3 +50,14 @@ http_archive(
     build_file = "@//third_party:cpuinfo.BUILD",
     patches = ["@//third_party:cpuinfo.patch"],
 )
+
+# skylib utility for additional bazel functionality.
+skylib_version = "0.9.0"
+http_archive(
+    name = "bazel_skylib",
+    type = "tar.gz",
+    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/{}/bazel_skylib-{}.tar.gz".format (skylib_version, skylib_version),
+    sha256 = "1dde365491125a3db70731e25658dfdd3bc5dbdfd11b840b3e987ecf043c7ca0",
+)
+load("@bazel_skylib//lib:versions.bzl", "versions")
+versions.check(minimum_bazel_version = "2.0.0")
