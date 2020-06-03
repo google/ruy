@@ -59,7 +59,7 @@ def ruy_copts_avx512():
     # heavy spillage in the AVX512 kernels results in stack frames > 50k. This issue does not exist
     # in optimized builds (-c opt).
     return select({
-        "//ruy:x86_64": ["-march=skylake-avx512", "$(STACK_FRAME_UNLIMITED)"],
+        "//ruy:x86_64": ["$(STACK_FRAME_UNLIMITED)", "-mavx512f", "-mavx512vl", "-mavx512cd", "-mavx512bw", "-mavx512dq"],
         "//conditions:default": [],
     })
 
