@@ -39,8 +39,10 @@ limitations under the License.
 // Detect macOS specifically.
 // TARGET_OS_* are defined in TargetConditionals.h #included above.
 // They are always defined, to 0 or 1.
-// TARGET_OS_MAC is 1 also on iOS, so one needs to check for !TARGET_OS_IPHONE.
-#if RUY_PLATFORM_APPLE && TARGET_OS_MAC && !TARGET_OS_IPHONE
+// TARGET_OS_MAC is 1 also on iOS and embedded OSes, so one needs to check for
+// !TARGET_OS_IPHONE and !TARGET_OS_EMBEDDED.
+#if RUY_PLATFORM_APPLE && TARGET_OS_MAC && !TARGET_OS_IPHONE && \
+    !TARGET_OS_EMBEDDED
 #define RUY_PLATFORM_MACOS 1
 #else
 #define RUY_PLATFORM_MACOS 0
