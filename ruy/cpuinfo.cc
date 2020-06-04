@@ -8,7 +8,8 @@
 #include "ruy/cpu_cache_params.h"
 #include "ruy/platform.h"
 
-#define RUY_HAVE_CPUINFO (!(RUY_PLATFORM_PPC || RUY_PLATFORM_FUCHSIA))
+#define RUY_HAVE_CPUINFO \
+  (!(RUY_PLATFORM_PPC || RUY_PLATFORM_FUCHSIA || RUY_PLATFORM_MACOS))
 
 #if RUY_HAVE_CPUINFO
 #include <cpuinfo.h>
