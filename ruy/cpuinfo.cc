@@ -11,7 +11,7 @@
 #define RUY_HAVE_CPUINFO (!(RUY_PLATFORM_PPC || RUY_PLATFORM_FUCHSIA))
 
 #if RUY_HAVE_CPUINFO
-#include <cpuinfo.h>
+#include "include/cpuinfo.h"
 #endif
 
 namespace ruy {
