@@ -33,7 +33,7 @@ limitations under the License.
 #endif
 
 // Detect APPLE.
-#ifdef __ppc__
+#if defined(__ppc__) || defined(__powerpc__)
 #define RUY_PLATFORM_PPC 1
 #else
 #define RUY_PLATFORM_PPC 0
