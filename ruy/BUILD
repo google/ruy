@@ -340,7 +340,7 @@ cc_library(
     ] + select({
         ":ppc": [],
         ":fuchsia": [],
-        "//conditions:default": ["@cpuinfo"],
+        "//conditions:default": ["@cpuinfo//:cpuinfo_with_unstripped_include_path"],
     }),
 )
 

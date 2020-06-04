@@ -161,6 +161,16 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "cpuinfo_with_unstripped_include_path",
+    hdrs = [
+        "include/cpuinfo.h",
+    ],
+    deps = [
+        ":cpuinfo_impl",
+    ],
+)
+
 ############################# Build configurations #############################
 
 config_setting(
