@@ -25,30 +25,14 @@ limitations under the License.
 #include <android/ndk-version.h>
 #endif
 
-#ifdef __APPLE__
-#include "TargetConditionals.h"
-#endif
-
-// Detect any Apple OS
+// Detect APPLE.
 #ifdef __APPLE__
 #define RUY_PLATFORM_APPLE 1
 #else
 #define RUY_PLATFORM_APPLE 0
 #endif
 
-// Detect macOS specifically.
-// TARGET_OS_* are defined in TargetConditionals.h #included above.
-// They are always defined, to 0 or 1.
-// TARGET_OS_MAC is 1 also on iOS and embedded OSes, so one needs to check for
-// !TARGET_OS_IPHONE and !TARGET_OS_EMBEDDED.
-#if RUY_PLATFORM_APPLE && TARGET_OS_MAC && !TARGET_OS_IPHONE && \
-    !TARGET_OS_EMBEDDED
-#define RUY_PLATFORM_MACOS 1
-#else
-#define RUY_PLATFORM_MACOS 0
-#endif
-
-// Detect PowerPC CPU architecture.
+// Detect APPLE.
 #ifdef __ppc__
 #define RUY_PLATFORM_PPC 1
 #else

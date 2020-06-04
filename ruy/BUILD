@@ -46,13 +46,6 @@ config_setting(
 )
 
 config_setting(
-    name = "macos",
-    values = {
-        "apple_platform_type": "macos",
-    },
-)
-
-config_setting(
     name = "optimized",
     values = {
         "compilation_mode": "opt",
@@ -345,9 +338,8 @@ cc_library(
         ":check_macros",
         ":cpu_cache_params",
     ] + select({
-        ":ppc": [],  # PPC is not supported by cpuinfo
-        ":fuchsia": [],  # Fuchsia is not supported by cpuinfo
-        ":macos": [],  # On macOS, with Bazel, link error: missing _cpuinfo_isa
+        ":ppc": [],
+        ":fuchsia": [],
         "//conditions:default": ["@cpuinfo"],
     }),
 )
