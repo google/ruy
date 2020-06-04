@@ -332,12 +332,22 @@ cc_library(
                     # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
                     "-Wno-undef",
                 ],
-            }),
+            }) + select({
+        # This select must match the similar select in `deps`.
+        # We intentionally define this token in the BUILD
+        # file so that ports to other build-systems do not
+        # use cpuinfo by default - they need to port the
+        # cpuinfo BUILD first, then can define this token.
+        ":ppc": [],
+        ":fuchsia": [],
+        "//conditions:default": ["-DRUY_HAVE_CPUINFO"],
+    }),
     deps = [
         ":platform",
         ":check_macros",
         ":cpu_cache_params",
     ] + select({
+        # This select must match the similar select in `copts`
         ":ppc": [],
         ":fuchsia": [],
         "//conditions:default": ["@cpuinfo//:cpuinfo_with_unstripped_include_path"],

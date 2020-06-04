@@ -8,9 +8,7 @@
 #include "ruy/cpu_cache_params.h"
 #include "ruy/platform.h"
 
-#define RUY_HAVE_CPUINFO (!(RUY_PLATFORM_PPC || RUY_PLATFORM_FUCHSIA))
-
-#if RUY_HAVE_CPUINFO
+#ifdef RUY_HAVE_CPUINFO
 #include "include/cpuinfo.h"
 #endif
 
@@ -24,7 +22,7 @@ void MakeDummyCacheParams(CpuCacheParams* result) {
 }
 }  // end namespace
 
-#if RUY_HAVE_CPUINFO
+#ifdef RUY_HAVE_CPUINFO
 
 CpuInfo::~CpuInfo() {
   if (init_status_ == InitStatus::kInitialized) {
@@ -115,7 +113,7 @@ bool CpuInfo::AvxVnni() {
   return EnsureInitialized() && cpuinfo_has_x86_avx512vnni();
 }
 
-#else  // not RUY_HAVE_CPUINFO
+#else  // not defined RUY_HAVE_CPUINFO
 
 CpuInfo::~CpuInfo() {}
 bool CpuInfo::EnsureInitialized() {
