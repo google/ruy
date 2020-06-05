@@ -31,7 +31,7 @@ cc_library(
     defines = select({
         # When linkstatic=False, we need default visibility
         ":macos_x86_64": ["CLOG_VISIBILITY="],
-        "//conditions:default": True,
+        "//conditions:default": [],
     }),
     strip_include_prefix = "deps/clog/include",
 )
