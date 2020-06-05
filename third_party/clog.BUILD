@@ -12,18 +12,21 @@ cc_library(
     srcs = [
         "deps/clog/src/clog.c",
     ],
+    hdrs = [
+        "deps/clog/include/clog.h",
+    ],
     copts = select({
         ":windows": [],
         "//conditions:default": ["-Wno-unused-result"],
     }),
-    hdrs = [
-        "deps/clog/include/clog.h",
-    ],
     linkopts = select({
         ":android": ["-llog"],
         "//conditions:default": [],
     }),
-    linkstatic = True,
+    linkstatic = select({
+        ":macos_x86_64": False,  # https://github.com/bazelbuild/bazel/issues/11552
+        "//conditions:default": True,
+    }),
     strip_include_prefix = "deps/clog/include",
 )
 
@@ -35,4 +38,12 @@ config_setting(
 config_setting(
     name = "windows",
     values = {"cpu": "x64_windows"},
+)
+
+config_setting(
+    name = "macos_x86_64",
+    values = {
+        "apple_platform_type": "macos",
+        "cpu": "darwin",
+    },
 )
