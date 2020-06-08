@@ -16,6 +16,9 @@ limitations under the License.
 #include "ruy/ctx.h"
 
 #include <functional>
+#include <cstdlib>
+#include <string>
+
 
 #include "ruy/check_macros.h"
 #include "ruy/cpuinfo.h"
@@ -49,6 +52,14 @@ void Ctx::SetRuntimeEnabledPaths(Path paths) {
 CpuInfo* Ctx::mutable_cpuinfo() { return &mutable_impl()->cpuinfo_; }
 
 namespace {
+
+int GetHexIntEnvVarOrZero(const char* name) {
+  const char* val = getenv(name);
+  if (!val) {
+    return 0;
+  }
+  return std::stoi(val, nullptr, 16);
+}
 
 // For each Path bit set in `paths_to_test`, performs runtime detection and
 // sets the corresponding bit in the return value if and only if it is
@@ -117,10 +128,17 @@ Path Ctx::GetRuntimeEnabledPaths() {
 
   // The value Path::kNone indicates the initial state before detection has been
   // performed.
-  if (*paths == Path::kNone) {
-    *paths = DetectRuntimeSupportedPaths(kAllPaths, mutable_cpuinfo());
+  if (*paths != Path::kNone) {
+    return *paths;
   }
-
+  // User may have set path explicitly in env var.
+  Path paths_bitfield = static_cast<Path>(GetHexIntEnvVarOrZero("RUY_PATHS"));
+  if (paths_bitfield != Path::kNone) {
+    *paths = paths_bitfield;
+    return *paths;
+  }
+  // Finally, use runtime detection.
+  *paths = DetectRuntimeSupportedPaths(kAllPaths, mutable_cpuinfo());
   return *paths;
 }
 
