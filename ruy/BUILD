@@ -422,11 +422,7 @@ cc_library(
     ],
     copts = ruy_copts(),
     deps = [
-        ":check_macros",
-        ":matrix",
         ":opt_set",
-        ":path",
-        ":platform",
     ],
 )
 
@@ -881,6 +877,7 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":mat",
+        ":path",
         ":side_pair",
         ":tune",
     ],

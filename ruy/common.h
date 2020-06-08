@@ -21,11 +21,7 @@ limitations under the License.
 #include <limits>
 #include <type_traits>
 
-#include "ruy/check_macros.h"
-#include "ruy/matrix.h"
 #include "ruy/opt_set.h"
-#include "ruy/path.h"
-#include "ruy/platform.h"
 
 #if RUY_OPT(PREFETCH_LOAD)
 #define RUY_PREFETCH_LOAD(X) X

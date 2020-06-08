@@ -17,6 +17,7 @@ limitations under the License.
 #define RUY_RUY_TRMUL_PARAMS_H_
 
 #include "ruy/mat.h"
+#include "ruy/path.h"
 #include "ruy/side_pair.h"
 #include "ruy/tune.h"
 
