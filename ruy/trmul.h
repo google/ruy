@@ -32,7 +32,7 @@ limitations under the License.
 namespace ruy {
 
 struct ContextInternal;
-void TrMul(TrMulParams* params, Ctx* ctx);
+void TrMul(Ctx* ctx, TrMulParams* params);
 
 }  // namespace ruy
 

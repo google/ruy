@@ -20,13 +20,29 @@ limitations under the License.
 
 #include "ruy/context.h"
 #include "ruy/context_get_ctx.h"
-#include "ruy/dispatch.h"
+#include "ruy/frontend.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
 
 namespace ruy {
+
+// Entry point allowing to specify a custom OR-ed set of Path's to
+// compile. See the comments in path.h for more details about that.
+// Most users should use the other ruy::Mul overload not taking a Path template
+// parameter, and the main documentation comment is on that overload.
+template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
+          typename DstScalar, typename MulParamsType>
+void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
+         const MulParamsType& mul_params, Context* context,
+         Matrix<DstScalar>* dst) {
+  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
+  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
+  Mat<DstScalar> internal_dst = ToInternal(*dst);
+  MulFrontEnd<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
+      internal_lhs, internal_rhs, mul_params, get_ctx(context), &internal_dst);
+}
 
 // Performs a multiplication of matrices, with some extra features for
 // neural network applications. The basic operation is:
@@ -79,26 +95,7 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
          const MulParamsType& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
-  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
-  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
-  Mat<DstScalar> internal_dst = ToInternal(*dst);
-  DispatchMul<ruy::kDefaultPaths, LhsScalar, RhsScalar, DstScalar,
-              MulParamsType>(internal_lhs, internal_rhs, mul_params,
-                             get_ctx(context), &internal_dst);
-}
-
-// Variant of ruy::Mul allowing to specify a custom OR-ed set of Path's to
-// compile. See the comments in path.h for more details.
-template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
-void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const MulParamsType& mul_params, Context* context,
-         Matrix<DstScalar>* dst) {
-  Mat<LhsScalar> internal_lhs = ToInternal(lhs);
-  Mat<RhsScalar> internal_rhs = ToInternal(rhs);
-  Mat<DstScalar> internal_dst = ToInternal(*dst);
-  DispatchMul<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      internal_lhs, internal_rhs, mul_params, get_ctx(context), &internal_dst);
+  Mul<kDefaultPaths>(lhs, rhs, mul_params, context, dst);
 }
 
 }  // namespace ruy

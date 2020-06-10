@@ -431,6 +431,7 @@ cc_library(
     srcs = ["apply_multiplier.cc"],
     hdrs = ["apply_multiplier.h"],
     copts = ruy_copts(),
+    deps = [":check_macros"],
 )
 
 cc_library(
@@ -909,37 +910,93 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "prepare_packed_matrices",
+    srcs = ["prepare_packed_matrices.cc"],
+    hdrs = ["prepare_packed_matrices.h"],
+    copts = ruy_copts(),
+    deps = [
+        ":allocator",
+        ":ctx",
+        ":matrix",
+        ":prepacked_cache",
+        ":side_pair",
+        ":trmul_params",
+    ],
+)
+
+cc_library(
+    name = "create_trmul_params",
+    srcs = ["create_trmul_params.cc"],
+    hdrs = ["create_trmul_params.h"],
+    copts = ruy_copts(),
+    deps = [
+        ":check_macros",
+        ":ctx",
+        ":kernel_common",
+        ":mat",
+        ":mul_params",
+        ":opt_set",
+        ":pack_common",
+        ":path",
+        ":side_pair",
+        ":trmul_params",
+    ],
+)
+
+cc_library(
+    name = "validate",
+    hdrs = ["validate.h"],
+    copts = ruy_copts(),
+    deps = [
+        ":check_macros",
+        ":common",
+        ":mat",
+        ":mul_params",
+        ":side_pair",
+    ],
+)
+
+cc_library(
+    name = "frontend",
+    srcs = [
+        "frontend.cc",
+    ],
+    hdrs = [
+        "frontend.h",
+    ],
+    copts = ruy_copts(),
+    deps = [
+        ":allocator",
+        ":create_trmul_params",
+        ":ctx",
+        ":mat",
+        ":mul_params",
+        ":path",
+        ":prepare_packed_matrices",
+        ":trmul",
+        ":trmul_params",
+        ":validate",
+        "//ruy/profiler:instrumentation",
+    ],
+)
+
 # The main library.
 cc_library(
     name = "ruy",
-    srcs = [
-        "dispatch.h",
-    ],
     hdrs = [
         "ruy.h",
     ],
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        ":check_macros",
-        ":common",
         ":context",
         ":context_get_ctx",
-        ":ctx",
-        ":kernel",
+        ":frontend",
         ":mat",
         ":matrix",
         ":mul_params",
-        ":opt_set",
-        ":pack",
         ":path",
-        ":prepacked_cache",
-        ":side_pair",
-        ":size_util",
-        ":trmul",
-        ":trmul_params",
-        ":tune",
-        "//ruy/profiler:instrumentation",
     ],
 )
 
