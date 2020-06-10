@@ -43,8 +43,14 @@ namespace ruy {
 
 namespace {
 
-enum class PackingStatus : std::uint8_t { kNotStarted, kInProgress, kFinished };
+// Enum to track the packingstatus of a block of the LHS or RHS matrix.
+enum class PackingStatus : std::uint8_t {
+  kNotStarted,  // No thread has started packing this block yet.
+  kInProgress,  // Some thread is currently packing this block.
+  kFinished     // This block has already been packed.
+};
 
+// TrMulTask is the task that a ruy thread runs to perform the TrMul operation.
 struct TrMulTask final : Task {
   TrMulTask(TrMulParams* params_, const BlockMap& block_map_,
             std::atomic<int>* atomic_block_id_, int thread_id_,
@@ -61,7 +67,9 @@ struct TrMulTask final : Task {
         local_allocator(local_allocator_),
         local_packed{nullptr, nullptr} {}
 
+  // Thread main function. This is one thread's share of the TrMul work.
   void Run() override {
+    // Allocate and initialize `local_packed`.
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params->is_prepacked[side]) {
         const int size = NumBlocksPerSide(side, block_map);
@@ -72,24 +80,20 @@ struct TrMulTask final : Task {
 
     const Tuning tuning = tuning_resolver->Resolve();
     const int num_blocks = NumBlocks(block_map);
-    SidePair<int> block;
-    SidePair<int> start;
-    SidePair<int> end;
 
     // Each thread starts by initially reserving the block whose id
     // is the thread id.
     int block_id = thread_id;
+    // Loop until all blocks have been computed.
     while (block_id < num_blocks) {
-      // Reserve the next block to handle. In order to hide the latency
-      // (typically comparable to an access to the level of data cache that
-      // is shared among CPU cores, e.g. 60 cycles on an ARM CPU as of 2019)
-      // of this atomic operation, we structure this code so as to avoid
-      // immediately depending on the `next_n` result.
+      // Reserve the next block to handle, hiding the latency of this atomic op.
       const int next_block_id =
           atomic_block_id->fetch_add(1, std::memory_order_relaxed);
       // Get coordinates of the current block to handle, in "block space".
+      SidePair<int> block;
       GetBlockByIndex(block_map, block_id, &block);
       // Get coordinates of the current block to handle, in matrix space.
+      SidePair<int> start, end;
       GetBlockMatrixCoords(block_map, block, &start, &end);
       // Maybe pack the current LHS/RHS block, if not already packed.
       EnsurePacked(block, start, end, tuning);
