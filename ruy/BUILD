@@ -340,6 +340,7 @@ cc_library(
         # cpuinfo BUILD first, then can define this token.
         ":ppc": [],
         ":fuchsia": [],
+        "cpu:armv7a": [],  # temporary, b/158667193
         "//conditions:default": ["-DRUY_HAVE_CPUINFO"],
     }),
     deps = [
