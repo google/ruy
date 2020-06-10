@@ -31,7 +31,7 @@ def ruy_copts_neon():
     return select({
         # OK to crash old devices that lack full NEON support.
         # No need to pass -mfloat-abi=softfp, that is already on.
-        "//ruy:armeabi-v7a": [
+        "//ruy:arm32_assuming_neon": [
             "-mfpu=neon",
         ],
         "//conditions:default": [],
