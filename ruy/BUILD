@@ -16,6 +16,20 @@ config_setting(
 )
 
 config_setting(
+    name = "armv7a",
+    values = {"cpu": "armv7a"},
+)
+
+# Detect ARM 32-bit targets where we are going to just assume NEON support.
+selects.config_setting_group(
+    name = "arm32_assuming_neon",
+    match_any = [
+        ":armeabi-v7a",
+        ":armv7a",
+    ],
+)
+
+config_setting(
     name = "x86_64_k8",
     values = {"cpu": "k8"},
 )
