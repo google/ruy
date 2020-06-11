@@ -35,8 +35,7 @@ namespace ruy {
 namespace detail {
 
 void CreatePackedLayout(const MatLayout& src, const Type& scalar,
-                        const KernelLayout& kernel_layout,
-                        PMatLayout* packed_layout);
+                        const KernelLayout& kernel_layout, PMatLayout* packed);
 
 template <typename Scalar, typename PackedScalar>
 void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
@@ -51,12 +50,12 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
                                 std::int32_t>::type;
 
   const EMat& src = params->src[side];
-  PEMat* packed_matrix = &params->packed_matrix[side];
-  packed_matrix->data_type = Type::Create<PackedScalar>();
-  packed_matrix->sums_type = Type::Create<SumsType>();
-  CreatePackedLayout(src.layout, packed_matrix->data_type, kernel_layout,
-                     &packed_matrix->layout);
-  packed_matrix->zero_point = Pack<PackedScalar, Scalar>(src.zero_point);
+  PEMat* packed = &params->packed[side];
+  packed->data_type = Type::Create<PackedScalar>();
+  packed->sums_type = Type::Create<SumsType>();
+  CreatePackedLayout(src.layout, packed->data_type, kernel_layout,
+                     &packed->layout);
+  packed->zero_point = Pack<PackedScalar, Scalar>(src.zero_point);
 }
 
 inline bool IsColMajorTrMul(const TrMulParams& params) {

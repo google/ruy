@@ -22,18 +22,17 @@ namespace ruy {
 namespace detail {
 
 void CreatePackedLayout(const MatLayout& src, const Type& scalar,
-                        const KernelLayout& kernel_layout,
-                        PMatLayout* packed_layout) {
-  packed_layout->order = Order::kColMajor;
-  packed_layout->rows = round_up_pot(src.rows, kernel_layout.rows);
-  packed_layout->cols = round_up_pot(src.cols, kernel_layout.cols);
-  packed_layout->kernel = kernel_layout;
-  int inner_size = packed_layout->rows;
+                        const KernelLayout& kernel_layout, PMatLayout* packed) {
+  packed->order = Order::kColMajor;
+  packed->rows = round_up_pot(src.rows, kernel_layout.rows);
+  packed->cols = round_up_pot(src.cols, kernel_layout.cols);
+  packed->kernel = kernel_layout;
+  int inner_size = packed->rows;
   if (RUY_OPT(AVOID_ALIASING)) {
-    packed_layout->stride =
+    packed->stride =
         (inner_size * scalar.size) % 1024 ? inner_size : inner_size + 64;
   } else {
-    packed_layout->stride = inner_size;
+    packed->stride = inner_size;
   }
 }
 
