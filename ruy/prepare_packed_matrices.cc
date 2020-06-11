@@ -37,7 +37,7 @@ bool ShouldCache(const TrMulParams& params, Side side) {
   const CachePolicy cache_policy = params.src[side].cache_policy;
   // The width that matters is that of the other side, it is what determines
   // the amortization of the packing work done on the present side.
-  const Side other_side = OtherSide(side);
+  const Side other_side = Other(side);
   const int other_width = params.src[other_side].layout.cols;
   const int other_kernel_width = params.packed[other_side].layout.kernel.cols;
   switch (cache_policy) {

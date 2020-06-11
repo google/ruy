@@ -203,7 +203,8 @@ struct TrMulTask final : Task {
 #if RUY_OPT(PACK_AHEAD)
       const Side runahead_side = next_runahead_side;
       const int runahead_block = next_runahead_block[runahead_side];
-      next_runahead_side = OtherSide(next_runahead_side);
+      next_runahead_side =
+          next_runahead_side == Side::kLhs ? Side::kRhs : Side::kLhs;
       if (runahead_block >= NumBlocksPerSide(runahead_side, block_map)) {
         continue;
       }
