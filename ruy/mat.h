@@ -51,16 +51,15 @@ limitations under the License.
 // main parts:
 // - "entry-point" (ruy.h) - this is the highly templated ruy::Mul entry
 // point.
-// - "front-end" (frontend.*, validate.*, create_trmul_params.*,
-// prepare_packed_matrices.*) - the work to handle the entry-point call down to
-// the point where it can be handed off to the middle/back ends below. That
+// - "front-end" (dispatch.h) - the work to handle the entry-point call down
+// to the point where it can be handed off to the middle/back ends below. That
 // includes routines that select RunKernel and RunPack
 // implementations statically based on those template parameters.
-// - "back-end" (kernel_*.*, pack_*.*)- this consists of the implementations of
+// - "back-end" (kernel.h, pack.h)- this consists of the implementations of
 // RunKernel and RunPack, often in assembly code, which are the building blocks
 // that Ruy calls to perform matrix multiplication.  These are templated so that
 // only the requested types/Path's are actually emitted by the compiler.
-// - "middle-end" (trmul.*) - this is the part of Ruy that orchestrates the
+// - "middle-end" (trmul.h) - this is the part of Ruy that orchestrates the
 // calls to the "back-end" optimized building blocks. This layer has to deal
 // with issues like cache locality and low-overhead multi-threading.
 //

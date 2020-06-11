@@ -30,7 +30,7 @@ enum class Side {
   kRhs = 1
 };
 
-inline Side OtherSide(Side side) {
+inline Side Other(Side side) {
   return side == Side::kLhs ? Side::kRhs : Side::kLhs;
 }
 

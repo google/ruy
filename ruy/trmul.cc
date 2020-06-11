@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// The 'middle-end' in ruy. See TrMul function comment.
-
 #include "ruy/trmul.h"
 
 #include <algorithm>
@@ -67,7 +65,7 @@ struct TrMulTask final : Task {
         packing_status(packing_status_),
         tuning_resolver(tuning_resolver_),
         local_allocator(local_allocator_),
-        local_already_packed{nullptr, nullptr} {}
+        local_packed{nullptr, nullptr} {}
 
   // Thread main function. This is one thread's share of the TrMul work.
   void Run() override {
@@ -75,8 +73,8 @@ struct TrMulTask final : Task {
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params->is_prepacked[side]) {
         const int size = NumBlocksPerSide(side, block_map);
-        local_allocator->Allocate(size, &local_already_packed[side]);
-        memset(local_already_packed[side], 0, size * sizeof(bool));
+        local_allocator->Allocate(size, &local_packed[side]);
+        memset(local_packed[side], 0, size * sizeof(bool));
       }
     }
 
@@ -118,7 +116,7 @@ struct TrMulTask final : Task {
     if (params->is_prepacked[side]) {
       return true;
     }
-    if (!local_already_packed[side][block]) {
+    if (!local_packed[side][block]) {
       if (need_atomics) {
         // Explanation of this compare_exchange_strong operation:
         // This atomically performs all of the following:
@@ -151,9 +149,9 @@ struct TrMulTask final : Task {
         // Moreover, this changes the TryPack contract, loosening it and making
         // it harder for the caller to reason about. Finally, the overhead of
         // atomic operations is mitigated by the enclosing check on
-        // local_already_packed, so maybe the overhead of
-        // compare_exchange_strong isn't such a problem. But we don't really
-        // know for sure, that would be interesting to experiment more with.
+        // local_packed, so maybe the overhead of compare_exchange_strong isn't
+        // such a problem. But we don't really know for sure, that would be
+        // interesting to experiment more with.
         PackingStatus exchanged_status = PackingStatus::kNotStarted;
         std::atomic<PackingStatus>& status = packing_status[side][block];
         if (status.compare_exchange_strong(
@@ -171,11 +169,11 @@ struct TrMulTask final : Task {
         RUY_DCHECK(status.load(std::memory_order_acquire) ==
                    PackingStatus::kFinished);
       } else {
-        // Single-threaded case: no need for expensive atomics,
-        // local_already_packed is the truth already.
+        // Single-threaded case: no need for expensive atomics, local_packed
+        // is the truth already.
         params->RunPack(side, tuning, start, end);
       }
-      local_already_packed[side][block] = true;
+      local_packed[side][block] = true;
     }
     return true;
   }
@@ -203,7 +201,8 @@ struct TrMulTask final : Task {
 #if RUY_OPT(PACK_AHEAD)
       const Side runahead_side = next_runahead_side;
       const int runahead_block = next_runahead_block[runahead_side];
-      next_runahead_side = OtherSide(next_runahead_side);
+      next_runahead_side =
+          next_runahead_side == Side::kLhs ? Side::kRhs : Side::kLhs;
       if (runahead_block >= NumBlocksPerSide(runahead_side, block_map)) {
         continue;
       }
@@ -227,8 +226,13 @@ struct TrMulTask final : Task {
   Allocator* local_allocator;
 
   // Local indicators of packedness to avoid the overhead of atomic ops.
-  SidePair<bool*> local_already_packed;
+  SidePair<bool*> local_packed;
 };
+
+void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
+  packed->data = allocator->AllocateBytes(DataBytes(*packed));
+  packed->sums = allocator->AllocateBytes(SumsBytes(*packed));
+}
 
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
 #if RUY_PLATFORM_EMSCRIPTEN
@@ -262,20 +266,14 @@ LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
 
 }  // namespace
 
-// TrMul is the ruy middle-end. It contains the high-level logic to perform
-// a ruy::Mul's work, down to calls to back-end Kernel and Pack functions.
-// This includes determining how many threads to use, computing the BlockMap,
-// executing tasks on a thread-pool. The TrMul function itself runs on the main
-// thread, the code that is potentially running on worker threads is in
-// TrMulTask::Run().
-void TrMul(Ctx* ctx, TrMulParams* params) {
+void TrMul(TrMulParams* params, Ctx* ctx) {
   profiler::ScopeLabel label(
       "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
       static_cast<int>(params->path), ctx->max_num_threads(),
       params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
-  PEMat& packed_lhs = params->packed_matrix[Side::kLhs];
-  PEMat& packed_rhs = params->packed_matrix[Side::kRhs];
+  PEMat& packed_lhs = params->packed[Side::kLhs];
+  PEMat& packed_rhs = params->packed[Side::kRhs];
   EMat& lhs = params->src[Side::kLhs];
   EMat& rhs = params->src[Side::kRhs];
 
@@ -289,6 +287,13 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
       tentative_thread_count, rows, cols, depth, lhs.data_type.size,
       rhs.data_type.size, cpu_cache_params);
   Allocator* allocator = ctx->GetMainAllocator();
+
+  // Allocate packed matrices
+  for (Side side : {Side::kLhs, Side::kRhs}) {
+    if (!params->is_prepacked[side]) {
+      AllocatePMatrix(allocator, &params->packed[side]);
+    }
+  }
 
   // Case of running this TrMul as a simple loop.
   // This is a good place to start reading this function: all the rest
@@ -307,6 +312,8 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
       }
     }
     params->RunKernel(tuning, origin, rounded_dims);
+
+    allocator->FreeAll();
     return;
   }
 
@@ -370,6 +377,8 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   for (int i = 0; i < thread_count; i++) {
     tasks[i].~TrMulTask();
   }
+
+  allocator->FreeAll();
 }
 
 }  // namespace ruy
