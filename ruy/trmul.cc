@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-// The 'middle-end' in ruy. See TrMul function comment.
-
 #include "ruy/trmul.h"
 
 #include <algorithm>
@@ -231,6 +229,11 @@ struct TrMulTask final : Task {
   SidePair<bool*> local_packed;
 };
 
+void AllocatePMatrix(Allocator* allocator, PEMat* packed) {
+  packed->data = allocator->AllocateBytes(DataBytes(*packed));
+  packed->sums = allocator->AllocateBytes(SumsBytes(*packed));
+}
+
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
 #if RUY_PLATFORM_EMSCRIPTEN
   // b/139927184, std::thread constructor raises exception
@@ -263,13 +266,7 @@ LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
 
 }  // namespace
 
-// TrMul is the ruy middle-end. It contains the high-level logic to perform
-// a ruy::Mul's work, down to calls to back-end Kernel and Pack functions.
-// This includes determining how many threads to use, computing the BlockMap,
-// executing tasks on a thread-pool. The TrMul function itself runs on the main
-// thread, the code that is potentially running on worker threads is in
-// TrMulTask::Run().
-void TrMul(Ctx* ctx, TrMulParams* params) {
+void TrMul(TrMulParams* params, Ctx* ctx) {
   profiler::ScopeLabel label(
       "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
       static_cast<int>(params->path), ctx->max_num_threads(),
@@ -291,6 +288,13 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
       rhs.data_type.size, cpu_cache_params);
   Allocator* allocator = ctx->GetMainAllocator();
 
+  // Allocate packed matrices
+  for (Side side : {Side::kLhs, Side::kRhs}) {
+    if (!params->is_prepacked[side]) {
+      AllocatePMatrix(allocator, &params->packed[side]);
+    }
+  }
+
   // Case of running this TrMul as a simple loop.
   // This is a good place to start reading this function: all the rest
   // of this function is just an optimized, but functionally equivalent,
@@ -308,6 +312,8 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
       }
     }
     params->RunKernel(tuning, origin, rounded_dims);
+
+    allocator->FreeAll();
     return;
   }
 
@@ -371,6 +377,8 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   for (int i = 0; i < thread_count; i++) {
     tasks[i].~TrMulTask();
   }
+
+  allocator->FreeAll();
 }
 
 }  // namespace ruy

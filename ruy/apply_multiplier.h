@@ -21,8 +21,6 @@ limitations under the License.
 #include <cstdint>
 #include <type_traits>
 
-#include "ruy/check_macros.h"
-
 namespace ruy {
 
 // Applies the quantized multiplier to the `*accum` accumulator value, if
