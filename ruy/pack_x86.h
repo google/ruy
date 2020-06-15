@@ -34,6 +34,29 @@ limitations under the License.
 namespace ruy {
 
 #if RUY_PLATFORM_X86
+
+RUY_INHERIT_PACK(Path::kStandardCpp, Path::kSse42)
+RUY_INHERIT_PACK(Path::kSse42, Path::kAvx2)
+RUY_INHERIT_PACK(Path::kAvx2, Path::kAvx512)
+RUY_INHERIT_PACK(Path::kAvx512, Path::kAvxVnni)
+
+template <>
+struct PackedTypeImpl<Path::kSse42, std::uint8_t> {
+  using Type = std::int8_t;
+};
+template <>
+struct PackedTypeImpl<Path::kAvx2, std::uint8_t> {
+  using Type = std::int8_t;
+};
+template <>
+struct PackedTypeImpl<Path::kAvx512, std::uint8_t> {
+  using Type = std::int8_t;
+};
+template <>
+struct PackedTypeImpl<Path::kAvxVnni, std::uint8_t> {
+  using Type = std::int8_t;
+};
+
 // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
 // Optimization is not finished. In particular the dimensions of the kernel
 // blocks can be changed as desired.

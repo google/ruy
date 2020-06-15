@@ -84,15 +84,59 @@ limitations under the License.
 #define RUY_RUY_PACK_H_
 
 #include "ruy/platform.h"
+#include "ruy/pack_common.h"
 
 // IWYU pragma: begin_exports
 #if RUY_PLATFORM_NEON
 #include "ruy/pack_arm.h"
 #elif RUY_PLATFORM_X86
 #include "ruy/pack_x86.h"
-#else
-#include "ruy/pack_common.h"
 #endif
 // IWYU pragma: end_exports
+
+namespace ruy {
+
+template <typename FixedKernelLayout, typename Scalar, typename PackedScalar,
+          typename SumsType>
+struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
+                SumsType> {
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<PackedScalar>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (generic)");
+    RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
+    SumsType* sums = packed_matrix->sums;
+    for (int col = start_col; col < end_col; col++) {
+      SumsType accum = 0;
+      for (int row = 0; row < packed_matrix->layout.rows; row++) {
+        PackedScalar packed_val;
+        if (col < src_matrix.layout.cols && row < src_matrix.layout.rows) {
+          packed_val = Pack<PackedScalar>(Element(src_matrix, row, col));
+        } else {
+          packed_val = packed_matrix->zero_point;
+        }
+        accum += packed_val;
+        *ElementPtr(packed_matrix, row, col) = packed_val;
+      }
+      if (sums) {
+        sums[col] = accum;
+      }
+    }
+  }
+};
+
+// Main entry point for packing.
+template <Path ThePath, typename FixedKernelLayout, typename Scalar,
+          typename PackedScalar>
+void RunPack(Tuning tuning, const EMat& src_matrix, PEMat* packed_matrix,
+             int start_col, int end_col) {
+  using SumsType = typename PMat<PackedScalar>::SumsType;
+  Mat<Scalar> src = UneraseType<Scalar>(src_matrix);
+  PMat<PackedScalar> packed = UneraseType<PackedScalar>(*packed_matrix);
+  PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType>::Run(
+      tuning, src, &packed, start_col, end_col);
+}
+
+}  // namespace ruy
 
 #endif  // RUY_RUY_PACK_H_

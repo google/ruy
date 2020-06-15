@@ -32,7 +32,22 @@ limitations under the License.
 
 namespace ruy {
 
+#if RUY_PLATFORM_NEON
+RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeon)
+RUY_INHERIT_PACK(Path::kNeon, Path::kNeonDotprod)
+#endif
+
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+
+template <>
+struct PackedTypeImpl<Path::kNeon, std::uint8_t> {
+  using Type = std::int8_t;
+};
+template <>
+struct PackedTypeImpl<Path::kNeonDotprod, std::uint8_t> {
+  using Type = std::int8_t;
+};
+
 void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                             const void* src_ptr2, const void* src_ptr3,
                             int src_inc0, int src_inc1, int src_inc2,
@@ -59,9 +74,49 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
                                 int input_xor);
 
 #elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+
+struct PackParams8bit {
+  const void* src_ptr0;
+  const void* src_ptr1;
+  const void* src_ptr2;
+  const void* src_ptr3;
+  const std::int32_t* sums_ptr;
+  const std::int8_t* packed_ptr;
+  int src_inc0;
+  int src_inc1;
+  int src_inc2;
+  int src_inc3;
+  int src_rows;
+  int src_zero_point;
+  int input_xor;
+};
+
+inline void MakePackParams8bit(const void* src_ptr0, const void* src_ptr1,
+                               const void* src_ptr2, const void* src_ptr3,
+                               const std::int32_t* sums_ptr,
+                               const std::int8_t* packed_ptr, int src_inc0,
+                               int src_inc1, int src_inc2, int src_inc3,
+                               int src_rows, int src_zero_point, int input_xor,
+                               PackParams8bit* params) {
+  params->src_ptr0 = src_ptr0;
+  params->src_ptr1 = src_ptr1;
+  params->src_ptr2 = src_ptr2;
+  params->src_ptr3 = src_ptr3;
+  params->sums_ptr = sums_ptr;
+  params->packed_ptr = packed_ptr;
+  params->src_inc0 = src_inc0;
+  params->src_inc1 = src_inc1;
+  params->src_inc2 = src_inc2;
+  params->src_inc3 = src_inc3;
+  params->src_rows = src_rows;
+  params->src_zero_point = src_zero_point;
+  params->input_xor = input_xor;
+}
+
 void Pack8bitNeonOutOfOrder4Cols(const PackParams8bit& params);
 void Pack8bitNeonOutOfOrder2Cols(const PackParams8bit& params);
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
+
+#endif  // (RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 
 #if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
 
