@@ -31,6 +31,12 @@ limitations under the License.
 namespace ruy {
 
 #if RUY_PLATFORM_X86
+
+RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kSse42)
+RUY_INHERIT_KERNEL(Path::kSse42, Path::kAvx2)
+RUY_INHERIT_KERNEL(Path::kAvx2, Path::kAvx512)
+RUY_INHERIT_KERNEL(Path::kAvx512, Path::kAvxVnni)
+
 // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
 // Optimization is not finished. In particular the dimensions of the kernel
 // blocks can be changed as desired.

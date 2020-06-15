@@ -36,6 +36,9 @@ namespace ruy {
 
 #if RUY_PLATFORM_NEON && RUY_OPT(ASM)
 
+RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
+RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
+
 #if RUY_PLATFORM_NEON_64
 void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params);
