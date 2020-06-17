@@ -55,6 +55,13 @@ config_setting(
 )
 
 config_setting(
+    name = "s390x",
+    values = {
+        "cpu": "s390x",
+    },
+)
+
+config_setting(
     name = "fuchsia",
     values = {"cpu": "fuchsia"},
 )
@@ -353,6 +360,7 @@ cc_library(
         # use cpuinfo by default - they need to port the
         # cpuinfo BUILD first, then can define this token.
         ":ppc": [],
+        ":s390x": [],
         ":fuchsia": [],
         "//conditions:default": ["-DRUY_HAVE_CPUINFO"],
     }),
@@ -363,6 +371,7 @@ cc_library(
     ] + select({
         # This select must match the similar select in `copts`
         ":ppc": [],
+        ":s390x": [],
         ":fuchsia": [],
         "//conditions:default": ["@cpuinfo//:cpuinfo_with_unstripped_include_path"],
     }),
