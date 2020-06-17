@@ -35,9 +35,6 @@ namespace ruy {
 #if RUY_PLATFORM_NEON
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_PACK(Path::kNeon, Path::kNeonDotprod)
-#endif
-
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
 template <>
 struct PackedTypeImpl<Path::kNeon, std::uint8_t> {
@@ -47,6 +44,9 @@ template <>
 struct PackedTypeImpl<Path::kNeonDotprod, std::uint8_t> {
   using Type = std::int8_t;
 };
+#endif
+
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
 void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
                             const void* src_ptr2, const void* src_ptr3,
