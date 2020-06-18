@@ -67,7 +67,7 @@ struct TrMulTask final : Task {
         packing_status(packing_status_),
         tuning_resolver(tuning_resolver_),
         local_allocator(local_allocator_),
-        local_packed{nullptr, nullptr} {}
+        local_already_packed{nullptr, nullptr} {}
 
   // Thread main function. This is one thread's share of the TrMul work.
   void Run() override {
@@ -75,8 +75,8 @@ struct TrMulTask final : Task {
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params->is_prepacked[side]) {
         const int size = NumBlocksPerSide(side, block_map);
-        local_allocator->Allocate(size, &local_packed[side]);
-        memset(local_packed[side], 0, size * sizeof(bool));
+        local_allocator->Allocate(size, &local_already_packed[side]);
+        memset(local_already_packed[side], 0, size * sizeof(bool));
       }
     }
 
@@ -118,7 +118,7 @@ struct TrMulTask final : Task {
     if (params->is_prepacked[side]) {
       return true;
     }
-    if (!local_packed[side][block]) {
+    if (!local_already_packed[side][block]) {
       if (need_atomics) {
         // Explanation of this compare_exchange_strong operation:
         // This atomically performs all of the following:
@@ -151,9 +151,9 @@ struct TrMulTask final : Task {
         // Moreover, this changes the TryPack contract, loosening it and making
         // it harder for the caller to reason about. Finally, the overhead of
         // atomic operations is mitigated by the enclosing check on
-        // local_packed, so maybe the overhead of compare_exchange_strong isn't
-        // such a problem. But we don't really know for sure, that would be
-        // interesting to experiment more with.
+        // local_already_packed, so maybe the overhead of
+        // compare_exchange_strong isn't such a problem. But we don't really
+        // know for sure, that would be interesting to experiment more with.
         PackingStatus exchanged_status = PackingStatus::kNotStarted;
         std::atomic<PackingStatus>& status = packing_status[side][block];
         if (status.compare_exchange_strong(
@@ -171,11 +171,11 @@ struct TrMulTask final : Task {
         RUY_DCHECK(status.load(std::memory_order_acquire) ==
                    PackingStatus::kFinished);
       } else {
-        // Single-threaded case: no need for expensive atomics, local_packed
-        // is the truth already.
+        // Single-threaded case: no need for expensive atomics,
+        // local_already_packed is the truth already.
         params->RunPack(side, tuning, start, end);
       }
-      local_packed[side][block] = true;
+      local_already_packed[side][block] = true;
     }
     return true;
   }
@@ -227,7 +227,7 @@ struct TrMulTask final : Task {
   Allocator* local_allocator;
 
   // Local indicators of packedness to avoid the overhead of atomic ops.
-  SidePair<bool*> local_packed;
+  SidePair<bool*> local_already_packed;
 };
 
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
@@ -274,8 +274,8 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
       static_cast<int>(params->path), ctx->max_num_threads(),
       params->is_prepacked[Side::kLhs], params->is_prepacked[Side::kRhs]);
 
-  PEMat& packed_lhs = params->packed[Side::kLhs];
-  PEMat& packed_rhs = params->packed[Side::kRhs];
+  PEMat& packed_lhs = params->packed_matrix[Side::kLhs];
+  PEMat& packed_rhs = params->packed_matrix[Side::kRhs];
   EMat& lhs = params->src[Side::kLhs];
   EMat& rhs = params->src[Side::kRhs];
 

@@ -33,11 +33,11 @@ struct TrMulParams {
   TrMulParams() : run_pack{nullptr, nullptr}, is_prepacked{false, false} {}
   // Helper functions for invoking the function pointers.
   void RunPack(Side side, Tuning tuning, int start, int end) {
-    run_pack[side](tuning, src[side], &packed[side], start, end);
+    run_pack[side](tuning, src[side], &packed_matrix[side], start, end);
   }
   void RunKernel(Tuning tuning, const SidePair<int>& start,
                  const SidePair<int>& end) {
-    run_kernel(tuning, packed, mul_params, start, end, &dst);
+    run_kernel(tuning, packed_matrix, mul_params, start, end, &dst);
   }
 
   // path id, can be useful info for some fine-tuning, e.g. to guess reasonable
@@ -51,7 +51,7 @@ struct TrMulParams {
   // Matrices and packed matrices.
   SidePair<EMat> src;
   EMat dst;
-  SidePair<PEMat> packed;
+  SidePair<PEMat> packed_matrix;
   SidePair<bool> is_prepacked;
 
   // Type-erased MulParamsType.
