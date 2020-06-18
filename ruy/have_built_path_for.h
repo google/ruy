@@ -21,10 +21,8 @@ limitations under the License.
 namespace ruy {
 
 #if RUY_PLATFORM_X86
-bool HaveBuiltPathForSse42();
 bool HaveBuiltPathForAvx2();
 bool HaveBuiltPathForAvx512();
-bool HaveBuiltPathForAvxVnni();
 #endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy

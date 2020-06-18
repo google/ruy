@@ -68,12 +68,3 @@ def ruy_copts_avx2():
         "//ruy:x86_64": ["-mavx2", "-mfma"],
         "//conditions:default": [],
     })
-
-# TODO(b/147376783): SSE 4.2 support is incomplete / placeholder.
-# Optimization is not finished. In particular the dimensions of the kernel
-# blocks can be changed as desired.
-def ruy_copts_sse42():
-    return select({
-        "//ruy:x86_64": ["-msse4.2"],
-        "//conditions:default": [],
-    })

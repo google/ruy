@@ -32,53 +32,8 @@ namespace ruy {
 
 #if RUY_PLATFORM_X86
 
-RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kSse42)
-RUY_INHERIT_KERNEL(Path::kSse42, Path::kAvx2)
+RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kAvx2)
 RUY_INHERIT_KERNEL(Path::kAvx2, Path::kAvx512)
-RUY_INHERIT_KERNEL(Path::kAvx512, Path::kAvxVnni)
-
-// TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
-// Optimization is not finished. In particular the dimensions of the kernel
-// blocks can be changed as desired.
-//
-void Kernel8bitSse42(const KernelParams8bit<8, 8>& params);
-
-template <typename DstScalar>
-struct Kernel<Path::kSse42, std::int8_t, std::int8_t, DstScalar,
-              MulParams<std::int32_t, DstScalar>> {
-  static constexpr Path kPath = Path::kSse42;
-  Tuning tuning = Tuning::kAuto;
-  using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
-  using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
-  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
-           const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
-    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
-                         end_col, dst, &params);
-    Kernel8bitSse42(params);
-  }
-};
-
-void KernelFloatSse42(const KernelParamsFloat<8, 8>& params);
-
-template <>
-struct Kernel<Path::kSse42, float, float, float, MulParams<float, float>> {
-  Tuning tuning = Tuning::kAuto;
-  static constexpr Path kPath = Path::kSse42;
-  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
-  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
-  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
-           const MulParams<float, float>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Mat<float>* dst) const {
-    KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
-                          end_col, dst, &params);
-    KernelFloatSse42(params);
-  }
-};
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params);
 void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params);
@@ -175,49 +130,6 @@ struct Kernel<Path::kAvx2, float, float, float, MulParams<float, float>> {
     } else {
       KernelFloatAvx2(params);
     }
-  }
-};
-
-// TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete / placeholder.
-// Optimization is not finished. In particular the dimensions of the kernel
-// blocks can be changed as desired.
-//
-void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>& params);
-
-template <typename DstScalar>
-struct Kernel<Path::kAvxVnni, std::int8_t, std::int8_t, DstScalar,
-              MulParams<std::int32_t, DstScalar>> {
-  static constexpr Path kPath = Path::kAvxVnni;
-  Tuning tuning = Tuning::kAuto;
-  using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
-  using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
-  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
-           const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
-    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
-                         end_col, dst, &params);
-    Kernel8bitAvxVnni(params);
-  }
-};
-
-void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>& params);
-
-template <>
-struct Kernel<Path::kAvxVnni, float, float, float, MulParams<float, float>> {
-  static constexpr Path kPath = Path::kAvxVnni;
-  Tuning tuning = Tuning::kAuto;
-  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
-  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
-  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
-  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
-           const MulParams<float, float>& mul_params, int start_row,
-           int start_col, int end_row, int end_col, Mat<float>* dst) const {
-    KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
-    MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
-                          end_col, dst, &params);
-    KernelFloatAvxVnni(params);
   }
 };
 

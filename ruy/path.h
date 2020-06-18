@@ -74,24 +74,10 @@ enum class Path : std::uint8_t {
 #if RUY_PLATFORM_X86
   // x86 architectures.
   //
-  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
-  // placeholder.
-  // Optimization is not finished. In particular the dimensions of the kernel
-  // blocks can be changed as desired.
-  //
-  // Optimized for SSE 4.2.
-  kSse42 = 0x4,
   // Optimized for AVX2.
   kAvx2 = 0x8,
   // Optimized for AVX-512.
   kAvx512 = 0x10,
-  // TODO(b/147376783): SSE 4.2 and AVX-VNNI support is incomplete /
-  // placeholder.
-  // Optimization is not finished. In particular the dimensions of the kernel
-  // blocks can be changed as desired.
-  //
-  // Optimized for AVX-VNNI.
-  kAvxVnni = 0x20,
 #endif  // RUY_PLATFORM_X86
 };
 
@@ -154,7 +140,7 @@ constexpr Path kDefaultArchPaths = Path::kNeon;
 constexpr Path kExtraArchPaths = Path::kNone;
 #elif RUY_PLATFORM_X86
 constexpr Path kDefaultArchPaths = Path::kAvx2 | Path::kAvx512;
-constexpr Path kExtraArchPaths = Path::kSse42 | Path::kAvxVnni;
+constexpr Path kExtraArchPaths = Path::kNone;
 #else
 constexpr Path kDefaultArchPaths = Path::kNone;
 constexpr Path kExtraArchPaths = Path::kNone;

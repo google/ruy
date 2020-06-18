@@ -1,13 +1,5 @@
 """Build definitions for Ruy that are specific to the open-source build."""
 
-# TODO(b/147376783): VNNI support is incomplete / placeholder.
-# Optimization is not finished. In particular the dimensions of the kernel
-# blocks can be changed as desired.
-#
-# At the moment this does nothing because current toolchains don't support VNNI.
-def ruy_copts_avxvnni():
-    return []
-
 # Used for targets that #include <thread>
 def ruy_linkopts_thread_standard_library():
     # In open source builds, GCC is a common occurence. It requires "-pthread"

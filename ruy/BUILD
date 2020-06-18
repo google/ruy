@@ -1,8 +1,8 @@
 # Ruy is not BLAS
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2", "ruy_copts_avx512", "ruy_copts_sse42")
-load(":build_defs.oss.bzl", "ruy_copts_avxvnni", "ruy_linkopts_thread_standard_library")
+load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2", "ruy_copts_avx512")
+load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 
@@ -621,106 +621,6 @@ cc_library(
     ],
 )
 
-# TODO(b/147376783): SSE 4.2 support is incomplete / placeholder.
-# Optimization is not finished. In particular the dimensions of the kernel
-# blocks can be changed as desired.
-cc_library(
-    name = "kernel_sse42",
-    srcs = [
-        "kernel_sse42.cc",
-    ],
-    copts = ruy_copts() + ruy_copts_sse42(),
-    deps = [
-        ":check_macros",
-        ":kernel_common",
-        ":opt_set",
-        ":platform",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-cc_library(
-    name = "pack_sse42",
-    srcs = [
-        "pack_sse42.cc",
-    ],
-    copts = ruy_copts() + ruy_copts_sse42(),
-    deps = [
-        ":check_macros",
-        ":matrix",
-        ":opt_set",
-        ":pack_common",
-        ":path",
-        ":platform",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-cc_library(
-    name = "have_built_path_for_sse42",
-    srcs = [
-        "have_built_path_for_sse42.cc",
-    ],
-    hdrs = [
-        "have_built_path_for.h",
-    ],
-    copts = ruy_copts() + ruy_copts_sse42(),
-    deps = [
-        ":opt_set",
-        ":platform",
-    ],
-)
-
-# TODO(b/147376783): AVX-VNNI support is incomplete / placeholder.
-# Optimization is not finished. In particular the dimensions of the kernel
-# blocks can be changed as desired.
-cc_library(
-    name = "kernel_avxvnni",
-    srcs = [
-        "kernel_avxvnni.cc",
-    ],
-    copts = ruy_copts() + ruy_copts_avxvnni(),
-    deps = [
-        ":check_macros",
-        ":kernel_common",
-        ":opt_set",
-        ":platform",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-cc_library(
-    name = "pack_avxvnni",
-    srcs = [
-        "pack_avxvnni.cc",
-    ],
-    copts = ruy_copts() + ruy_copts_avxvnni(),
-    deps = [
-        ":check_macros",
-        ":matrix",
-        ":opt_set",
-        ":pack_common",
-        ":path",
-        ":platform",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-cc_library(
-    name = "have_built_path_for_avxvnni",
-    srcs = [
-        "have_built_path_for_avxvnni.cc",
-    ],
-    hdrs = [
-        "have_built_path_for.h",
-    ],
-    copts = ruy_copts() + ruy_copts_avxvnni(),
-    deps = [
-        ":opt_set",
-        ":platform",
-    ],
-)
-
 cc_library(
     name = "kernel",
     hdrs = [
@@ -735,9 +635,7 @@ cc_library(
         ":kernel_arm",  # fixdeps: keep
         ":kernel_avx2",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
-        ":kernel_avxvnni",  # fixdeps: keep
         ":kernel_common",
-        ":kernel_sse42",  # fixdeps: keep
         ":mat",
         ":matrix",
         ":mul_params",
@@ -767,9 +665,7 @@ cc_library(
         ":pack_arm",  # fixdeps: keep
         ":pack_avx2",  # fixdeps: keep
         ":pack_avx512",  # fixdeps: keep
-        ":pack_avxvnni",  # fixdeps: keep
         ":pack_common",
-        ":pack_sse42",  # fixdeps: keep
         ":path",
         ":platform",
         ":tune",
@@ -785,8 +681,6 @@ cc_library(
     deps = [
         ":have_built_path_for_avx2",
         ":have_built_path_for_avx512",
-        ":have_built_path_for_avxvnni",
-        ":have_built_path_for_sse42",
         ":platform",
     ],
 )

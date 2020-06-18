@@ -100,14 +100,10 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
 #elif RUY_PLATFORM_X86
   // x86 SIMD paths currently require both runtime detection, and detection of
   // whether we're building the path at all.
-  maybe_add(Path::kSse42,
-            [=]() { return HaveBuiltPathForSse42() && cpuinfo->Sse42(); });
   maybe_add(Path::kAvx2,
             [=]() { return HaveBuiltPathForAvx2() && cpuinfo->Avx2(); });
   maybe_add(Path::kAvx512,
             [=]() { return HaveBuiltPathForAvx512() && cpuinfo->Avx512(); });
-  maybe_add(Path::kAvxVnni,
-            [=]() { return HaveBuiltPathForAvxVnni() && cpuinfo->AvxVnni(); });
 #else
   (void)maybe_add;
   (void)cpuinfo;
