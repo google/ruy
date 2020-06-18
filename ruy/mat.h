@@ -226,6 +226,12 @@ struct Type final {
   std::uint8_t size = 0;
 };
 
+inline bool operator==(const Type& type1, const Type& type2) {
+  return type1.is_signed == type2.is_signed &&
+         type1.is_floating_point == type2.is_floating_point &&
+         type1.size == type2.size;
+}
+
 // Type-erased matrix.
 struct EMat final {
   Type data_type;

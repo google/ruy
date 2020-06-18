@@ -29,31 +29,74 @@ limitations under the License.
 
 namespace ruy {
 
-template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
-void RunKernelTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
-                    const PMat<RhsScalar>& rhs, const MulParamsType& mul_params,
-                    int start_row, int start_col, int end_row, int end_col,
-                    Mat<DstScalar>* dst) {
-  using Kernel =
-      Kernel<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>;
-  Kernel kernel(tuning);
-  using LhsLayout = typename Kernel::LhsLayout;
-  using RhsLayout = typename Kernel::RhsLayout;
-  // end_row and end_col may be larger than dst dimensions.
-  // that is because kernels write directly to the destination matrix, whose
-  // dimensions may not be a multiple of the kernel dimensions, and we try to
-  // keep this annoyance localized as an implementation detail in kernels,
-  // by allowing to pass rounded-up values down as far as possible.
-  // These assertions encode the contract.
-  RUY_DCHECK_LE(0, start_row);
-  RUY_DCHECK_LE(start_row, end_row);
-  RUY_DCHECK_LT(end_row, dst->layout.rows + LhsLayout::kCols);
-  RUY_DCHECK_EQ((end_row - start_row) % LhsLayout::kCols, 0);
-  RUY_DCHECK_LE(0, start_col);
-  RUY_DCHECK_LE(start_col, end_col);
-  RUY_DCHECK_LT(end_col, dst->layout.cols + RhsLayout::kCols);
-  RUY_DCHECK_EQ((end_col - start_col) % RhsLayout::kCols, 0);
+// KernelArgs is a helper to access the template parameter values from a Kernel
+// template instantiation.
+template <typename KernelType>
+struct KernelArgs {};
+
+template <Path tPath, typename tLhsScalar, typename tRhsScalar,
+          typename tDstScalar, typename tMulParamsType>
+struct KernelArgs<
+    Kernel<tPath, tLhsScalar, tRhsScalar, tDstScalar, tMulParamsType>> {
+  static constexpr Path kPath = tPath;
+  using LhsScalar = tLhsScalar;
+  using RhsScalar = tRhsScalar;
+  using DstScalar = tDstScalar;
+  using MulParamsType = tMulParamsType;
+};
+
+// RunKernel::Run() is the only place that directly invokes Kernel::Run().
+// It performs the types un-erasure, and factoring all Kernel::Run() calls
+// through this function also gives a single place where to conditionally
+// implement RUY_OPT(FAT_KERNEL). This should be a function but is a class to
+// hide and share some boilerplate (see the member types, and the RunTyped
+// method also using them).
+template <typename KernelType>
+class RunKernel final {
+ public:
+  static void Run(Tuning tuning, const SidePair<PEMat>& src, void* mul_params,
+                  const SidePair<int>& start, const SidePair<int>& end,
+                  EMat* dst) {
+    const auto& unerased_lhs = UneraseType<LhsScalar>(src[Side::kLhs]);
+    const auto& unerased_rhs = UneraseType<RhsScalar>(src[Side::kRhs]);
+    auto unerased_dst = UneraseType<DstScalar>(*dst);
+    RunTyped(tuning, unerased_lhs, unerased_rhs,
+             *static_cast<const MulParamsType*>(mul_params), start, end,
+             &unerased_dst);
+  }
+
+ private:
+  using Args = KernelArgs<KernelType>;
+  using LhsScalar = typename Args::LhsScalar;
+  using RhsScalar = typename Args::RhsScalar;
+  using DstScalar = typename Args::DstScalar;
+  using MulParamsType = typename Args::MulParamsType;
+  static void RunTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
+                       const PMat<RhsScalar>& rhs,
+                       const MulParamsType& mul_params,
+                       const SidePair<int>& start, const SidePair<int>& end,
+                       Mat<DstScalar>* dst) {
+    const int start_row = start[Side::kLhs];
+    const int start_col = start[Side::kRhs];
+    const int end_row = end[Side::kLhs];
+    const int end_col = end[Side::kRhs];
+    KernelType kernel(tuning);
+    using LhsLayout = typename KernelType::LhsLayout;
+    using RhsLayout = typename KernelType::RhsLayout;
+    // end_row and end_col may be larger than dst dimensions.
+    // that is because kernels write directly to the destination matrix, whose
+    // dimensions may not be a multiple of the kernel dimensions, and we try to
+    // keep this annoyance localized as an implementation detail in kernels,
+    // by allowing to pass rounded-up values down as far as possible.
+    // These assertions encode the contract.
+    RUY_DCHECK_LE(0, start_row);
+    RUY_DCHECK_LE(start_row, end_row);
+    RUY_DCHECK_LT(end_row, dst->layout.rows + LhsLayout::kCols);
+    RUY_DCHECK_EQ((end_row - start_row) % LhsLayout::kCols, 0);
+    RUY_DCHECK_LE(0, start_col);
+    RUY_DCHECK_LE(start_col, end_col);
+    RUY_DCHECK_LT(end_col, dst->layout.cols + RhsLayout::kCols);
+    RUY_DCHECK_EQ((end_col - start_col) % RhsLayout::kCols, 0);
 #if RUY_OPT(FAT_KERNEL)
   kernel.Run(lhs, rhs, mul_params, start_row, start_col, end_row, end_col, dst);
 #else
@@ -66,26 +109,22 @@ void RunKernelTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
     }
   }
 #endif
-}
-
-// Main entry point for kernels.
-template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
-void RunKernel(Tuning tuning, const SidePair<PEMat>& src, void* mul_params,
-               const SidePair<int>& start, const SidePair<int>& end,
-               EMat* dst) {
-  Mat<DstScalar> mdst = UneraseType<DstScalar>(*dst);
-  RunKernelTyped<ThePath, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      tuning, UneraseType<LhsScalar>(src[Side::kLhs]),
-      UneraseType<RhsScalar>(src[Side::kRhs]),
-      *static_cast<const MulParamsType*>(mul_params), start[Side::kLhs],
-      start[Side::kRhs], end[Side::kLhs], end[Side::kRhs], &mdst);
-}
+  }
+};
 
 template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
               MulParamsType> {
+  // Each Kernel specialization defines kPath as the ground-truth path that it
+  // implements. This is used in assertions. As we support fallbacks between
+  // paths (see RUY_INHERIT_KERNEL), Unless a specialization for a specific set
+  // of template parameters was defined, it is normal for template
+  // instantiations of the form Kernel<SomePath, ...> to have kPath!=SomePath.
+  // Assertions that kPath==SomePath are used in places where we know that we
+  // should be using a template specialization for a specific path rather than a
+  // fallback.
+  static constexpr Path kPath = Path::kStandardCpp;
   using AccumScalar = typename MulParamsType::AccumScalar;
   using LhsLayout = typename MulParamsType::StandardCppKernelLhsLayout;
   using RhsLayout = typename MulParamsType::StandardCppKernelRhsLayout;

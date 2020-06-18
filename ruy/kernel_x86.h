@@ -46,6 +46,7 @@ void Kernel8bitSse42(const KernelParams8bit<8, 8>& params);
 template <typename DstScalar>
 struct Kernel<Path::kSse42, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kSse42;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
@@ -65,6 +66,7 @@ void KernelFloatSse42(const KernelParamsFloat<8, 8>& params);
 template <>
 struct Kernel<Path::kSse42, float, float, float, MulParams<float, float>> {
   Tuning tuning = Tuning::kAuto;
+  static constexpr Path kPath = Path::kSse42;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
@@ -84,6 +86,7 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params);
 template <typename DstScalar>
 struct Kernel<Path::kAvx512, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kAvx512;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
@@ -107,6 +110,7 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& param);
 
 template <>
 struct Kernel<Path::kAvx512, float, float, float, MulParams<float, float>> {
+  static constexpr Path kPath = Path::kAvx512;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
@@ -131,6 +135,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params);
 template <typename DstScalar>
 struct Kernel<Path::kAvx2, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kAvx2;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
@@ -154,6 +159,7 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params);
 
 template <>
 struct Kernel<Path::kAvx2, float, float, float, MulParams<float, float>> {
+  static constexpr Path kPath = Path::kAvx2;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
@@ -181,6 +187,7 @@ void Kernel8bitAvxVnni(const KernelParams8bit<16, 16>& params);
 template <typename DstScalar>
 struct Kernel<Path::kAvxVnni, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kAvxVnni;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
@@ -199,6 +206,7 @@ void KernelFloatAvxVnni(const KernelParamsFloat<16, 16>& params);
 
 template <>
 struct Kernel<Path::kAvxVnni, float, float, float, MulParams<float, float>> {
+  static constexpr Path kPath = Path::kAvxVnni;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;

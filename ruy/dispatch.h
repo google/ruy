@@ -170,6 +170,52 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
   packed->zero_point = Pack<PackedScalar, Scalar>(src.zero_point);
 }
 
+template <typename KernelType>
+struct CheckKernelPathImpl {
+  static void Run(Path) {
+    // Do nothing.
+    // Path fallbacks are normal in general (see RUY_INHERIT_KERNEL).
+    // That is to say that one may instantiate ruy::Mul with a weird combination
+    // of types, such as LhsScalar==float and RhsScalar==double, and have it
+    // work by silently falling back to Path::kStandardCpp. Only in specific
+    // cases do we have dedicated kernels overriding that fallback, and that is
+    // what partial specializations of this template will check.
+  }
+};
+
+#if RUY_DCHECK_IS_ENABLED
+template <Path ThePath, typename SrcScalar, typename AccumScalar,
+          typename DstScalar>
+struct CheckKernelPathImpl<Kernel<ThePath, SrcScalar, SrcScalar, DstScalar,
+                                  MulParams<AccumScalar, DstScalar>>>
+    final {
+  using KernelType = Kernel<ThePath, SrcScalar, SrcScalar, DstScalar,
+                            MulParams<AccumScalar, DstScalar>>;
+  static void Run(Path expected_path) {
+    // We want to assert that we are using a dedicated Kernel specialization and
+    // not a fallback when we know we are in a case where such a kernel
+    // specialization exists. At the moment in the current state of ruy's
+    // architecture support for ARM and x86, that is when LhsScalar==RhsScalar
+    // (already implied in this partial specialization) and when that type is
+    // either float, int8, or uint8. Indeed, we have kernels supporting float
+    // and int8, and we have the packing code converting uint8 to int8 (see
+    // PackedTypeImpl).
+    static constexpr bool kSrcScalarTypeSupportsFastKernels =
+        std::is_same<SrcScalar, float>::value ||
+        std::is_same<SrcScalar, std::int8_t>::value ||
+        std::is_same<SrcScalar, std::uint8_t>::value;
+    if (kSrcScalarTypeSupportsFastKernels) {
+      RUY_DCHECK_EQ(expected_path, KernelType::kPath);
+    }
+  }
+};
+#endif
+
+template <typename KernelType>
+void CheckKernelPath(Path expected_path) {
+  CheckKernelPathImpl<KernelType>::Run(expected_path);
+}
+
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
 void PopulateTrMulParams(TrMulParams* params) {
@@ -207,8 +253,8 @@ void PopulateTrMulParams(TrMulParams* params) {
       &RunPack<ThePath, LhsKernelLayout, LhsScalar, PackedLhsScalar>;
   params->run_pack[Side::kRhs] =
       &RunPack<ThePath, RhsKernelLayout, RhsScalar, PackedRhsScalar>;
-  params->run_kernel = &RunKernel<ThePath, PackedLhsScalar, PackedRhsScalar,
-                                  DstScalar, MulParamsType>;
+  params->run_kernel = &RunKernel<Kernel>::Run;
+  CheckKernelPath<Kernel>(ThePath);
 }
 
 // PopulateTrMulParamsAllCompiledPaths calls into one of multiple

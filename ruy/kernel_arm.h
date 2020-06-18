@@ -55,6 +55,7 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params);
 template <typename DstScalar>
 struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kNeon;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   Tuning tuning = Tuning::kAuto;
@@ -82,6 +83,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 template <typename DstScalar>
 struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kNeon;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 2>;
   Tuning tuning = Tuning::kAuto;
@@ -105,6 +107,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 template <typename DstScalar>
 struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
               MulParams<std::int32_t, DstScalar>> {
+  static constexpr Path kPath = Path::kNeonDotprod;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
@@ -135,6 +138,7 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params);
 // A Float kernel for ARM64 Neon.
 template <>
 struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
+  static constexpr Path kPath = Path::kNeon;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
@@ -158,6 +162,7 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
 // A Float kernel for ARM32 Neon.
 template <>
 struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
+  static constexpr Path kPath = Path::kNeon;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 4>;
@@ -181,6 +186,7 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
 template <>
 struct Kernel<Path::kNeonDotprod, float, float, float,
               MulParams<float, float>> {
+  static constexpr Path kPath = Path::kNeonDotprod;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
