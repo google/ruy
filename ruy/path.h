@@ -59,25 +59,21 @@ enum class Path : std::uint8_t {
   //
   // This is intended for testing/development, and as a fallback for when
   // the SIMD ISA extensions required by other paths are unavailable at runtime.
-  kStandardCpp = 0x2,
+  kStandardCpp = 0x1,
 
 #if RUY_PLATFORM_ARM
-  // ARM architectures.
-  //
   // Optimized path using a widely available subset of ARM NEON instructions.
-  kNeon = 0x4,
+  kNeon = 0x10,
   // Optimized path making use of ARM NEON dot product instructions that are
   // available on newer ARM cores.
-  kNeonDotprod = 0x8,
+  kNeonDotprod = 0x20,
 #endif  // RUY_PLATFORM_ARM
 
 #if RUY_PLATFORM_X86
-  // x86 architectures.
-  //
   // Optimized for AVX2.
-  kAvx2 = 0x8,
+  kAvx2 = 0x10,
   // Optimized for AVX-512.
-  kAvx512 = 0x10,
+  kAvx512 = 0x20,
 #endif  // RUY_PLATFORM_X86
 };
 
