@@ -445,7 +445,10 @@ cc_library(
     srcs = ["apply_multiplier.cc"],
     hdrs = ["apply_multiplier.h"],
     copts = ruy_copts(),
-    deps = [":check_macros"],
+    deps = [
+        ":check_macros",
+        ":mul_params",
+    ],
 )
 
 cc_library(

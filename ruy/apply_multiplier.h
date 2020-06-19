@@ -22,6 +22,7 @@ limitations under the License.
 #include <type_traits>
 
 #include "ruy/check_macros.h"
+#include "ruy/mul_params.h"
 
 namespace ruy {
 
@@ -33,9 +34,9 @@ namespace ruy {
 // ReferenceMul and in Path::kStandardCpp. There isn't a point in optimizing it,
 // either. Fast paths have that multiplier work done as part of the kernel,
 // typically written in assembly anyway.
-template <typename MulParamsType>
-void ApplyMultiplier(const MulParamsType& mul_params, int row,
-                     typename MulParamsType::AccumScalar* accum);
+template <typename AccumScalar, typename DstScalar>
+void ApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
+                     int row, AccumScalar* accum);
 
 namespace detail {
 
@@ -66,30 +67,25 @@ std::int32_t MultiplyByQuantizedMultiplier(std::int32_t x,
 // Helper to apply a fixed-point multiplier.  Only 'applicable' if AccumScalar
 // is int32 (i.e. in all cases except floating-point) and if the destination is
 // not int32 (i.e. unless the user wants to get raw accumulators).
-template <typename MulParamsType,
-          bool IsApplicable = std::is_same<typename MulParamsType::AccumScalar,
-                                           std::int32_t>::value &&
-                              !std::is_same<typename MulParamsType::DstScalar,
-                                            std::int32_t>::value>
+template <typename AccumScalar, typename DstScalar,
+          bool IsApplicable = std::is_same<AccumScalar, std::int32_t>::value &&
+                              !std::is_same<DstScalar, std::int32_t>::value>
 struct ApplyMultiplierImpl {};
 
 // Specialization in non-applicable case: do nothing, just check that values
 // are default.
-template <typename MulParamsType>
-struct ApplyMultiplierImpl<MulParamsType, false> {
-  using AccumScalar = typename MulParamsType::AccumScalar;
-  using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& mul_params, int, AccumScalar*) {
+template <typename AccumScalar, typename DstScalar>
+struct ApplyMultiplierImpl<AccumScalar, DstScalar, false> {
+  static void Run(const MulParams<AccumScalar, DstScalar>& mul_params, int,
+                  AccumScalar*) {
     RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
     RUY_DCHECK_EQ(mul_params.multiplier_exponent(), 0);
   }
 };
 
-template <typename MulParamsType>
-struct ApplyMultiplierImpl<MulParamsType, true> {
-  using AccumScalar = typename MulParamsType::AccumScalar;
-  using DstScalar = typename MulParamsType::DstScalar;
-  static void Run(const MulParamsType& mul_params, int row,
+template <typename AccumScalar, typename DstScalar>
+struct ApplyMultiplierImpl<AccumScalar, DstScalar, true> {
+  static void Run(const MulParams<AccumScalar, DstScalar>& mul_params, int row,
                   AccumScalar* accum) {
     AccumScalar m = mul_params.multiplier_fixedpoint_perchannel()
                         ? mul_params.multiplier_fixedpoint_perchannel()[row]
@@ -103,10 +99,11 @@ struct ApplyMultiplierImpl<MulParamsType, true> {
 
 }  // namespace detail
 
-template <typename MulParamsType>
-void ApplyMultiplier(const MulParamsType& mul_params, int row,
-                     typename MulParamsType::AccumScalar* accum) {
-  detail::ApplyMultiplierImpl<MulParamsType>::Run(mul_params, row, accum);
+template <typename AccumScalar, typename DstScalar>
+void ApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
+                     int row, AccumScalar* accum) {
+  detail::ApplyMultiplierImpl<AccumScalar, DstScalar>::Run(mul_params, row,
+                                                           accum);
 }
 
 }  // namespace ruy

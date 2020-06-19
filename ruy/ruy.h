@@ -40,8 +40,8 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Mat<LhsScalar> internal_lhs = ToInternal(lhs);
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
   Mat<DstScalar> internal_dst = ToInternal(*dst);
-  MulFrontEnd<CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(
-      internal_lhs, internal_rhs, mul_params, get_ctx(context), &internal_dst);
+  MulFrontEnd<CompiledPaths>(internal_lhs, internal_rhs, mul_params,
+                             get_ctx(context), &internal_dst);
 }
 
 // Performs a multiplication of matrices, with some extra features for
