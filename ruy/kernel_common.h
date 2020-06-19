@@ -22,7 +22,6 @@ limitations under the License.
 
 #include "ruy/apply_multiplier.h"
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"

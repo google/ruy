@@ -19,10 +19,9 @@ limitations under the License.
 #include <cstdint>
 #include <type_traits>
 
+#include "ruy/asm_helpers.h"
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/mat.h"
-#include "ruy/matrix.h"
 #include "ruy/opt_set.h"
 #include "ruy/pack_common.h"
 #include "ruy/path.h"

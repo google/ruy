@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "ruy/kernel.h"
+#include "ruy/kernel_arm.h"
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"

@@ -27,7 +27,6 @@ limitations under the License.
 #include "ruy/allocator.h"
 #include "ruy/block_map.h"
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/cpu_cache_params.h"
 #include "ruy/cpuinfo.h"
 #include "ruy/ctx.h"

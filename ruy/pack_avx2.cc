@@ -17,9 +17,8 @@ limitations under the License.
 #include <cstring>
 
 #include "ruy/check_macros.h"
-#include "ruy/matrix.h"
 #include "ruy/opt_set.h"
-#include "ruy/pack.h"
+#include "ruy/pack_x86.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"

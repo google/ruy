@@ -422,16 +422,15 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":check_macros",
-        ":common",
         ":matrix",
         ":size_util",
     ],
 )
 
 cc_library(
-    name = "common",
+    name = "asm_helpers",
     hdrs = [
-        "common.h",
+        "asm_helpers.h",
     ],
     copts = ruy_copts(),
     deps = [
@@ -453,16 +452,12 @@ cc_library(
 cc_library(
     name = "kernel_common",
     hdrs = [
-        "kernel.h",
-        "kernel_arm.h",
         "kernel_common.h",
-        "kernel_x86.h",
     ],
     copts = ruy_copts(),
     deps = [
         ":apply_multiplier",
         ":check_macros",
-        ":common",
         ":mat",
         ":matrix",
         ":mul_params",
@@ -479,15 +474,11 @@ cc_library(
 cc_library(
     name = "pack_common",
     hdrs = [
-        "pack.h",
-        "pack_arm.h",
         "pack_common.h",
-        "pack_x86.h",
     ],
     copts = ruy_copts(),
     deps = [
         ":check_macros",
-        ":common",
         ":mat",
         ":matrix",
         ":opt_set",
@@ -504,12 +495,19 @@ cc_library(
         "kernel_arm32.cc",
         "kernel_arm64.cc",
     ],
+    hdrs = ["kernel_arm.h"],
     copts = ruy_copts(),
     deps = [
-        ":common",
+        ":asm_helpers",
         ":kernel_common",
+        ":mat",
+        ":mul_params",
         ":opt_set",
+        ":path",
         ":platform",
+        ":side_pair",
+        ":size_util",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -519,12 +517,19 @@ cc_library(
     srcs = [
         "pack_arm.cc",
     ],
+    hdrs = [
+        "pack_arm.h",
+    ],
     copts = ruy_copts(),
     deps = [
-        ":common",
+        ":asm_helpers",
+        ":check_macros",
+        ":mat",
         ":opt_set",
         ":pack_common",
+        ":path",
         ":platform",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -534,12 +539,19 @@ cc_library(
     srcs = [
         "kernel_avx512.cc",
     ],
+    hdrs = [
+        "kernel_x86.h",
+    ],
     copts = ruy_copts() + ruy_copts_avx512(),
     deps = [
         ":check_macros",
         ":kernel_common",
+        ":mat",
+        ":mul_params",
         ":opt_set",
+        ":path",
         ":platform",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -549,14 +561,18 @@ cc_library(
     srcs = [
         "pack_avx512.cc",
     ],
+    hdrs = [
+        "pack_x86.h",
+    ],
     copts = ruy_copts() + ruy_copts_avx512(),
     deps = [
         ":check_macros",
-        ":matrix",
+        ":mat",
         ":opt_set",
         ":pack_common",
         ":path",
         ":platform",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -581,12 +597,19 @@ cc_library(
     srcs = [
         "kernel_avx2.cc",
     ],
+    hdrs = [
+        "kernel_x86.h",
+    ],
     copts = ruy_copts() + ruy_copts_avx2(),
     deps = [
         ":check_macros",
         ":kernel_common",
+        ":mat",
+        ":mul_params",
         ":opt_set",
+        ":path",
         ":platform",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -596,14 +619,18 @@ cc_library(
     srcs = [
         "pack_avx2.cc",
     ],
+    hdrs = [
+        "pack_x86.h",
+    ],
     copts = ruy_copts() + ruy_copts_avx2(),
     deps = [
         ":check_macros",
-        ":matrix",
+        ":mat",
         ":opt_set",
         ":pack_common",
         ":path",
         ":platform",
+        ":tune",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -627,13 +654,11 @@ cc_library(
     name = "kernel",
     hdrs = [
         "kernel.h",
-        "kernel_common.h",
     ],
     copts = ruy_copts(),
     deps = [
         ":apply_multiplier",
         ":check_macros",
-        ":common",
         ":kernel_arm",  # fixdeps: keep
         ":kernel_avx2",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
@@ -655,12 +680,10 @@ cc_library(
     name = "pack",
     hdrs = [
         "pack.h",
-        "pack_common.h",
     ],
     copts = ruy_copts(),
     deps = [
         ":check_macros",
-        ":common",
         ":mat",
         ":matrix",
         ":opt_set",
@@ -804,7 +827,6 @@ cc_library(
         ":allocator",
         ":block_map",
         ":check_macros",
-        ":common",
         ":cpu_cache_params",
         ":cpuinfo",
         ":ctx",
@@ -861,7 +883,6 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":check_macros",
-        ":common",
         ":mat",
         ":mul_params",
         ":side_pair",

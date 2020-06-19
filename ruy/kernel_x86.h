@@ -18,10 +18,8 @@ limitations under the License.
 
 #include <cstdint>
 
-#include "ruy/common.h"
 #include "ruy/kernel_common.h"
 #include "ruy/mat.h"
-#include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
 #include "ruy/path.h"

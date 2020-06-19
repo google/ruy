@@ -15,8 +15,8 @@ limitations under the License.
 
 #include <cstdint>
 
-#include "ruy/common.h"
-#include "ruy/kernel.h"
+#include "ruy/asm_helpers.h"
+#include "ruy/kernel_arm.h"
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"

@@ -17,7 +17,7 @@ limitations under the License.
 #include <cstdint>
 
 #include "ruy/check_macros.h"
-#include "ruy/kernel.h"
+#include "ruy/kernel_x86.h"
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"

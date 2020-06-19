@@ -96,7 +96,6 @@ limitations under the License.
 #include <utility>
 
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/matrix.h"
 #include "ruy/size_util.h"
 

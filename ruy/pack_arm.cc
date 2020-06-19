@@ -12,11 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+
+#include "ruy/pack_arm.h"
+
 #include <cstdint>
 
-#include "ruy/common.h"
+#include "ruy/asm_helpers.h"
 #include "ruy/opt_set.h"
-#include "ruy/pack.h"
+#include "ruy/pack_common.h"
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 

@@ -19,10 +19,9 @@ limitations under the License.
 #include <cstddef>
 #include <cstdint>
 
-#include "ruy/common.h"
+#include "ruy/asm_helpers.h"
 #include "ruy/kernel_common.h"
 #include "ruy/mat.h"
-#include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
 #include "ruy/path.h"

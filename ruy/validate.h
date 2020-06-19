@@ -23,7 +23,6 @@ limitations under the License.
 #include <type_traits>
 
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
 #include "ruy/side_pair.h"
