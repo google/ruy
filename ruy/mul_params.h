@@ -23,31 +23,13 @@ limitations under the License.
 
 namespace ruy {
 
-// In general we allow zero_point's to have any Scalar value. This is called
-// 'asymmetric' quantization. We do take advantage of the optimization
-// opportunities when zero_points happen at runtime to be 'symmetric' (e.g. the
-// int8 value 0 or the uint8 value 128), but we still generate code to handle
-// the general asymmetric case. By choosing kSymmetric here, one opts out of
-// this and supports only the symmetric case, in exchange for smaller code size.
-enum class ZeroPointSupport { kGeneral, kSymmetric };
-
-// In general we allow all Layout's, even if we may use slow paths for some
-// kinds of layouts. By choosing kRCC, one may opt out of this and
-// only keep support for the simplest and most efficient combination of
-// Layout's, in exchange for smaller code size. The case covered by
-// kRCC is where the storage orders are exactly the following:
-//    - LHS is RowMajor
-//    - RHS is ColMajor
-//    - Destination is ColMajor
-enum class LayoutSupport { kGeneral, kRCC };
-
 // MulParams describes all about a matrix multiplication that
 // isn't encoded in the LHS, RHS and destination matrices. Some of that
 // information is encoded as compile-time constants and types (for instance, the
 // choice of accumulator type, AccumScalar). Some of that information is encoded
 // as runtime values (for instance, the optional bias vector).
 template <typename tAccumScalar, typename tDstScalar>
-class MulParams /* not final, legitimate to subclass */ {
+class MulParams final {
  public:
   // Accumulator type. The type of accumulators used to compute the dot-products
   // before being ultimately casted to the destination type.
@@ -113,21 +95,7 @@ class MulParams /* not final, legitimate to subclass */ {
   DstScalar clamp_max_ = std::is_floating_point<DstScalar>::value
                              ? std::numeric_limits<DstScalar>::infinity()
                              : std::numeric_limits<DstScalar>::max();
-
- public:
-  // See above enum LayoutSupport
-  static constexpr LayoutSupport kLayoutSupport = LayoutSupport::kGeneral;
-  // See above enum ZeroPointSupport
-  static constexpr ZeroPointSupport kZeroPointSupport =
-      ZeroPointSupport::kGeneral;
-  // Testing-only, not meant to be used by actual users:
-  // Used for testing of various kernel layouts.
-  using StandardCppKernelLhsLayout = FixedKernelLayout<Order::kColMajor, 1, 1>;
-  using StandardCppKernelRhsLayout = FixedKernelLayout<Order::kColMajor, 1, 1>;
 };
-
-template <typename tAccumScalar, typename tDstScalar>
-using BasicSpec = MulParams<tAccumScalar, tDstScalar>;
 
 }  // namespace ruy
 

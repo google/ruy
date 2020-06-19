@@ -31,42 +31,19 @@ limitations under the License.
 namespace ruy {
 namespace detail {
 
-// If the MulParamsType's LayoutSupport covers only some special cases,
-// this function enforces that the matrix multiplication at hand falls into
-// that special case.
-template <typename MulParamsType>
-void ValidateLayouts(const MatLayout& lhs_layout, const MatLayout& rhs_layout,
-                     const MatLayout& dst_layout) {
-  if (MulParamsType::kLayoutSupport == LayoutSupport::kRCC) {
-    RUY_DCHECK(IsRowMajor(lhs_layout));
-    RUY_DCHECK(IsColMajor(rhs_layout));
-    RUY_DCHECK(IsColMajor(dst_layout));
-  }
-}
-
 template <typename Scalar>
-bool IsSymmetricZeroPoint(Scalar zero_point) {
-  return zero_point == SymmetricZeroPoint<Scalar>();
-}
-
-template <typename MulParamsType, typename Scalar>
 void CheckZeroPoint(Scalar zero_point) {
-  if (std::is_floating_point<Scalar>::value ||
-      MulParamsType::kZeroPointSupport == ZeroPointSupport::kSymmetric) {
-    RUY_DCHECK(IsSymmetricZeroPoint(zero_point));
+  if (std::is_floating_point<Scalar>::value) {
+    RUY_DCHECK(!zero_point);
   }
 }
 
-template <typename MulParamsType, typename LhsScalar, typename RhsScalar,
-          typename DstScalar>
+template <typename LhsScalar, typename RhsScalar, typename DstScalar>
 void ValidateZeroPoints(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
                         DstScalar dst_zero_point) {
-  // If the MulParamsType's ZeroPointSupport covers only some special cases,
-  // this function enforces that the matrix multiplication at hand falls into
-  // that special case.
-  CheckZeroPoint<MulParamsType>(lhs_zero_point);
-  CheckZeroPoint<MulParamsType>(rhs_zero_point);
-  CheckZeroPoint<MulParamsType>(dst_zero_point);
+  CheckZeroPoint(lhs_zero_point);
+  CheckZeroPoint(rhs_zero_point);
+  CheckZeroPoint(dst_zero_point);
 
   // Guard against the case when both LHS and RHS zero_point's are equal to
   // the minimum representable value. In that case, padding with zero_point
@@ -107,9 +84,7 @@ template <typename LhsScalar, typename RhsScalar, typename DstScalar,
           typename MulParamsType>
 void Validate(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
               const Mat<DstScalar>& dst, const MulParamsType& mul_params) {
-  detail::ValidateLayouts<MulParamsType>(lhs.layout, rhs.layout, dst.layout);
-  detail::ValidateZeroPoints<MulParamsType>(lhs.zero_point, rhs.zero_point,
-                                            dst.zero_point);
+  detail::ValidateZeroPoints(lhs.zero_point, rhs.zero_point, dst.zero_point);
   detail::ValidateRawAccumulatorsDst<MulParamsType>(mul_params, dst.zero_point);
 }
 
