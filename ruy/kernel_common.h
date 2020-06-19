@@ -38,7 +38,7 @@ namespace ruy {
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename DstScalar, typename MulParamsType>
-struct Kernel {};
+struct Kernel;
 
 #define RUY_INHERIT_KERNEL(PARENT, CHILD)                                 \
   template <typename LhsScalar, typename RhsScalar, typename DstScalar,   \

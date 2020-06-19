@@ -112,10 +112,42 @@ class RunKernel final {
   }
 };
 
-template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename MulParamsType>
-struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
-              MulParamsType> {
+template <Path ThePath>
+struct StandardCppKernelLayout {};
+
+template <>
+struct StandardCppKernelLayout<Path::kStandardCpp> {
+  using Lhs = FixedKernelLayout<Order::kColMajor, 1, 1>;
+  using Rhs = FixedKernelLayout<Order::kColMajor, 1, 1>;
+};
+
+// A variant exercising RowMajor square blocks
+template <>
+struct StandardCppKernelLayout<Path::kInternalStandardCppVariant1> {
+  using Lhs = FixedKernelLayout<Order::kRowMajor, 4, 4>;
+  using Rhs = FixedKernelLayout<Order::kRowMajor, 4, 4>;
+};
+
+// A variant with a rectangular layout: 4x8
+template <>
+struct StandardCppKernelLayout<Path::kInternalStandardCppVariant2> {
+  using Lhs = FixedKernelLayout<Order::kColMajor, 1, 4>;
+  using Rhs = FixedKernelLayout<Order::kColMajor, 1, 8>;
+};
+
+// A variant with different block orders in LHS vs RHS.
+template <>
+struct StandardCppKernelLayout<Path::kInternalStandardCppVariant3> {
+  using Lhs = FixedKernelLayout<Order::kColMajor, 2, 16>;
+  using Rhs = FixedKernelLayout<Order::kRowMajor, 2, 8>;
+};
+
+// General implementation of the Kernel template, overridden by template
+// specializations for specific SIMD code paths. This general implementation
+// covers Path::kStandardCpp and its internal test-only variants.
+template <Path ThePath, typename LhsScalar, typename RhsScalar,
+          typename DstScalar, typename MulParamsType>
+struct Kernel {
   // Each Kernel specialization defines kPath as the ground-truth path that it
   // implements. This is used in assertions. As we support fallbacks between
   // paths (see RUY_INHERIT_KERNEL), Unless a specialization for a specific set
@@ -124,10 +156,10 @@ struct Kernel<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
   // Assertions that kPath==SomePath are used in places where we know that we
   // should be using a template specialization for a specific path rather than a
   // fallback.
-  static constexpr Path kPath = Path::kStandardCpp;
+  static constexpr Path kPath = ThePath;
   using AccumScalar = typename MulParamsType::AccumScalar;
-  using LhsLayout = typename MulParamsType::StandardCppKernelLhsLayout;
-  using RhsLayout = typename MulParamsType::StandardCppKernelRhsLayout;
+  using LhsLayout = typename StandardCppKernelLayout<ThePath>::Lhs;
+  using RhsLayout = typename StandardCppKernelLayout<ThePath>::Rhs;
   explicit Kernel(Tuning) {}
   void Run(const PMat<LhsScalar>& lhs, const PMat<RhsScalar>& rhs,
            const MulParamsType& mul_params, int start_row, int start_col,

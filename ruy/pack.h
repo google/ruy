@@ -96,10 +96,12 @@ limitations under the License.
 
 namespace ruy {
 
-template <typename FixedKernelLayout, typename Scalar, typename PackedScalar,
-          typename SumsType>
-struct PackImpl<Path::kStandardCpp, FixedKernelLayout, Scalar, PackedScalar,
-                SumsType> {
+// General implementation of the PackImpl template, overridden by template
+// specializations for specific SIMD code paths. This general implementation
+// covers Path::kStandardCpp and its internal test-only variants.
+template <Path ThePath, typename FixedKernelLayout, typename Scalar,
+          typename PackedScalar, typename SumsType>
+struct PackImpl {
   static void Run(Tuning, const Mat<Scalar>& src_matrix,
                   PMat<PackedScalar>* packed_matrix, int start_col,
                   int end_col) {

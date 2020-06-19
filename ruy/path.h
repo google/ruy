@@ -60,6 +60,13 @@ enum class Path : std::uint8_t {
   // This is intended for testing/development, and as a fallback for when
   // the SIMD ISA extensions required by other paths are unavailable at runtime.
   kStandardCpp = 0x1,
+  // Internal, test-only variants of StandardCpp used to exercise more corners
+  // of internal ruy logic.
+  // They are intentionally omitted from ruy::kAllPaths and ruy::kNonArchPaths,
+  // and are only ever used in dedicated ruy tests explicitly referencing them.
+  kInternalStandardCppVariant1 = 0x2,
+  kInternalStandardCppVariant2 = 0x4,
+  kInternalStandardCppVariant3 = 0x8,
 
 #if RUY_PLATFORM_ARM
   // Optimized path using a widely available subset of ARM NEON instructions.
@@ -107,7 +114,8 @@ inline Path GetMostSignificantPath(Path path_mask) {
 // We define three disjoint sets of paths.
 //
 // kNonArchPaths is the set of paths that are defined regardless of
-// the CPU architecture. These paths are slow, but portable. At the moment,
+// the CPU architecture (excluding some internal test-only paths).
+// These paths are slow, but portable. At the moment,
 // that is only kStandardCpp. In the past, that used to also include a
 // kReference path providing an even more basic implementation, but that has
 // been split out into a separate library, see the ReferenceMul function.
@@ -142,11 +150,24 @@ constexpr Path kDefaultArchPaths = Path::kNone;
 constexpr Path kExtraArchPaths = Path::kNone;
 #endif
 
+// kNonArchPathsIncludingInternalVariants is the set of all
+// non-architecture-specific paths without exception. This includes some paths
+// that are internal-only and test-only and not useful to any user.
+static constexpr Path kNonArchPathsIncludingInternalVariants =
+    kNonArchPaths | Path::kInternalStandardCppVariant1 |
+    Path::kInternalStandardCppVariant2 | Path::kInternalStandardCppVariant3;
+
 // Enforce that kDefaultArchPaths, kExtraArchPaths and
-// kNonArchPaths are mutually disjoint.
+// kNonArchPathsIncludingInternalVariants are mutually disjoint,
+// and that kNonArchPaths is a subset of kNonArchPathsIncludingInternalVariants.
 static_assert(Disjoint(kDefaultArchPaths, kExtraArchPaths), "");
-static_assert(Disjoint(kDefaultArchPaths, kNonArchPaths), "");
-static_assert(Disjoint(kExtraArchPaths, kNonArchPaths), "");
+static_assert(Disjoint(kDefaultArchPaths,
+                       kNonArchPathsIncludingInternalVariants),
+              "");
+static_assert(Disjoint(kExtraArchPaths, kNonArchPathsIncludingInternalVariants),
+              "");
+static_assert(Disjoint(kNonArchPaths, ~kNonArchPathsIncludingInternalVariants),
+              "");
 
 // We now define two aggregate sets of paths for convenience, including
 // both architecture-specific paths and some portable fallbacks.
@@ -156,13 +177,21 @@ static_assert(Disjoint(kExtraArchPaths, kNonArchPaths), "");
 // uses.
 constexpr Path kDefaultPaths = Path::kStandardCpp | kDefaultArchPaths;
 
-// kAllPaths is the set of all paths that are available to compile.
+// kAllPaths is the set of all paths that are available to compile, except
+// some some internal test-only paths that no user would ever want to use.
 // In addition to the Default paths, it also includes the extra
 // architecture paths, as well as any other non-arch path besides kStandardCpp
 // (there is none at the moment).
 constexpr Path kAllPaths = kNonArchPaths | kDefaultArchPaths | kExtraArchPaths;
 
+// kAllPathsIncludingInternalVariants is the set of all paths without exception.
+// This includes some paths that are internal-only and test-only and not useful
+// to any user.
+static constexpr Path kAllPathsIncludingInternalVariants =
+    kAllPaths | kNonArchPathsIncludingInternalVariants;
+
 static_assert(Disjoint(kDefaultPaths, ~kAllPaths), "");
+static_assert(Disjoint(kAllPaths, ~kAllPathsIncludingInternalVariants), "");
 
 }  // namespace ruy
 

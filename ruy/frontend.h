@@ -50,8 +50,10 @@ void MulFrontEndUpToCreateTrMulParams(const Mat<LhsScalar>& lhs,
                                       const MulParamsType& mul_params, Ctx* ctx,
                                       TrMulParams* params) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
-  static_assert((CompiledPaths & ~kAllPaths) == Path::kNone,
-                "CompiledPaths must be a subset of ruy::kAllPaths");
+  static_assert(
+      (CompiledPaths & ~kAllPathsIncludingInternalVariants) == Path::kNone,
+      "CompiledPaths must be a subset of "
+      "ruy::kAllPathsIncludingInternalVariants");
 
   // Perform validation of parameters early so that failures are easier to map
   // to user errors. In particular, perform this validation before the

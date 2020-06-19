@@ -15,10 +15,9 @@ limitations under the License.
 
 #include "ruy/ctx.h"
 
-#include <functional>
 #include <cstdlib>
+#include <functional>
 #include <string>
-
 
 #include "ruy/check_macros.h"
 #include "ruy/cpuinfo.h"
@@ -66,9 +65,9 @@ int GetHexIntEnvVarOrZero(const char* name) {
 // supported. Path bits that are not set in the input
 // `paths_to_detect` value are also left not set in the return value.
 Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
-  // Paths in kNonArchPaths are always implicitly supported.
-  // Further logic below may add more bits to `results`.
-  Path result = kNonArchPaths;
+  // Paths in kNonArchPathsIncludingInternalVariants are always implicitly
+  // supported. Further logic below may add more bits to `results`.
+  Path result = kNonArchPathsIncludingInternalVariants;
 
   // Conditionally sets the `path` bit in `result`, if reported as supported
   // by the `is_supported` predicate.
@@ -111,7 +110,9 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
 
   // Sanity checks
   RUY_DCHECK_EQ(kNonArchPaths & ~result, Path::kNone);
-  RUY_DCHECK_EQ(result & ~(kNonArchPaths | paths_to_detect), Path::kNone);
+  RUY_DCHECK_EQ(
+      result & ~(kNonArchPathsIncludingInternalVariants | paths_to_detect),
+      Path::kNone);
   return result;
 }
 
