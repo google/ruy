@@ -244,20 +244,19 @@ int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
   return std::min(1 << guess_log2, ctx->max_num_threads());
 }
 
-LoopStructure GetLoopStructure(int tentative_thread_count, int rows, int cols,
-                               int depth, int lhs_scalar_size,
-                               int rhs_scalar_size,
-                               const CpuCacheParams& cpu_cache_params) {
+bool UseSimpleLoop(int tentative_thread_count, int rows, int cols, int depth,
+                   int lhs_scalar_size, int rhs_scalar_size,
+                   const CpuCacheParams& cpu_cache_params) {
   if (tentative_thread_count == 1) {
     const BlockMapTraversalOrder traversal_order = GetTraversalOrder(
         rows, cols, depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
     // If we are in the GEMV case or the block_map would be using linear
     // traversal anyway, use the simple loop.
     if ((cols == 1) || traversal_order == BlockMapTraversalOrder::kLinear) {
-      return LoopStructure::kSimple;
+      return true;
     }
   }
-  return LoopStructure::kGeneral;
+  return false;
 }
 
 }  // namespace
@@ -285,16 +284,13 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
 
   const int tentative_thread_count = GetThreadCount(ctx, rows, cols, depth);
   const auto& cpu_cache_params = ctx->mutable_cpuinfo()->CacheParams();
-  const auto loop_structure = GetLoopStructure(
-      tentative_thread_count, rows, cols, depth, lhs.data_type.size,
-      rhs.data_type.size, cpu_cache_params);
-  Allocator* allocator = ctx->GetMainAllocator();
 
   // Case of running this TrMul as a simple loop.
   // This is a good place to start reading this function: all the rest
   // of this function is just an optimized, but functionally equivalent,
   // version of that.
-  if (loop_structure == LoopStructure::kSimple) {
+  if (UseSimpleLoop(tentative_thread_count, rows, cols, depth,
+                    lhs.data_type.size, rhs.data_type.size, cpu_cache_params)) {
     profiler::ScopeLabel label_simple("TrMulImpl, simple loop");
     Tuning tuning = ctx->GetMainThreadTuning();
 
@@ -311,6 +307,7 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   }
 
   profiler::ScopeLabel label_general("TrMulImpl, general case");
+  Allocator* main_allocator = ctx->GetMainAllocator();
 
   // Initialize block map.
   BlockMap block_map;
@@ -334,7 +331,7 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params->is_prepacked[side]) {
         const int size = NumBlocksPerSide(side, block_map);
-        allocator->Allocate(size, &packing_status[side]);
+        main_allocator->Allocate(size, &packing_status[side]);
         for (int i = 0; i < size; i++) {
           packing_status[side][i].store(PackingStatus::kNotStarted,
                                         std::memory_order_relaxed);
@@ -347,11 +344,11 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   // we get the alignment ensuring that it sits alone in its exclusives
   // reservation granule.
   std::atomic<int>* atomic_block_id;
-  allocator->Allocate(1, &atomic_block_id);
+  main_allocator->Allocate(1, &atomic_block_id);
 
   // Create task objects.
   TrMulTask* tasks;
-  allocator->Allocate(thread_count, &tasks);
+  main_allocator->Allocate(thread_count, &tasks);
 
   atomic_block_id->store(thread_count);
 

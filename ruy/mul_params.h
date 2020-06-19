@@ -23,13 +23,6 @@ limitations under the License.
 
 namespace ruy {
 
-// Our 'general' loop structure (the default) involves multi-threading and
-// complicated loops aiming to optimize cache-friendliness. One may opt out of
-// this and pick the 'simple' loop structure instead, which only performs well
-// for small matrix sizes and only allows using one thread, in exchange for
-// smaller code size.
-enum class LoopStructure { kGeneral, kSimple, kAuto };
-
 // In general we allow zero_point's to have any Scalar value. This is called
 // 'asymmetric' quantization. We do take advantage of the optimization
 // opportunities when zero_points happen at runtime to be 'symmetric' (e.g. the
@@ -122,8 +115,6 @@ class MulParams /* not final, legitimate to subclass */ {
                              : std::numeric_limits<DstScalar>::max();
 
  public:
-  // See above enum LoopStructure
-  static constexpr LoopStructure kLoopStructure = LoopStructure::kAuto;
   // See above enum LayoutSupport
   static constexpr LayoutSupport kLayoutSupport = LayoutSupport::kGeneral;
   // See above enum ZeroPointSupport
