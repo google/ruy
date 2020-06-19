@@ -1022,18 +1022,3 @@ ruy_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
-
-ruy_test(
-    name = "test_special_mul_params",
-    srcs = ["test_special_mul_params.cc"],
-    copts = ruy_copts(),
-    lhs_rhs_accum_dst = [
-        ("f32", "f32", "f32", "f32"),
-        ("u8", "u8", "i32", "u8"),
-        ("u8", "u8", "i32", "i16"),
-    ],
-    deps = [
-        "//ruy:test_lib",
-        "@com_google_googletest//:gtest_main",
-    ],
-)

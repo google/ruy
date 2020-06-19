@@ -25,8 +25,7 @@ using LhsScalar = RUY_TEST_LHSSCALAR;
 using RhsScalar = RUY_TEST_RHSSCALAR;
 using AccumScalar = RUY_TEST_ACCUMSCALAR;
 using DstScalar = RUY_TEST_DSTSCALAR;
-using TestSetType =
-    TestSet<LhsScalar, RhsScalar, MulParams<AccumScalar, DstScalar>>;
+using TestSetType = TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>;
 
 struct BenchmarkShape {
   int rows;

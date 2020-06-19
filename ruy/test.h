@@ -28,6 +28,7 @@ limitations under the License.
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <random>
 #include <set>
 #include <sstream>
@@ -89,6 +90,10 @@ inline const char* PathName(Path path) {
     return #NAME;
   switch (path) {
     RUY_PATHNAME_CASE(kStandardCpp)
+    RUY_PATHNAME_CASE(kInternalStandardCppVariant1)
+    RUY_PATHNAME_CASE(kInternalStandardCppVariant2)
+    RUY_PATHNAME_CASE(kInternalStandardCppVariant3)
+
 #if RUY_PLATFORM_NEON
     RUY_PATHNAME_CASE(kNeon)
     RUY_PATHNAME_CASE(kNeonDotprod)
@@ -510,13 +515,14 @@ std::string PathName(const TestResult<Scalar>& result) {
 
 enum class ExpectedOutcome { kSuccess, kDeath };
 
-template <typename tLhsScalar, typename tRhsScalar, typename SpecType>
+template <typename tLhsScalar, typename tRhsScalar, typename tAccumScalar,
+          typename tDstScalar>
 struct TestSet final {
   using LhsScalar = tLhsScalar;
   using RhsScalar = tRhsScalar;
-  using AccumScalar = typename SpecType::AccumScalar;
-  using DstScalar = typename SpecType::DstScalar;
-  using MulParamsType = SpecType;
+  using AccumScalar = tAccumScalar;
+  using DstScalar = tDstScalar;
+  using MulParamsType = MulParams<AccumScalar, DstScalar>;
   using TestResultType = TestResult<DstScalar>;
 
   void Run() {
@@ -610,8 +616,9 @@ inline Context& GlobalContext() {
   return context;
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-TestSet<LhsScalar, RhsScalar, SpecType>::~TestSet() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::~TestSet() {
   RUY_CHECK_EQ(life_stage, LifeStage::kFinal);
   LogCoveredPathsOnDestruction::Singleton();
   GlobalContext().ClearPrepackedCache();
@@ -626,14 +633,19 @@ TestSet<LhsScalar, RhsScalar, SpecType>::~TestSet() {
 #endif
 #endif  // defined(__has_feature)
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::DoMul(TestResultType* result) {
-  Mul<kAllPaths>(lhs.matrix, rhs.matrix, mul_params, &GlobalContext(),
-                 &result->storage_matrix.matrix);
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::DoMul(
+    TestResultType* result) {
+  Mul<kAllPathsIncludingInternalVariants>(lhs.matrix, rhs.matrix, mul_params,
+                                          &GlobalContext(),
+                                          &result->storage_matrix.matrix);
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::EvalRuy(TestResultType* result) {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::EvalRuy(
+    TestResultType* result) {
   GlobalContext().set_explicit_tuning(result->tuning);
   if (max_num_threads) {
     GlobalContext().set_max_num_threads(max_num_threads);
@@ -1540,8 +1552,9 @@ void MakeSpecClampFields(MulParamsType* mul_params) {
   mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max() - 1);
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeZeroPoints() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeZeroPoints() {
   RUY_CHECK_EQ(life_stage, LifeStage::kInitial);
   if (!benchmark && !use_specified_zero_points) {
     MakeRandomScalar(RandomRange::kReasonableSrcZeroPoint, &lhs_zero_point);
@@ -1556,8 +1569,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeZeroPoints() {
   life_stage = LifeStage::kHasZeroPoints;
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeLhsRhs() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeLhsRhs() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasZeroPoints);
   MakeRandom(rows, depth, lhs_order, lhs_zero_point, layout_style,
              RandomRange::kOffCenterAvoidMinValue, &lhs);
@@ -1576,8 +1590,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeLhsRhs() {
   life_stage = LifeStage::kHasLhsRhs;
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeMulParams() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeMulParams() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasLhsRhs);
 
   if (!getenv("BENCHMARK_ONLY_MATMUL") &&
@@ -1622,8 +1637,9 @@ inline bool GetBoolEnvVarOrFalse(const char* name) {
   return static_cast<bool>(GetIntEnvVarOrZero(name));
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeOtherParams() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeOtherParams() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasMulParams);
   if (max_num_threads == 0) {
     max_num_threads = GetIntEnvVarOrZero("THREADS");
@@ -1658,8 +1674,9 @@ inline std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
   return {Tuning::kAuto};
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeResultPaths() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasOtherParams);
 
   Path paths_bitfield = static_cast<Path>(GetHexIntEnvVarOrZero("PATHS"));
@@ -1671,10 +1688,22 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
     paths_bitfield = get_ctx(&context)->GetRuntimeEnabledPaths();
   }
 
+  // Disable the internal test-only variants of the StandardCpp path on large
+  // tests.
+  // This constant be large enough to exercise some interesting BlockMap logic,
+  // small enough to avoid large test latency increases from running these
+  // slow code paths on large matrix multiplications.
+  const int kMaxSizeToTestInternalStandardCppVariants = 300;
+  if (rows > kMaxSizeToTestInternalStandardCppVariants ||
+      cols > kMaxSizeToTestInternalStandardCppVariants ||
+      depth > kMaxSizeToTestInternalStandardCppVariants) {
+    paths_bitfield = paths_bitfield & kAllPaths;
+  }
+
   // Trim bits that don't correspond to a compiled path,
   // to allow specifying e.g. ffff to mean 'all paths' regardless of whether all
   // those bits exist as actual paths.
-  paths_bitfield = paths_bitfield & kAllPaths;
+  paths_bitfield = paths_bitfield & kAllPathsIncludingInternalVariants;
   RUY_CHECK_NE(paths_bitfield, Path::kNone);
   paths = PathsBitfieldAsVector(paths_bitfield);
 
@@ -1683,10 +1712,8 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
 
-  using TestSetType = TestSet<LhsScalar, RhsScalar, SpecType>;
-
   if (!GetBoolEnvVarOrFalse("NOEXT")) {
-    if (SupportsGemmlowp<TestSetType>::kValue) {
+    if (SupportsGemmlowp<TestSet>::kValue) {
 #ifdef GEMMLOWP_SSE4
       const bool gemmlowp_supported =
           !mul_params.multiplier_fixedpoint_perchannel();
@@ -1697,7 +1724,7 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
         external_paths.push_back(ExternalPath::kGemmlowp);
       }
     }
-    if (UsesSingleScalarType<TestSetType>::kValue &&
+    if (UsesSingleScalarType<TestSet>::kValue &&
         std::is_floating_point<AccumScalar>::value) {
       external_paths.push_back(ExternalPath::kEigen);
       if (layout_style == LayoutStyle::kUnstridedLinear) {
@@ -1739,9 +1766,10 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::MakeResultPaths() {
   life_stage = LifeStage::kHasResultPaths;
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::EvalResult(
-    TestResult<typename SpecType::DstScalar>* result) {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::EvalResult(
+    TestResult<DstScalar>* result) {
   RUY_CHECK(result->path != Path::kNone ||
             result->external_path != ExternalPath::kNone);
   if (result->path != Path::kNone) {
@@ -1835,10 +1863,11 @@ class RepeatedBuffer {
   int current_ = 0;
 };
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
-    TestResult<typename SpecType::DstScalar>* result) {
-  using DstScalar = typename SpecType::DstScalar;
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::Benchmark(
+    TestResult<DstScalar>* result) {
+  using DstScalar = DstScalar;
 
   const bool cold = getenv("RUY_BENCHMARK_COLD");
   LhsScalar* orig_lhs_data = lhs.matrix.data();
@@ -1976,8 +2005,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::Benchmark(
   }
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::Eval() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::Eval() {
   RUY_CHECK_EQ(life_stage, LifeStage::kHasResultPaths);
   for (auto& result : results) {
     if (benchmark) {
@@ -2007,8 +2037,10 @@ std::string DumpRegion(const Matrix<Scalar>& matrix, int center_row,
   return stream.str();
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::VerifyTestResults() const {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::VerifyTestResults()
+    const {
   const int depth = lhs.matrix.layout().cols();
   for (int i = 0; i < static_cast<int>(results.size()) - 1; i++) {
     if (!Agree(*results[i], *results[i + 1], depth)) {
@@ -2063,8 +2095,9 @@ void TestSet<LhsScalar, RhsScalar, SpecType>::VerifyTestResults() const {
   }
 }
 
-template <typename LhsScalar, typename RhsScalar, typename SpecType>
-void TestSet<LhsScalar, RhsScalar, SpecType>::Verify() {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::Verify() {
   RUY_CHECK_EQ(life_stage, LifeStage::kEvaluated);
   if (expected_outcome == ExpectedOutcome::kSuccess) {
     VerifyTestResults();

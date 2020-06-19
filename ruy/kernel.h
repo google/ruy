@@ -83,6 +83,27 @@ class RunKernel final {
     KernelType kernel(tuning);
     using LhsLayout = typename KernelType::LhsLayout;
     using RhsLayout = typename KernelType::RhsLayout;
+    // This is a good place to validate kernel layouts. The Kernel class
+    // template itself isn't a good place to do that because it has
+    // specializations.
+    // The kRows of both sides have to match: in TrMul, kRows is the depth
+    // dimension, on which LHS and RHS have to agree for the matrix
+    // multiplication to be defined at all, so requiring the corresponding
+    // dimension of the kernel layouts to also match is reasonable. If it didn't
+    // match, then the packed matrices could have mismatching depth dimensions
+    // even with the source matrices agreeing.
+    static_assert(LhsLayout::kRows == RhsLayout::kRows, "");
+    // The kernel layouts have to be power-of-two. This simplifies BlockMap
+    // logic considerably. This also avoids leaking fine performance
+    // optimization details up the stack. For instance, if one of the dimensions
+    // were 6, then users might notice that optimal performance is achieved with
+    // matrix dimensions that are multiples of 6, and might start contorting
+    // their own application code to match that requirement, in a way that would
+    // not be future-proof.
+    static_assert(is_pot(LhsLayout::kRows), "");
+    static_assert(is_pot(LhsLayout::kCols), "");
+    static_assert(is_pot(RhsLayout::kRows), "");
+    static_assert(is_pot(RhsLayout::kCols), "");
     // end_row and end_col may be larger than dst dimensions.
     // that is because kernels write directly to the destination matrix, whose
     // dimensions may not be a multiple of the kernel dimensions, and we try to

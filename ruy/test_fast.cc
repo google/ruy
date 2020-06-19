@@ -26,8 +26,7 @@ using RhsScalar = RUY_TEST_RHSSCALAR;
 using AccumScalar = RUY_TEST_ACCUMSCALAR;
 using DstScalar = RUY_TEST_DSTSCALAR;
 
-using TestSetType =
-    TestSet<LhsScalar, RhsScalar, MulParams<AccumScalar, DstScalar>>;
+using TestSetType = TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>;
 
 TEST(RuyTest, TestSquareMuls) {
   const std::vector<int> sizes{

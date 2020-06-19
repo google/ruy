@@ -69,7 +69,7 @@ Integer ceil_log2(Integer n) {
 }
 
 template <typename Integer>
-bool is_pot(Integer value) {
+constexpr bool is_pot(Integer value) {
   return (value > 0) && ((value & (value - 1)) == 0);
 }
 
