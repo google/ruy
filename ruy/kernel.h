@@ -56,7 +56,7 @@ template <typename KernelType>
 class RunKernel final {
  public:
   static void Run(Tuning tuning, const SidePair<PEMat>& src,
-                  const detail::MulParamsEmptyBase* mul_params,
+                  const void* mul_params,
                   const SidePair<int>& start, const SidePair<int>& end,
                   EMat* dst) {
     const auto& unerased_lhs = UneraseType<LhsScalar>(src[Side::kLhs]);
@@ -214,8 +214,9 @@ struct Kernel {
           AccumScalar rhs_val = Element(rhs, k, j);
           accum += lhs_val * rhs_val;
         }
+        int channel = mul_params.channel_dimension() == ChannelDimension::kRow ? i : j;
         if (mul_params.bias()) {
-          accum += mul_params.bias()[i];
+          accum += mul_params.bias()[channel];
         }
         if (lhs.zero_point) {
           accum -= lhs.zero_point * rhs.sums[j];
@@ -226,7 +227,7 @@ struct Kernel {
         if (lhs.zero_point && rhs.zero_point) {
           accum += lhs.zero_point * rhs.zero_point * depth;
         }
-        ApplyMultiplier(mul_params, i, &accum);
+        ApplyMultiplier(mul_params, channel, &accum);
         accum += dst->zero_point;
         accum = std::min<AccumScalar>(accum, mul_params.clamp_max());
         accum = std::max<AccumScalar>(accum, mul_params.clamp_min());

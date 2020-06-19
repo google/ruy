@@ -16,6 +16,8 @@ limitations under the License.
 #ifndef RUY_RUY_TRMUL_PARAMS_H_
 #define RUY_RUY_TRMUL_PARAMS_H_
 
+#include <cstdint>
+
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
@@ -25,10 +27,14 @@ limitations under the License.
 namespace ruy {
 
 using RunKernelFn = void(Tuning, const SidePair<PEMat>&,
-                         const detail::MulParamsEmptyBase*,
+                         const void*,
                          const SidePair<int>&, const SidePair<int>&, EMat*);
 
 using RunPackFn = void(Tuning, const EMat&, PEMat*, int, int);
+
+// These values are guarded by static_assert's in StoreMulParams.
+constexpr int kMaxMulParamsAlignment = 8;
+constexpr int kMaxMulParamsSize = sizeof(MulParams<std::int64_t, std::int64_t>);
 
 // Type-erased data needed for implementing TrMul.
 struct TrMulParams {
@@ -39,7 +45,7 @@ struct TrMulParams {
   }
   void RunKernel(Tuning tuning, const SidePair<int>& start,
                  const SidePair<int>& end) {
-    run_kernel(tuning, packed_matrix, mul_params, start, end, &dst);
+    run_kernel(tuning, packed_matrix, mul_params_bytes, start, end, &dst);
   }
 
   // path id, can be useful info for some fine-tuning, e.g. to guess reasonable
@@ -56,8 +62,10 @@ struct TrMulParams {
   SidePair<PEMat> packed_matrix;
   SidePair<bool> is_prepacked;
 
-  // Type-erased MulParams type.
-  const detail::MulParamsEmptyBase* mul_params = nullptr;
+  // Bytes underlying the MulParams, used as type-erased storage for MulParams
+  // data as it isn't used until we reach the kernel code, where it is casted
+  // back to the original MulParams type.
+  alignas(kMaxMulParamsAlignment) char mul_params_bytes[kMaxMulParamsSize];
 };
 
 }  // namespace ruy

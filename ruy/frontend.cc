@@ -16,6 +16,7 @@ limitations under the License.
 #include "ruy/frontend.h"
 
 #include "ruy/allocator.h"
+#include "ruy/mat.h"
 #include "ruy/prepare_packed_matrices.h"
 #include "ruy/trmul.h"
 #include "ruy/trmul_params.h"

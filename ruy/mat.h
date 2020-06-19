@@ -441,18 +441,28 @@ inline int SumsBytes(const PEMat& packed) {
 
 // Transpose helpers.
 
-inline void TransposeOrder(Order* order) {
-  *order = *order == Order::kColMajor ? Order::kRowMajor : Order::kColMajor;
+inline Order Transpose(Order order) {
+  return order == Order::kColMajor ? Order::kRowMajor : Order::kColMajor;
 }
 
-inline void TransposeLayout(MatLayout* layout) {
-  TransposeOrder(&layout->order);
-  std::swap(layout->rows, layout->cols);
+inline MatLayout Transpose(const MatLayout& layout) {
+  MatLayout result(layout);
+  result.order = Transpose(result.order);
+  std::swap(result.rows, result.cols);
+  return result;
 }
 
 template <typename Scalar>
-void Transpose(Mat<Scalar>* matrix) {
-  TransposeLayout(&matrix->layout);
+Mat<Scalar> Transpose(const Mat<Scalar>& matrix) {
+  Mat<Scalar> result(matrix);
+  result.layout = Transpose(result.layout);
+  return result;
+}
+
+inline EMat Transpose(const EMat& matrix) {
+  EMat result(matrix);
+  result.layout = Transpose(result.layout);
+  return result;
 }
 
 // Compile-time version of KernelLayout, used to declare kernel layouts in a
