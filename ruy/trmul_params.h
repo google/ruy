@@ -54,7 +54,7 @@ struct TrMulParams {
   SidePair<PEMat> packed_matrix;
   SidePair<bool> is_prepacked;
 
-  // Type-erased MulParamsType.
+  // Type-erased MulParams type.
   void* mul_params = nullptr;
 };
 

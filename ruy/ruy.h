@@ -33,9 +33,9 @@ namespace ruy {
 // Most users should use the other ruy::Mul overload not taking a Path template
 // parameter, and the main documentation comment is on that overload.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
+          typename AccumScalar, typename DstScalar>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const MulParamsType& mul_params, Context* context,
+         const MulParams<AccumScalar, DstScalar>& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
   Mat<LhsScalar> internal_lhs = ToInternal(lhs);
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
@@ -90,10 +90,10 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 // (e.g. the number of CPU cores in typical scenarios). At least ruy forces
 // each invocation to make an explicit decision here, there is no automatic
 // detection of the best number of threads to use in ruy.
-template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename MulParamsType>
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-         const MulParamsType& mul_params, Context* context,
+         const MulParams<AccumScalar, DstScalar>& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
   Mul<kDefaultPaths>(lhs, rhs, mul_params, context, dst);
 }

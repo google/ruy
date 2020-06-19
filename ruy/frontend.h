@@ -43,12 +43,12 @@ namespace ruy {
 // function is the TrMulParams, which contain enough information to allow the
 // un-templatized code to take over from there.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
-void MulFrontEndUpToCreateTrMulParams(const Mat<LhsScalar>& lhs,
-                                      const Mat<RhsScalar>& rhs,
-                                      const Mat<DstScalar>& dst,
-                                      const MulParamsType& mul_params, Ctx* ctx,
-                                      TrMulParams* params) {
+          typename AccumScalar, typename DstScalar>
+void MulFrontEndUpToCreateTrMulParams(
+    const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
+    const Mat<DstScalar>& dst,
+    const MulParams<AccumScalar, DstScalar>& mul_params, Ctx* ctx,
+    TrMulParams* params) {
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert(
       (CompiledPaths & ~kAllPathsIncludingInternalVariants) == Path::kNone,
@@ -88,9 +88,9 @@ void MulFrontEndFromTrMulParams(Ctx* ctx, TrMulParams* params);
 // Top-level function orchestrating the two halves of front-end work:
 // before and after we have detemplatized the call by creating TrMulParams.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename DstScalar, typename MulParamsType>
+          typename AccumScalar, typename DstScalar>
 void MulFrontEnd(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-                 const MulParamsType& mul_params, Ctx* ctx,
+                 const MulParams<AccumScalar, DstScalar>& mul_params, Ctx* ctx,
                  Mat<DstScalar>* dst) {
   profiler::ScopeLabel mul_label("Mul");
   profiler::ScopeLabel shape_specific_label("matmul shape: %dx%dx%d",
