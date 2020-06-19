@@ -17,9 +17,10 @@ limitations under the License.
 #define RUY_RUY_PACK_COMMON_H_
 
 #include <cstdint>
+#include <limits>
+#include <type_traits>
 
 #include "ruy/check_macros.h"
-#include "ruy/common.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/opt_set.h"
@@ -29,6 +30,17 @@ limitations under the License.
 #include "ruy/tune.h"
 
 namespace ruy {
+
+template <typename Scalar>
+Scalar SymmetricZeroPoint() {
+  if (std::is_floating_point<Scalar>::value) {
+    return 0;
+  }
+  if (std::is_signed<Scalar>::value) {
+    return 0;
+  }
+  return std::numeric_limits<Scalar>::max() / 2 + 1;
+}
 
 template <Path ThePath, typename Scalar>
 struct PackedTypeImpl {

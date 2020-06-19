@@ -55,7 +55,8 @@ struct KernelArgs<
 template <typename KernelType>
 class RunKernel final {
  public:
-  static void Run(Tuning tuning, const SidePair<PEMat>& src, void* mul_params,
+  static void Run(Tuning tuning, const SidePair<PEMat>& src,
+                  const detail::MulParamsEmptyBase* mul_params,
                   const SidePair<int>& start, const SidePair<int>& end,
                   EMat* dst) {
     const auto& unerased_lhs = UneraseType<LhsScalar>(src[Side::kLhs]);

@@ -273,7 +273,7 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   params->src[Side::kLhs] = EraseType(lhs);
   params->src[Side::kRhs] = EraseType(rhs);
   params->dst = EraseType(dst);
-  params->mul_params = ToVoidPtr(&mul_params);
+  params->mul_params = static_cast<const detail::MulParamsEmptyBase*>(&mul_params);
 
   // Create inner loops and packed matrices based on the Path.
   detail::PopulateTrMulParamsAllCompiledPaths<

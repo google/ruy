@@ -403,7 +403,6 @@ cc_library(
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
-        ":matrix",
     ],
 )
 
@@ -789,6 +788,7 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":mat",
+        ":mul_params",
         ":path",
         ":side_pair",
         ":tune",
@@ -965,6 +965,7 @@ cc_library(
         ":context",
         ":ctx",
         ":context_get_ctx",
+        ":pack_common",
         "//ruy/profiler",
     ] + ruy_test_ext_deps(),
 )

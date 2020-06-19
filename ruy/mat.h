@@ -279,7 +279,7 @@ template <typename T>
 EMat EraseType(const Mat<T>& matrix) {
   EMat ret;
   ret.data_type = Type::Create<T>();
-  ret.data = ToVoidPtr(matrix.data.get());
+  ret.data = const_cast<void*>(static_cast<const void*>(matrix.data.get()));
   ret.layout = matrix.layout;
   ret.zero_point = matrix.zero_point;
   ret.cache_policy = matrix.cache_policy;

@@ -19,9 +19,12 @@ limitations under the License.
 #include <limits>
 #include <type_traits>
 
-#include "ruy/matrix.h"
-
 namespace ruy {
+
+namespace detail {
+// An empty base class for MulParams just so that a MulParamsEmptyBase* pointer can be used as a generic pointer to any object of any MulParams type.
+class MulParamsEmptyBase {};
+}  // namespace detail
 
 // MulParams describes all about a matrix multiplication that
 // isn't encoded in the LHS, RHS and destination matrices. Some of that
@@ -29,7 +32,7 @@ namespace ruy {
 // choice of accumulator type, AccumScalar). Some of that information is encoded
 // as runtime values (for instance, the optional bias vector).
 template <typename tAccumScalar, typename tDstScalar>
-class MulParams final {
+class MulParams final : public detail::MulParamsEmptyBase {
  public:
   // Accumulator type. The type of accumulators used to compute the dot-products
   // before being ultimately casted to the destination type.

@@ -44,6 +44,7 @@ limitations under the License.
 #include "ruy/gtest_wrapper.h"  // IWYU pragma: export
 #include "ruy/matrix.h"         // IWYU pragma: export
 #include "ruy/mul_params.h"     // IWYU pragma: export
+#include "ruy/pack_common.h"
 #include "ruy/platform.h"
 #include "ruy/pmu.h"
 #include "ruy/reference_mul.h"

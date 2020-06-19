@@ -17,13 +17,15 @@ limitations under the License.
 #define RUY_RUY_TRMUL_PARAMS_H_
 
 #include "ruy/mat.h"
+#include "ruy/mul_params.h"
 #include "ruy/path.h"
 #include "ruy/side_pair.h"
 #include "ruy/tune.h"
 
 namespace ruy {
 
-using RunKernelFn = void(Tuning, const SidePair<PEMat>&, void*,
+using RunKernelFn = void(Tuning, const SidePair<PEMat>&,
+                         const detail::MulParamsEmptyBase*,
                          const SidePair<int>&, const SidePair<int>&, EMat*);
 
 using RunPackFn = void(Tuning, const EMat&, PEMat*, int, int);
@@ -55,7 +57,7 @@ struct TrMulParams {
   SidePair<bool> is_prepacked;
 
   // Type-erased MulParams type.
-  void* mul_params = nullptr;
+  const detail::MulParamsEmptyBase* mul_params = nullptr;
 };
 
 }  // namespace ruy
