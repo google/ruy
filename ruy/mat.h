@@ -455,14 +455,7 @@ void Transpose(Mat<Scalar>* matrix) {
   TransposeLayout(&matrix->layout);
 }
 
-// Compile-time version of KernelLayout, used to declare kernel layouts in a
-// way that can be consumed by compile-time logic.
-template <Order tOrder, int tRows, int tCols>
-struct FixedKernelLayout {
-  static constexpr Order kOrder = tOrder;
-  static constexpr int kRows = tRows;
-  static constexpr int kCols = tCols;
-};
+// Helpers for KernelLayout.
 
 template <typename FixedKernelLayout>
 KernelLayout ToKernelLayout() {
