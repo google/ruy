@@ -36,17 +36,17 @@ limitations under the License.
 namespace ruy {
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
+          typename DstScalar, typename MulParamsType>
 struct Kernel;
 
-#define RUY_INHERIT_KERNEL(PARENT, CHILD)                               \
-  template <typename LhsScalar, typename RhsScalar, typename DstScalar, \
-            typename AccumScalar>                                       \
-  struct Kernel<CHILD, LhsScalar, RhsScalar, AccumScalar, DstScalar>    \
-      : Kernel<PARENT, LhsScalar, RhsScalar, AccumScalar, DstScalar> {  \
-    explicit Kernel(Tuning tuning)                                      \
-        : Kernel<PARENT, LhsScalar, RhsScalar, AccumScalar, DstScalar>( \
-              tuning) {}                                                \
+#define RUY_INHERIT_KERNEL(PARENT, CHILD)                                 \
+  template <typename LhsScalar, typename RhsScalar, typename DstScalar,   \
+            typename MulParamsType>                                       \
+  struct Kernel<CHILD, LhsScalar, RhsScalar, DstScalar, MulParamsType>    \
+      : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, MulParamsType> {  \
+    explicit Kernel(Tuning tuning)                                        \
+        : Kernel<PARENT, LhsScalar, RhsScalar, DstScalar, MulParamsType>( \
+              tuning) {}                                                  \
   };
 
 // KernelParams are shared across 32-bit and 64-bit NEON code, and x86 code.

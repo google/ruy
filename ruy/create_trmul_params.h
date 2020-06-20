@@ -112,7 +112,7 @@ void CheckKernelPath(Path expected_path) {
 }
 
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
+          typename DstScalar, typename MulParamsType>
 void PopulateTrMulParams(TrMulParams* params) {
   // The optimized code paths don't handle the full generality of Ruy's API.
   // Fall back to Path::kStandardCpp if necessary.
@@ -126,15 +126,15 @@ void PopulateTrMulParams(TrMulParams* params) {
   }
 
   if (fallback_to_standard_cpp) {
-    PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, AccumScalar,
-                        DstScalar>(params);
+    PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, DstScalar,
+                        MulParamsType>(params);
     return;
   }
 
   using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
   using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
-  using Kernel =
-      Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, AccumScalar, DstScalar>;
+  using Kernel = Kernel<ThePath, PackedLhsScalar, PackedRhsScalar, DstScalar,
+                        MulParamsType>;
   using LhsKernelLayout = typename Kernel::LhsLayout;
   using RhsKernelLayout = typename Kernel::RhsLayout;
 
@@ -196,62 +196,63 @@ void PopulateTrMulParams(TrMulParams* params) {
 // inner loops for paths that are not in CompiledPaths, since that can result in
 // bogus instantiations which cause a compile time failure.
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename AccumScalar, typename DstScalar>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchCountdown;
 
 template <Path CompiledPaths, bool InCompiledPaths, int BitNumber,
-          typename LhsScalar, typename RhsScalar, typename AccumScalar,
-          typename DstScalar>
+          typename LhsScalar, typename RhsScalar, typename DstScalar,
+          typename MulParamsType>
 struct PathSearchOnlyCompiledPaths {
   static constexpr Path kCurrentPath = static_cast<Path>(1 << BitNumber);
   static void Search(Path the_path, TrMulParams* params) {
     if (kCurrentPath == the_path) {
-      PopulateTrMulParams<kCurrentPath, LhsScalar, RhsScalar, AccumScalar,
-                          DstScalar>(params);
+      PopulateTrMulParams<kCurrentPath, LhsScalar, RhsScalar, DstScalar,
+                          MulParamsType>(params);
       return;
     }
     PathSearchCountdown<CompiledPaths, BitNumber - 1, LhsScalar, RhsScalar,
-                        AccumScalar, DstScalar>::Search(the_path, params);
+                        DstScalar, MulParamsType>::Search(the_path, params);
   }
 };
 
 // Skip this iteration if CompiledPaths doesn't contain the specified path.
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename AccumScalar, typename DstScalar>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchOnlyCompiledPaths<CompiledPaths, false, BitNumber, LhsScalar,
-                                   RhsScalar, AccumScalar, DstScalar> {
+                                   RhsScalar, DstScalar, MulParamsType> {
   static void Search(Path the_path, TrMulParams* params) {
     PathSearchCountdown<CompiledPaths, BitNumber - 1, LhsScalar, RhsScalar,
-                        AccumScalar, DstScalar>::Search(the_path, params);
+                        DstScalar, MulParamsType>::Search(the_path, params);
   }
 };
 
 template <Path CompiledPaths, int BitNumber, typename LhsScalar,
-          typename RhsScalar, typename AccumScalar, typename DstScalar>
+          typename RhsScalar, typename DstScalar, typename MulParamsType>
 struct PathSearchCountdown {
   static constexpr Path kCurrentPath = static_cast<Path>(1 << BitNumber);
   static void Search(Path the_path, TrMulParams* params) {
     PathSearchOnlyCompiledPaths<
         CompiledPaths, (CompiledPaths & kCurrentPath) != Path::kNone, BitNumber,
-        LhsScalar, RhsScalar, AccumScalar, DstScalar>::Search(the_path, params);
+        LhsScalar, RhsScalar, DstScalar, MulParamsType>::Search(the_path,
+                                                                params);
   }
 };
 
 // Termination of the countdown. If the counter reaches -1, then we haven't
 // found the specified path.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
-struct PathSearchCountdown<CompiledPaths, -1, LhsScalar, RhsScalar, AccumScalar,
-                           DstScalar> {
+          typename DstScalar, typename MulParamsType>
+struct PathSearchCountdown<CompiledPaths, -1, LhsScalar, RhsScalar, DstScalar,
+                           MulParamsType> {
   static void Search(Path, TrMulParams*) { RUY_DCHECK(false); }
 };
 
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
+          typename DstScalar, typename MulParamsType>
 void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
   return PathSearchCountdown<CompiledPaths, 8 * sizeof(Path) - 1, LhsScalar,
-                             RhsScalar, AccumScalar,
-                             DstScalar>::Search(the_path, params);
+                             RhsScalar, DstScalar,
+                             MulParamsType>::Search(the_path, params);
 }
 
 }  // namespace detail
@@ -264,11 +265,11 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
 // pointers to kernel and pack code paths, and as runtime values of their
 // corresponding compile-time attributes e.g. the kernel-specific block layout).
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
+          typename DstScalar, typename MulParamsType>
 void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                        const Mat<DstScalar>& dst,
-                       const MulParams<AccumScalar, DstScalar>& mul_params,
-                       Path the_path, TrMulParams* params) {
+                       const MulParamsType& mul_params, Path the_path,
+                       TrMulParams* params) {
   // Fill in the fields we already know.
   params->src[Side::kLhs] = EraseType(lhs);
   params->src[Side::kRhs] = EraseType(rhs);
@@ -277,8 +278,8 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
 
   // Create inner loops and packed matrices based on the Path.
   detail::PopulateTrMulParamsAllCompiledPaths<
-      CompiledPaths, LhsScalar, RhsScalar, AccumScalar, DstScalar>(the_path,
-                                                                   params);
+      CompiledPaths, LhsScalar, RhsScalar, DstScalar, MulParamsType>(the_path,
+                                                                     params);
 }
 
 }  // namespace ruy

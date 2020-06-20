@@ -17,7 +17,6 @@ limitations under the License.
 #define RUY_RUY_KERNEL_H_
 
 #include "ruy/kernel_common.h"
-#include "ruy/mul_params.h"
 #include "ruy/platform.h"
 
 // IWYU pragma: begin_exports
@@ -36,14 +35,14 @@ template <typename KernelType>
 struct KernelArgs {};
 
 template <Path tPath, typename tLhsScalar, typename tRhsScalar,
-          typename tAccumScalar, typename tDstScalar>
+          typename tDstScalar, typename tMulParamsType>
 struct KernelArgs<
-    Kernel<tPath, tLhsScalar, tRhsScalar, tAccumScalar, tDstScalar>> {
+    Kernel<tPath, tLhsScalar, tRhsScalar, tDstScalar, tMulParamsType>> {
   static constexpr Path kPath = tPath;
   using LhsScalar = tLhsScalar;
   using RhsScalar = tRhsScalar;
-  using AccumScalar = tAccumScalar;
   using DstScalar = tDstScalar;
+  using MulParamsType = tMulParamsType;
 };
 
 // RunKernel::Run() is the only place that directly invokes Kernel::Run().
@@ -71,9 +70,8 @@ class RunKernel final {
   using Args = KernelArgs<KernelType>;
   using LhsScalar = typename Args::LhsScalar;
   using RhsScalar = typename Args::RhsScalar;
-  using AccumScalar = typename Args::AccumScalar;
   using DstScalar = typename Args::DstScalar;
-  using MulParamsType = MulParams<AccumScalar, DstScalar>;
+  using MulParamsType = typename Args::MulParamsType;
   static void RunTyped(Tuning tuning, const PMat<LhsScalar>& lhs,
                        const PMat<RhsScalar>& rhs,
                        const MulParamsType& mul_params,
@@ -170,7 +168,7 @@ struct StandardCppKernelLayout<Path::kInternalStandardCppVariant3> {
 // specializations for specific SIMD code paths. This general implementation
 // covers Path::kStandardCpp and its internal test-only variants.
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
-          typename AccumScalar, typename DstScalar>
+          typename DstScalar, typename MulParamsType>
 struct Kernel {
   // Each Kernel specialization defines kPath as the ground-truth path that it
   // implements. This is used in assertions. As we support fallbacks between
@@ -181,7 +179,7 @@ struct Kernel {
   // should be using a template specialization for a specific path rather than a
   // fallback.
   static constexpr Path kPath = ThePath;
-  using MulParamsType = MulParams<AccumScalar, DstScalar>;
+  using AccumScalar = typename MulParamsType::AccumScalar;
   using LhsLayout = typename StandardCppKernelLayout<ThePath>::Lhs;
   using RhsLayout = typename StandardCppKernelLayout<ThePath>::Rhs;
   explicit Kernel(Tuning) {}
@@ -208,6 +206,7 @@ struct Kernel {
     const int depth = lhs.layout.rows;
     for (int i = start_row; i < clamped_end_row; i++) {
       for (int j = start_col; j < clamped_end_col; j++) {
+        using AccumScalar = typename MulParamsType::AccumScalar;
         AccumScalar accum = 0;
         for (int k = 0; k < depth; k++) {
           AccumScalar lhs_val = Element(lhs, k, i);
