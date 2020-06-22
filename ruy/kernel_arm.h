@@ -52,8 +52,7 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
-struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
-              MulParams<std::int32_t, DstScalar>> {
+struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
   static constexpr Path kPath = Path::kNeon;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
@@ -80,8 +79,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 
 #if RUY_PLATFORM_NEON_32
 template <typename DstScalar>
-struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
-              MulParams<std::int32_t, DstScalar>> {
+struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
   static constexpr Path kPath = Path::kNeon;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
   using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 2>;
@@ -104,8 +102,7 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, DstScalar,
 
 #if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
-struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, DstScalar,
-              MulParams<std::int32_t, DstScalar>> {
+struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
   static constexpr Path kPath = Path::kNeonDotprod;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
@@ -136,7 +133,7 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params);
 #if RUY_PLATFORM_NEON_64
 // A Float kernel for ARM64 Neon.
 template <>
-struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
+struct Kernel<Path::kNeon, float, float, float, float> {
   static constexpr Path kPath = Path::kNeon;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
@@ -160,7 +157,7 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
 #if RUY_PLATFORM_NEON_32
 // A Float kernel for ARM32 Neon.
 template <>
-struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
+struct Kernel<Path::kNeon, float, float, float, float> {
   static constexpr Path kPath = Path::kNeon;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
@@ -183,14 +180,13 @@ struct Kernel<Path::kNeon, float, float, float, MulParams<float, float>> {
 // its presence allows us to distinguish, in the in-order tuning case, between
 // A53 and A55r1. TODO: should this be folded into tuning?
 template <>
-struct Kernel<Path::kNeonDotprod, float, float, float,
-              MulParams<float, float>> {
+struct Kernel<Path::kNeonDotprod, float, float, float, float> {
   static constexpr Path kPath = Path::kNeonDotprod;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using Base =
-      Kernel<Path::kNeon, float, float, float, MulParams<float, float>>;
+      Kernel<Path::kNeon, float, float, float, float>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PMat<float>& lhs, const PMat<float>& rhs,
            const MulParams<float, float>& mul_params, int start_row,
