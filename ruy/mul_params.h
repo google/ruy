@@ -22,11 +22,6 @@ limitations under the License.
 
 namespace ruy {
 
-namespace detail {
-// An empty base class for MulParams just so that a MulParamsEmptyBase* pointer can be used as a generic pointer to any object of any MulParams type.
-class MulParamsEmptyBase {};
-}  // namespace detail
-
 // Enumeration to designate which dimension is the 'channels', for MulParams
 // features that are 'per-channel', namely the bias-vector and the quantized
 // multiplier.
@@ -43,7 +38,7 @@ enum class ChannelDimension : std::int8_t {
 // choice of accumulator type, AccumScalar). Some of that information is encoded
 // as runtime values (for instance, the optional bias vector).
 template <typename tAccumScalar, typename tDstScalar>
-class MulParams final : public detail::MulParamsEmptyBase {
+class MulParams final {
  public:
   // Accumulator type. The type of accumulators used to compute the dot-products
   // before being ultimately casted to the destination type.

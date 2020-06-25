@@ -254,6 +254,25 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
                              DstScalar>::Search(the_path, params);
 }
 
+// Copy the underlying bytes of `mul_params` to `dst`, except that the specified
+// `channel_dimension` value overrides the channel_dimension member in
+// mul_params. The reason why channel_dimension is being special-cased among
+// MulParams members is that we will need to transpose MulParams, and that
+// consists just in toggling channel_dimension. In the typical envisioned usage
+// pattern, mul_params is constant, so we cannot conveniently toggle its
+// channel_dimension in place, and it would be slightly unfortunate to have to
+// perform another copy of mul_params just for that.
+template <typename AccumScalar, typename DstScalar>
+void StoreMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
+                    ChannelDimension channel_dimension, void* dst) {
+  using MulParamsType = MulParams<AccumScalar, DstScalar>;
+  static_assert(alignof(MulParamsType) <= kMaxMulParamsAlignment, "");
+  static_assert(sizeof(MulParamsType) <= kMaxMulParamsSize, "");
+  static_assert(std::is_trivially_copyable<MulParamsType>::value, "");
+  std::memcpy(dst, &mul_params, sizeof(MulParamsType));
+  static_cast<MulParamsType*>(dst)->set_channel_dimension(channel_dimension);
+}
+
 }  // namespace detail
 
 // CreateTrMulParams is where we turn templatized ruy::Mul parameters to an
@@ -273,7 +292,8 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   params->src[Side::kLhs] = EraseType(lhs);
   params->src[Side::kRhs] = EraseType(rhs);
   params->dst = EraseType(dst);
-  params->mul_params = static_cast<const detail::MulParamsEmptyBase*>(&mul_params);
+  detail::StoreMulParams(mul_params, mul_params.channel_dimension(),
+                         params->mul_params_bytes);
 
   // Create inner loops and packed matrices based on the Path.
   detail::PopulateTrMulParamsAllCompiledPaths<

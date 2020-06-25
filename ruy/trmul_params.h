@@ -16,6 +16,9 @@ limitations under the License.
 #ifndef RUY_RUY_TRMUL_PARAMS_H_
 #define RUY_RUY_TRMUL_PARAMS_H_
 
+#include <algorithm>
+#include <cstdint>
+
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
@@ -24,11 +27,25 @@ limitations under the License.
 
 namespace ruy {
 
-using RunKernelFn = void(Tuning, const SidePair<PEMat>&,
-                         const detail::MulParamsEmptyBase*,
+using RunKernelFn = void(Tuning, const SidePair<PEMat>&, const void*,
                          const SidePair<int>&, const SidePair<int>&, EMat*);
 
 using RunPackFn = void(Tuning, const EMat&, PEMat*, int, int);
+
+// Under-estimating these values would be caught by a static_assert in
+// StoreMulParams. Over-estimating these values cannot easily be caught, and
+// would cause unnecessary inflation of the TrMulParams data structure.
+constexpr int kMaxMulParamsAlignment =
+    std::max({alignof(void*), alignof(double)});
+constexpr int kMaxMulParamsSizeFloatingPointCase =
+    sizeof(MulParams<double, double>);
+constexpr int kMaxMulParamsSizeRawIntegerCase =
+    sizeof(MulParams<std::int32_t, std::int32_t>);
+constexpr int kMaxMulParamsSizeQuantizedIntegerCase =
+    sizeof(MulParams<std::int32_t, std::int16_t>);
+constexpr int kMaxMulParamsSize = std::max(
+    {kMaxMulParamsSizeFloatingPointCase, kMaxMulParamsSizeRawIntegerCase,
+     kMaxMulParamsSizeQuantizedIntegerCase});
 
 // Type-erased data needed for implementing TrMul.
 struct TrMulParams {
@@ -39,7 +56,7 @@ struct TrMulParams {
   }
   void RunKernel(Tuning tuning, const SidePair<int>& start,
                  const SidePair<int>& end) {
-    run_kernel(tuning, packed_matrix, mul_params, start, end, &dst);
+    run_kernel(tuning, packed_matrix, mul_params_bytes, start, end, &dst);
   }
 
   // path id, can be useful info for some fine-tuning, e.g. to guess reasonable
@@ -56,8 +73,10 @@ struct TrMulParams {
   SidePair<PEMat> packed_matrix;
   SidePair<bool> is_prepacked;
 
-  // Type-erased MulParams type.
-  const detail::MulParamsEmptyBase* mul_params = nullptr;
+  // Bytes underlying the MulParams, used as type-erased storage for MulParams
+  // data as it isn't used until we reach the kernel code, where it is casted
+  // back to the original MulParams type.
+  alignas(kMaxMulParamsAlignment) char mul_params_bytes[kMaxMulParamsSize];
 };
 
 }  // namespace ruy
