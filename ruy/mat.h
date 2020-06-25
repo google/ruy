@@ -455,7 +455,14 @@ void Transpose(Mat<Scalar>* matrix) {
   TransposeLayout(&matrix->layout);
 }
 
-// Helpers for KernelLayout.
+// Compile-time version of KernelLayout, used to declare kernel layouts in a
+// way that can be consumed by compile-time logic.
+template <Order tOrder, int tRows, int tCols>
+struct FixedKernelLayout {
+  static constexpr Order kOrder = tOrder;
+  static constexpr int kRows = tRows;
+  static constexpr int kCols = tCols;
+};
 
 template <typename FixedKernelLayout>
 KernelLayout ToKernelLayout() {
@@ -465,6 +472,16 @@ KernelLayout ToKernelLayout() {
   ret.cols = FixedKernelLayout::kCols;
   return ret;
 }
+
+#if (__cplusplus < 201703L)
+// A static constexpr data member is automatically inline and should not require
+// redeclaration without an initializer. This is actually deprecated from C++17
+// onwards. Clang with -O0 without this can fail to link.
+template <Order tOrder, int tRows, int tCols>
+constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kCols;
+template <Order tOrder, int tRows, int tCols>
+constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kRows;
+#endif
 
 }  // namespace ruy
 

@@ -184,29 +184,6 @@ StreamType& operator<<(StreamType& stream, const Matrix<Scalar>& mat) {
   return stream;
 }
 
-// Compile-time version of KernelLayout, used to declare kernel layouts in a
-// way that can be consumed by compile-time logic.
-// See how partial specializations of Kernel use it to declare their layouts.
-// The only reason why this is currently part of the public API is to
-// allow testing various layouts for the Path::kStandardCpp kernel, as a
-// testing-only feature. See MulParamsType::StandardCppKernelLhsLayout.
-template <Order tOrder, int tRows, int tCols>
-struct FixedKernelLayout {
-  static constexpr Order kOrder = tOrder;
-  static constexpr int kRows = tRows;
-  static constexpr int kCols = tCols;
-};
-
-#if (__cplusplus < 201703L)
-// A static constexpr data member is automatically inline and should not require
-// redeclaration without an initializer. This is actually deprecated from C++17
-// onwards. Clang with -O0 without this can fail to link.
-template <Order tOrder, int tRows, int tCols>
-constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kCols;
-template <Order tOrder, int tRows, int tCols>
-constexpr int FixedKernelLayout<tOrder, tRows, tCols>::kRows;
-#endif
-
 // TODO(b/130417400) add a unit test
 inline int Offset(const Layout& layout, int row, int col) {
   // TODO(benoitjacob)  - should check this but this make the _slow tests take
