@@ -60,11 +60,6 @@ void MulFrontEndUpToCreateTrMulParams(
   // transposition.
   Validate(lhs, rhs, dst, mul_params);
 
-  // See the comment at the top of trmul.h. Ruy internally converts Mul into
-  // TrMul. We handle that here.
-  Mat<LhsScalar> transposed_lhs(lhs);
-  Transpose(&transposed_lhs);
-
   // Determine which exact Path we're going to take in this Mul call.
   // This is cheap because it's cached in `ctx`. In user scenarios this always
   // evaluates to the same value on a given machine with given `CompiledPaths`,
@@ -76,7 +71,8 @@ void MulFrontEndUpToCreateTrMulParams(
   // This is also where the specific kernel and pack code paths corresponding to
   // `the_path` are selected, among all the code paths in `CompiledPaths`, and
   // recorded as function pointers in the TrMulParams.
-  CreateTrMulParams<CompiledPaths>(transposed_lhs, rhs, dst, mul_params,
+  // The Transpose(lhs) here is where we switch from 'Mul' to 'TrMul'.
+  CreateTrMulParams<CompiledPaths>(Transpose(lhs), rhs, dst, mul_params,
                                    the_path, params);
 }
 
