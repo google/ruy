@@ -13,9 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef RUY_RUY_SPEC_H_
-#define RUY_RUY_SPEC_H_
+#ifndef RUY_RUY_MUL_PARAMS_H_
+#define RUY_RUY_MUL_PARAMS_H_
 
+#include <cstdint>
 #include <limits>
 #include <type_traits>
 
@@ -25,6 +26,16 @@ namespace detail {
 // An empty base class for MulParams just so that a MulParamsEmptyBase* pointer can be used as a generic pointer to any object of any MulParams type.
 class MulParamsEmptyBase {};
 }  // namespace detail
+
+// Enumeration to designate which dimension is the 'channels', for MulParams
+// features that are 'per-channel', namely the bias-vector and the quantized
+// multiplier.
+enum class ChannelDimension : std::int8_t {
+  // kRow means that 'per-channel' means 'per row of the destination matrix'
+  kRow,
+  // kCol means that 'per-channel' means 'per column of the destination matrix'
+  kCol
+};
 
 // MulParams describes all about a matrix multiplication that
 // isn't encoded in the LHS, RHS and destination matrices. Some of that
@@ -66,6 +77,10 @@ class MulParams final : public detail::MulParamsEmptyBase {
   void set_clamp_min(const DstScalar value) { clamp_min_ = value; }
   DstScalar clamp_max() const { return clamp_max_; }
   void set_clamp_max(const DstScalar value) { clamp_max_ = value; }
+  ChannelDimension channel_dimension() const { return channel_dimension_; }
+  void set_channel_dimension(ChannelDimension value) {
+    channel_dimension_ = value;
+  }
 
  protected:
   // The bias vector data, if not null.
@@ -98,8 +113,12 @@ class MulParams final : public detail::MulParamsEmptyBase {
   DstScalar clamp_max_ = std::is_floating_point<DstScalar>::value
                              ? std::numeric_limits<DstScalar>::infinity()
                              : std::numeric_limits<DstScalar>::max();
+
+  // Designates which dimension is the 'channels', for per-channel features
+  // such as bias-addition and per-channel quantization multipliers.
+  ChannelDimension channel_dimension_ = ChannelDimension::kRow;
 };
 
 }  // namespace ruy
 
-#endif  // RUY_RUY_SPEC_H_
+#endif  // RUY_RUY_MUL_PARAMS_H_
