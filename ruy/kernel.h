@@ -213,8 +213,10 @@ struct Kernel {
           AccumScalar rhs_val = Element(rhs, k, j);
           accum += lhs_val * rhs_val;
         }
+        int channel =
+            mul_params.channel_dimension() == ChannelDimension::kRow ? i : j;
         if (mul_params.bias()) {
-          accum += mul_params.bias()[i];
+          accum += mul_params.bias()[channel];
         }
         if (lhs.zero_point) {
           accum -= lhs.zero_point * rhs.sums[j];
@@ -225,7 +227,7 @@ struct Kernel {
         if (lhs.zero_point && rhs.zero_point) {
           accum += lhs.zero_point * rhs.zero_point * depth;
         }
-        ApplyMultiplier(mul_params, i, &accum);
+        ApplyMultiplier(mul_params, channel, &accum);
         accum += dst->zero_point;
         accum = std::min<AccumScalar>(accum, mul_params.clamp_max());
         accum = std::max<AccumScalar>(accum, mul_params.clamp_min());

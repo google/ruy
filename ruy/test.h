@@ -1466,9 +1466,16 @@ inline void QuantizeMultiplier(double multiplier_double,
 
 template <typename TestSetType>
 void SwitchMultiplierToPerChannel(TestSetType* test_set) {
-  test_set->per_channel_multiplier_fixedpoint.resize(test_set->rows);
-  test_set->per_channel_multiplier_exponent.resize(test_set->rows);
-  for (int i = 0; i < test_set->rows; i++) {
+  ChannelDimension channel_dimension = global_random_engine()() % 2
+                                           ? ChannelDimension::kRow
+                                           : ChannelDimension::kCol;
+  test_set->mul_params.set_channel_dimension(channel_dimension);
+  const int num_channels = channel_dimension == ChannelDimension::kRow
+                               ? test_set->rows
+                               : test_set->cols;
+  test_set->per_channel_multiplier_fixedpoint.resize(num_channels);
+  test_set->per_channel_multiplier_exponent.resize(num_channels);
+  for (int i = 0; i < num_channels; i++) {
     // multipliers typically range in [2^30 ; 2^31 - 1].
     // Values in [0, 2^30 - 1] are normally unused, but harmless.
     // Thus a good way to randomize multipliers is to subtract from them
@@ -1598,7 +1605,7 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeMulParams() {
 
   if (!getenv("BENCHMARK_ONLY_MATMUL") &&
       (benchmark || (global_random_engine()() & 1))) {
-    MakeRandomVector(RandomRange::kBias, rows, &bias_data);
+    MakeRandomVector(RandomRange::kBias, std::max(rows, cols), &bias_data);
     mul_params.set_bias(bias_data.data());
   }
   if (lhs.matrix.zero_point() == std::numeric_limits<LhsScalar>::lowest() &&
@@ -1717,9 +1724,11 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeResultPaths() {
     if (SupportsGemmlowp<TestSet>::kValue) {
 #ifdef GEMMLOWP_SSE4
       const bool gemmlowp_supported =
-          !mul_params.multiplier_fixedpoint_perchannel();
+          !mul_params.multiplier_fixedpoint_perchannel() &&
+          mul_params.channel_dimension() == ChannelDimension::kRow;
 #else
-      const bool gemmlowp_supported = true;
+      const bool gemmlowp_supported =
+          mul_params.channel_dimension() == ChannelDimension::kRow;
 #endif
       if (gemmlowp_supported) {
         external_paths.push_back(ExternalPath::kGemmlowp);

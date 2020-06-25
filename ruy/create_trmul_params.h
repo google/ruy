@@ -120,7 +120,10 @@ void PopulateTrMulParams(TrMulParams* params) {
   if (ThePath != Path::kStandardCpp) {
     // The optimized code paths currently only handle the case of all matrices
     // being column major.
-    if (!IsColMajorTrMul(*params)) {
+    using MulParamsType = MulParams<AccumScalar, DstScalar>;
+    if (!IsColMajorTrMul(*params) ||
+        reinterpret_cast<const MulParamsType*>(params->mul_params_bytes)
+                ->channel_dimension() != ChannelDimension::kRow) {
       fallback_to_standard_cpp = true;
     }
   }

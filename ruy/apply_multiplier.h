@@ -36,7 +36,7 @@ namespace ruy {
 // typically written in assembly anyway.
 template <typename AccumScalar, typename DstScalar>
 void ApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
-                     int row, AccumScalar* accum);
+                     int channel, AccumScalar* accum);
 
 namespace detail {
 
@@ -85,13 +85,13 @@ struct ApplyMultiplierImpl<AccumScalar, DstScalar, false> {
 
 template <typename AccumScalar, typename DstScalar>
 struct ApplyMultiplierImpl<AccumScalar, DstScalar, true> {
-  static void Run(const MulParams<AccumScalar, DstScalar>& mul_params, int row,
-                  AccumScalar* accum) {
+  static void Run(const MulParams<AccumScalar, DstScalar>& mul_params,
+                  int channel, AccumScalar* accum) {
     AccumScalar m = mul_params.multiplier_fixedpoint_perchannel()
-                        ? mul_params.multiplier_fixedpoint_perchannel()[row]
+                        ? mul_params.multiplier_fixedpoint_perchannel()[channel]
                         : mul_params.multiplier_fixedpoint();
     int e = mul_params.multiplier_exponent_perchannel()
-                ? mul_params.multiplier_exponent_perchannel()[row]
+                ? mul_params.multiplier_exponent_perchannel()[channel]
                 : mul_params.multiplier_exponent();
     *accum = MultiplyByQuantizedMultiplier(*accum, m, e);
   }
@@ -101,8 +101,8 @@ struct ApplyMultiplierImpl<AccumScalar, DstScalar, true> {
 
 template <typename AccumScalar, typename DstScalar>
 void ApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
-                     int row, AccumScalar* accum) {
-  detail::ApplyMultiplierImpl<AccumScalar, DstScalar>::Run(mul_params, row,
+                     int channel, AccumScalar* accum) {
+  detail::ApplyMultiplierImpl<AccumScalar, DstScalar>::Run(mul_params, channel,
                                                            accum);
 }
 

@@ -37,10 +37,12 @@ void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
         AccumScalar rhs_val = Element(rhs, k, j);
         accum += (lhs_val - lhs.zero_point()) * (rhs_val - rhs.zero_point());
       }
+      int channel =
+          mul_params.channel_dimension() == ChannelDimension::kRow ? i : j;
       if (mul_params.bias()) {
-        accum += mul_params.bias()[i];
+        accum += mul_params.bias()[channel];
       }
-      ApplyMultiplier(mul_params, i, &accum);
+      ApplyMultiplier(mul_params, channel, &accum);
       accum += dst->zero_point();
       accum = std::min<AccumScalar>(accum, mul_params.clamp_max());
       accum = std::max<AccumScalar>(accum, mul_params.clamp_min());
