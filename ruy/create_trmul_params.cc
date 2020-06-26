@@ -40,15 +40,11 @@ void CreatePackedLayout(const MatLayout& src, const Type& scalar,
 
 bool FallBackToStandardCpp(const MatLayout& lhs_layout,
                            const MatLayout& rhs_layout,
-                           const MatLayout& dst_layout,
                            ChannelDimension channel_dimension) {
   // Supporting row-major LHS/RHS would require transposing blocks in the
   // packing code. This isn't implemented at the moment, so we fall back to
   // StandardCpp when that would be needed.
-  // Supporting row-major destination will be achieved in the near future
-  // by transposing the whole Mul to reduce to col-major destination.
-  if (!IsColMajor(lhs_layout) || !IsColMajor(rhs_layout) ||
-      !IsColMajor(dst_layout)) {
+  if (!IsColMajor(lhs_layout) || !IsColMajor(rhs_layout)) {
     return true;
   }
 

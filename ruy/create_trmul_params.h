@@ -233,7 +233,6 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
 
 bool FallBackToStandardCpp(const MatLayout& lhs_layout,
                            const MatLayout& rhs_layout,
-                           const MatLayout& dst_layout,
                            ChannelDimension channel_dimension);
 
 // Copy the underlying bytes of `mul_params` to `dst`, except that the specified
@@ -255,17 +254,51 @@ void StoreMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
   static_cast<MulParamsType*>(dst)->set_channel_dimension(channel_dimension);
 }
 
+// In this function, the `channel_dimension` parameter overrides the value
+// of the channel_dimension member in the `mul_params` parameter. See the
+// StoreMulParams comment.
+template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
+          typename AccumScalar, typename DstScalar>
+void CreateTrMulParamsAssumingColMajorDst(
+    const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
+    const Mat<DstScalar>& dst,
+    const MulParams<AccumScalar, DstScalar>& mul_params,
+    ChannelDimension channel_dimension, Path the_path, TrMulParams* params) {
+  RUY_DCHECK(IsColMajor(dst.layout));
+
+  // Fill in the fields we already know.
+  params->src[Side::kLhs] = EraseType(lhs);
+  params->src[Side::kRhs] = EraseType(rhs);
+  params->dst = EraseType(dst);
+  StoreMulParams(mul_params, channel_dimension, params->mul_params_bytes);
+
+  if (FallBackToStandardCpp(lhs.layout, rhs.layout, channel_dimension)) {
+    return PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar,
+                               AccumScalar, DstScalar>(params);
+  }
+
+  PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
+                                      AccumScalar, DstScalar>(the_path, params);
+}
+
 }  // namespace detail
+
+inline ChannelDimension Transpose(ChannelDimension channel_dimension) {
+  return channel_dimension == ChannelDimension::kCol ? ChannelDimension::kRow
+                                                     : ChannelDimension::kCol;
+}
 
 // CreateTrMulParams's output is a TrMulParams object that encodes
 // all of the input information required by the middle-end, that is, the TrMul
 // function.
 //
 // CreateTrMulParams performs the following tasks:
-//   1. Select the single code path to be taken, out of the set of paths
+//   1. Reduce to the case of column-major destination, by transposing the
+//      whole problem as needed.
+//   2. Select the single code path to be taken, out of the set of paths
 //      described by the `CompiledPaths` template parameter, based on the
 //      runtime input parameter `the_path`.
-//   2. Perform type-erasure, converting templatized typed input parameters
+//   3. Perform type-erasure, converting templatized typed input parameters
 //      to the un-typed data stored in TrMulParams.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
@@ -273,22 +306,15 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                        const Mat<DstScalar>& dst,
                        const MulParams<AccumScalar, DstScalar>& mul_params,
                        Path the_path, TrMulParams* params) {
-  // Fill in the fields we already know.
-  params->src[Side::kLhs] = EraseType(lhs);
-  params->src[Side::kRhs] = EraseType(rhs);
-  params->dst = EraseType(dst);
-  detail::StoreMulParams(mul_params, mul_params.channel_dimension(),
-                         params->mul_params_bytes);
-
-  if (detail::FallBackToStandardCpp(lhs.layout, rhs.layout, dst.layout,
-                                    mul_params.channel_dimension())) {
-    return detail::PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar,
-                                       AccumScalar, DstScalar>(params);
+  ChannelDimension channel_dimension = mul_params.channel_dimension();
+  if (IsColMajor(dst.layout)) {
+    detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
+        lhs, rhs, dst, mul_params, channel_dimension, the_path, params);
+  } else {
+    detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
+        rhs, lhs, Transpose(dst), mul_params, Transpose(channel_dimension),
+        the_path, params);
   }
-
-  detail::PopulateTrMulParamsAllCompiledPaths<
-      CompiledPaths, LhsScalar, RhsScalar, AccumScalar, DstScalar>(the_path,
-                                                                   params);
 }
 
 }  // namespace ruy
