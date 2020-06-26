@@ -59,12 +59,6 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
   packed_matrix->zero_point = Pack<PackedScalar, Scalar>(src.zero_point);
 }
 
-inline bool IsColMajorTrMul(const TrMulParams& params) {
-  return IsColMajor(params.src[Side::kLhs].layout) &&
-         IsColMajor(params.src[Side::kRhs].layout) &&
-         IsColMajor(params.dst.layout);
-}
-
 template <typename KernelType>
 struct CheckKernelPathImpl {
   static void Run(Path) {
@@ -114,26 +108,6 @@ void CheckKernelPath(Path expected_path) {
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
 void PopulateTrMulParams(TrMulParams* params) {
-  // The optimized code paths don't handle the full generality of Ruy's API.
-  // Fall back to Path::kStandardCpp if necessary.
-  bool fallback_to_standard_cpp = false;
-  if (ThePath != Path::kStandardCpp) {
-    // The optimized code paths currently only handle the case of all matrices
-    // being column major.
-    using MulParamsType = MulParams<AccumScalar, DstScalar>;
-    if (!IsColMajorTrMul(*params) ||
-        reinterpret_cast<const MulParamsType*>(params->mul_params_bytes)
-                ->channel_dimension() != ChannelDimension::kRow) {
-      fallback_to_standard_cpp = true;
-    }
-  }
-
-  if (fallback_to_standard_cpp) {
-    PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, AccumScalar,
-                        DstScalar>(params);
-    return;
-  }
-
   using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
   using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
   using Kernel =
@@ -257,6 +231,11 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
                              DstScalar>::Search(the_path, params);
 }
 
+bool FallBackToStandardCpp(const MatLayout& lhs_layout,
+                           const MatLayout& rhs_layout,
+                           const MatLayout& dst_layout,
+                           ChannelDimension channel_dimension);
+
 // Copy the underlying bytes of `mul_params` to `dst`, except that the specified
 // `channel_dimension` value overrides the channel_dimension member in
 // mul_params. The reason why channel_dimension is being special-cased among
@@ -278,13 +257,16 @@ void StoreMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
 
 }  // namespace detail
 
-// CreateTrMulParams is where we turn templatized ruy::Mul parameters to an
-// ordinary, un-templatized runtime data structure, TrMulParams. This is, in
-// particular, where we go from a template parameter 'CompiledPaths' describing
-// the set of paths enabled at compile-time, to runtime parameter values
-// corresponding to the specific choice of Path to be taken (encoded as function
-// pointers to kernel and pack code paths, and as runtime values of their
-// corresponding compile-time attributes e.g. the kernel-specific block layout).
+// CreateTrMulParams's output is a TrMulParams object that encodes
+// all of the input information required by the middle-end, that is, the TrMul
+// function.
+//
+// CreateTrMulParams performs the following tasks:
+//   1. Select the single code path to be taken, out of the set of paths
+//      described by the `CompiledPaths` template parameter, based on the
+//      runtime input parameter `the_path`.
+//   2. Perform type-erasure, converting templatized typed input parameters
+//      to the un-typed data stored in TrMulParams.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
 void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
@@ -298,7 +280,12 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   detail::StoreMulParams(mul_params, mul_params.channel_dimension(),
                          params->mul_params_bytes);
 
-  // Create inner loops and packed matrices based on the Path.
+  if (detail::FallBackToStandardCpp(lhs.layout, rhs.layout, dst.layout,
+                                    mul_params.channel_dimension())) {
+    return detail::PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar,
+                                       AccumScalar, DstScalar>(params);
+  }
+
   detail::PopulateTrMulParamsAllCompiledPaths<
       CompiledPaths, LhsScalar, RhsScalar, AccumScalar, DstScalar>(the_path,
                                                                    params);

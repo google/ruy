@@ -16,6 +16,7 @@ limitations under the License.
 #include "ruy/create_trmul_params.h"
 
 #include "ruy/mat.h"
+#include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
 
 namespace ruy {
@@ -35,6 +36,29 @@ void CreatePackedLayout(const MatLayout& src, const Type& scalar,
   } else {
     packed_layout->stride = inner_size;
   }
+}
+
+bool FallBackToStandardCpp(const MatLayout& lhs_layout,
+                           const MatLayout& rhs_layout,
+                           const MatLayout& dst_layout,
+                           ChannelDimension channel_dimension) {
+  // Supporting row-major LHS/RHS would require transposing blocks in the
+  // packing code. This isn't implemented at the moment, so we fall back to
+  // StandardCpp when that would be needed.
+  // Supporting row-major destination will be achieved in the near future
+  // by transposing the whole Mul to reduce to col-major destination.
+  if (!IsColMajor(lhs_layout) || !IsColMajor(rhs_layout) ||
+      !IsColMajor(dst_layout)) {
+    return true;
+  }
+
+  // Ruy's optimized kernels currently only support the channel_dimension==kRow
+  // case.
+  if (channel_dimension != ChannelDimension::kRow) {
+    return true;
+  }
+
+  return false;
 }
 
 }  // namespace detail
