@@ -1527,23 +1527,12 @@ struct MakeSpecMultiplierFieldsImpl<TestSetType, true> {
 
 template <typename TestSetType>
 struct MakeSpecMultiplierFieldsImpl<TestSetType, false> {
-  static void Run(TestSetType* test_set) {
-    test_set->mul_params.set_multiplier_fixedpoint(0);
-    test_set->mul_params.set_multiplier_exponent(0);
-  }
+  static void Run(TestSetType*) {}
 };
 
 template <typename MulParamsType>
 void MakeSpecClampFields(MulParamsType* mul_params) {
-  using AccumScalar = typename MulParamsType::AccumScalar;
   using DstScalar = typename MulParamsType::DstScalar;
-
-  if (std::is_same<AccumScalar, std::int32_t>::value) {
-    // Returning raw accumulators, clamping is not supported.
-    mul_params->set_clamp_min(std::numeric_limits<DstScalar>::lowest());
-    mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max());
-    return;
-  }
 
   if (getenv("BENCHMARK_ONLY_MATMUL")) {
     if (std::is_floating_point<DstScalar>::value) {
@@ -1558,6 +1547,10 @@ void MakeSpecClampFields(MulParamsType* mul_params) {
 
   mul_params->set_clamp_min(std::numeric_limits<DstScalar>::lowest() + 1);
   mul_params->set_clamp_max(std::numeric_limits<DstScalar>::max() - 1);
+}
+
+void MakeSpecClampFields(MulParams<std::int32_t, std::int32_t>*) {
+  // Returning raw accumulators, clamping is not supported.
 }
 
 template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
@@ -1877,8 +1870,6 @@ template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
           typename DstScalar>
 void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::Benchmark(
     TestResult<DstScalar>* result) {
-  using DstScalar = DstScalar;
-
   const bool cold = getenv("RUY_BENCHMARK_COLD");
   LhsScalar* orig_lhs_data = lhs.matrix.data();
   RhsScalar* orig_rhs_data = rhs.matrix.data();

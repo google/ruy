@@ -58,7 +58,7 @@ void MulFrontEndUpToCreateTrMulParams(
   // Perform validation of parameters early so that failures are easier to map
   // to user errors. In particular, perform this validation before the
   // transposition.
-  Validate(lhs, rhs, dst, mul_params);
+  Validate(lhs, rhs, dst);
 
   // Determine which exact Path we're going to take in this Mul call.
   // This is cheap because it's cached in `ctx`. In user scenarios this always

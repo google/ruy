@@ -412,6 +412,7 @@ cc_library(
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        ":check_macros",
     ],
 )
 

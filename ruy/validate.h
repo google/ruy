@@ -56,35 +56,12 @@ void ValidateZeroPoints(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
              rhs_zero_point != std::numeric_limits<RhsScalar>::lowest());
 }
 
-template <typename MulParamsType, typename DstScalar>
-void ValidateRawAccumulatorsDst(const MulParamsType& mul_params,
-                                DstScalar dst_zero_point) {
-  static_assert(
-      std::is_same<typename MulParamsType::DstScalar, DstScalar>::value, "");
-  if (!std::is_same<typename MulParamsType::DstScalar, std::int32_t>::value)
-    return;
-
-  // If user is looking for the raw accumulator, zero_point and all the other
-  // dequantize fields don't make sense and should not be set.
-  RUY_DCHECK_EQ(dst_zero_point, 0);
-  RUY_DCHECK_EQ(mul_params.clamp_max(),
-                std::numeric_limits<std::int32_t>::max());
-  RUY_DCHECK_EQ(mul_params.clamp_min(),
-                std::numeric_limits<std::int32_t>::min());
-  RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
-  RUY_DCHECK_EQ(mul_params.multiplier_exponent(), 0);
-  RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint_perchannel(), nullptr);
-  RUY_DCHECK_EQ(mul_params.multiplier_exponent_perchannel(), nullptr);
-}
-
 }  // namespace detail
 
-template <typename LhsScalar, typename RhsScalar, typename DstScalar,
-          typename MulParamsType>
+template <typename LhsScalar, typename RhsScalar, typename DstScalar>
 void Validate(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-              const Mat<DstScalar>& dst, const MulParamsType& mul_params) {
+              const Mat<DstScalar>& dst) {
   detail::ValidateZeroPoints(lhs.zero_point, rhs.zero_point, dst.zero_point);
-  detail::ValidateRawAccumulatorsDst<MulParamsType>(mul_params, dst.zero_point);
 }
 
 }  // namespace ruy

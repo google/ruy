@@ -72,14 +72,10 @@ template <typename AccumScalar, typename DstScalar,
                               !std::is_same<DstScalar, std::int32_t>::value>
 struct ApplyMultiplierImpl {};
 
-// Specialization in non-applicable case: do nothing, just check that values
-// are default.
+// Specialization in non-applicable case: do nothing.
 template <typename AccumScalar, typename DstScalar>
 struct ApplyMultiplierImpl<AccumScalar, DstScalar, false> {
-  static void Run(const MulParams<AccumScalar, DstScalar>& mul_params, int,
-                  AccumScalar*) {
-    RUY_DCHECK_EQ(mul_params.multiplier_fixedpoint(), 0);
-    RUY_DCHECK_EQ(mul_params.multiplier_exponent(), 0);
+  static void Run(const MulParams<AccumScalar, DstScalar>&, int, AccumScalar*) {
   }
 };
 
