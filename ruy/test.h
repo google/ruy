@@ -514,8 +514,6 @@ std::string PathName(const TestResult<Scalar>& result) {
   return pathname;
 }
 
-enum class ExpectedOutcome { kSuccess, kDeath };
-
 template <typename tLhsScalar, typename tRhsScalar, typename tAccumScalar,
           typename tDstScalar>
 struct TestSet final {
@@ -575,7 +573,6 @@ struct TestSet final {
   Order rhs_order = Order::kColMajor;
   Order dst_order = Order::kColMajor;
   LayoutStyle layout_style = LayoutStyle::kUnstridedLinear;
-  ExpectedOutcome expected_outcome = ExpectedOutcome::kSuccess;
 
   bool use_specified_zero_points = false;
   LhsScalar lhs_zero_point = 0;
@@ -656,23 +653,13 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::EvalRuy(
     GlobalContext().set_max_num_threads(1 + global_random_engine()() % 8);
   }
   get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
-  if (expected_outcome == ExpectedOutcome::kSuccess) {
+  DoMul(result);
+  // If enabling caching, Mul is stateful, so we run it a second time to get
+  // coverage of these aspects.
+  if (cache_lhs || cache_rhs) {
     DoMul(result);
-    // If enabling caching, Mul is stateful, so we run it a second time to get
-    // coverage of these aspects.
-    if (cache_lhs || cache_rhs) {
-      DoMul(result);
-    }
-    RUY_CHECK_EQ(GlobalContext().last_used_path(), result->path);
-  } else if (expected_outcome == ExpectedOutcome::kDeath) {
-    // TODO(benoitjacob) TSan and ASan seem to be breaking ASSERT_DEATH.
-    // Report a bug?
-#if (!defined NDEBUG) && (!defined RUY_ASAN) && (!defined RUY_TSAN)
-    RUY_ASSERT_DEATH(DoMul(result), "");
-#endif
-  } else {
-    RUY_CHECK(false);
   }
+  RUY_CHECK_EQ(GlobalContext().last_used_path(), result->path);
   GlobalContext().set_explicit_tuning(Tuning::kAuto);
   GlobalContext().set_max_num_threads(1);
 }
@@ -2100,14 +2087,12 @@ template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
           typename DstScalar>
 void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::Verify() {
   RUY_CHECK_EQ(life_stage, LifeStage::kEvaluated);
-  if (expected_outcome == ExpectedOutcome::kSuccess) {
-    VerifyTestResults();
-  }
+  VerifyTestResults();
   life_stage = LifeStage::kFinal;
 }
 
 template <typename TestSetType>
-void TestRCC(int rows, int depth, int cols, ExpectedOutcome expected_outcome) {
+void TestRCC(int rows, int depth, int cols) {
   TestSetType test_set;
   test_set.rows = rows;
   test_set.depth = depth;
@@ -2116,18 +2101,11 @@ void TestRCC(int rows, int depth, int cols, ExpectedOutcome expected_outcome) {
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
   test_set.layout_style = LayoutStyle::kUnstridedLinear;
-  test_set.expected_outcome = expected_outcome;
   test_set.Run();
 }
 
 template <typename TestSetType>
-void TestRCC(int rows, int depth, int cols) {
-  TestRCC<TestSetType>(rows, depth, cols, ExpectedOutcome::kSuccess);
-}
-
-template <typename TestSetType>
-void TestNonRCC(int rows, int depth, int cols,
-                ExpectedOutcome expected_outcome) {
+void TestNonRCC(int rows, int depth, int cols) {
   TestSetType test_set;
   test_set.rows = rows;
   test_set.depth = depth;
@@ -2136,13 +2114,11 @@ void TestNonRCC(int rows, int depth, int cols,
   test_set.rhs_order = Order::kColMajor;
   test_set.dst_order = Order::kColMajor;
   test_set.layout_style = LayoutStyle::kUnstridedLinear;
-  test_set.expected_outcome = expected_outcome;
   test_set.Run();
 }
 
 template <typename TestSetType>
-void TestLinearAllOrders(int rows, int depth, int cols,
-                         ExpectedOutcome expected_outcome) {
+void TestLinearAllOrders(int rows, int depth, int cols) {
   const std::vector<Order> orders{Order::kColMajor, Order::kRowMajor};
 
   for (Order lhs_order : orders) {
@@ -2156,17 +2132,10 @@ void TestLinearAllOrders(int rows, int depth, int cols,
         test_set.rhs_order = rhs_order;
         test_set.dst_order = dst_order;
         test_set.layout_style = LayoutStyle::kLinear;
-        test_set.expected_outcome = expected_outcome;
         test_set.Run();
       }
     }
   }
-}
-
-template <typename TestSetType>
-void TestLinearAllOrders(int rows, int depth, int cols) {
-  TestLinearAllOrders<TestSetType>(rows, depth, cols,
-                                   ExpectedOutcome::kSuccess);
 }
 
 }  // namespace ruy
