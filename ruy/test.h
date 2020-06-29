@@ -1488,12 +1488,12 @@ void SwitchMultiplierToPerChannel(TestSetType* test_set) {
     test_set->per_channel_multiplier_fixedpoint[i] = nudged_multiplier;
     test_set->per_channel_multiplier_exponent[i] = nudged_exponent;
   }
+  test_set->mul_params.set_multiplier_fixedpoint(0);
+  test_set->mul_params.set_multiplier_exponent(0);
   test_set->mul_params.set_multiplier_fixedpoint_perchannel(
       test_set->per_channel_multiplier_fixedpoint.data());
   test_set->mul_params.set_multiplier_exponent_perchannel(
       test_set->per_channel_multiplier_exponent.data());
-  test_set->mul_params.set_multiplier_fixedpoint(0);
-  test_set->mul_params.set_multiplier_exponent(0);
 }
 
 template <

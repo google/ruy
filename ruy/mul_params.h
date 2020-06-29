@@ -62,38 +62,45 @@ class MulParams final {
   // of the multiplier by which accumulators are multiplied before being casted
   // to the destination type.
   AccumScalar multiplier_fixedpoint() const {
-    return storage_.multiplier_fixedpoint;
+    return storage_.perchannel ? 0 : storage_.multiplier_fixedpoint;
   }
   void set_multiplier_fixedpoint(const AccumScalar value) {
+    set_perchannel(false);
     storage_.multiplier_fixedpoint = value;
   }
   // Only for non-floating-point cases. The exponent part of the aforementioned
   // multiplier.
-  int multiplier_exponent() const { return storage_.multiplier_exponent; }
+  int multiplier_exponent() const {
+    return storage_.perchannel ? 0 : storage_.multiplier_exponent;
+  }
   void set_multiplier_exponent(const int value) {
+    set_perchannel(false);
     storage_.multiplier_exponent = value;
   }
-  // Per-channel variant of multiplier_fixedpoint. If not nullptr, this must
-  // point to a buffer of as many values as there are rows in the destination
-  // matrix. Each row of the destination matrix will use the corresponding
-  // buffer element instead of multiplier_fixedpoint.
+  // Per-channel variant of multiplier_fixedpoint. Setting this switches
+  // to per-channel mode, where `multiplier_fixedpoint` and
+  // `multiplier_exponent` are disabled and `multiplier_fixedpoint_perchannel`
+  // and `multiplier_exponent_perchannel` are used instead.
+  //
+  // This must point to a buffer of as many values as there are rows in the
+  // destination matrix. Each row of the destination matrix will use the
+  // corresponding buffer element instead of multiplier_fixedpoint.
   const AccumScalar* multiplier_fixedpoint_perchannel() const {
-    return storage_.multiplier_fixedpoint_perchannel;
+    return storage_.perchannel ? storage_.multiplier_fixedpoint_perchannel
+                               : nullptr;
   }
   void set_multiplier_fixedpoint_perchannel(const AccumScalar* ptr) {
+    set_perchannel(true);
     storage_.multiplier_fixedpoint_perchannel = ptr;
   }
-  // Per-channel variant of multiplier_exponent. If not nullptr, this must
-  // point to a buffer of as many values as there are rows in the destination
-  // matrix. Each row of the destination matrix will use the corresponding
-  // buffer element instead of multiplier_exponent.
-  //
-  // Either none or both of multiplier_exponent_perchannel and
-  // multiplier_fixedpoint_perchannel must be nullptr.
+  // Per-channel variant of multiplier_exponent. Same comments as for
+  // multiplier_fixedpoint_perchannel.
   const int* multiplier_exponent_perchannel() const {
-    return storage_.multiplier_exponent_perchannel;
+    return storage_.perchannel ? storage_.multiplier_exponent_perchannel
+                               : nullptr;
   }
   void set_multiplier_exponent_perchannel(const int* ptr) {
+    set_perchannel(true);
     storage_.multiplier_exponent_perchannel = ptr;
   }
   // min clamp bound of destination values.
@@ -113,6 +120,20 @@ class MulParams final {
 
  private:
   detail::MulParamsStorage<AccumScalar, DstScalar> storage_;
+
+  void set_perchannel(bool perchannel) {
+    if (storage_.perchannel == perchannel) {
+      return;
+    }
+    if (perchannel) {
+      RUY_DCHECK_EQ(storage_.multiplier_fixedpoint, 0);
+      RUY_DCHECK_EQ(storage_.multiplier_exponent, 0);
+    } else {
+      RUY_DCHECK_EQ(storage_.multiplier_fixedpoint_perchannel, nullptr);
+      RUY_DCHECK_EQ(storage_.multiplier_exponent_perchannel, nullptr);
+    }
+    storage_.perchannel = perchannel;
+  }
 };
 
 namespace detail {
@@ -136,6 +157,7 @@ struct MulParamsStorage final {
   static constexpr const int* multiplier_exponent_perchannel = nullptr;
   static constexpr AccumScalar multiplier_fixedpoint = 0;
   static constexpr int multiplier_exponent = 0;
+  static constexpr bool perchannel = false;
 };
 
 // Specialization for the integer-quantized type, with down-quantization of
@@ -147,13 +169,18 @@ struct MulParamsStorage<std::int32_t, DstScalar> final {
   static_assert(sizeof(DstScalar) < sizeof(AccumScalar), "");
 
   const AccumScalar* bias = nullptr;
-  const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
-  const int* multiplier_exponent_perchannel = nullptr;
-  AccumScalar multiplier_fixedpoint = 0;
-  int multiplier_exponent = 0;
+  union {
+    const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
+    AccumScalar multiplier_fixedpoint;
+  };
+  union {
+    const int* multiplier_exponent_perchannel = nullptr;
+    int multiplier_exponent;
+  };
   DstScalar clamp_min = std::numeric_limits<DstScalar>::lowest();
   DstScalar clamp_max = std::numeric_limits<DstScalar>::max();
   ChannelDimension channel_dimension = ChannelDimension::kRow;
+  bool perchannel = false;
 };
 
 // Specialization used in the integer case when outputting raw int32
@@ -178,6 +205,7 @@ struct MulParamsStorage<std::int32_t, std::int32_t> final {
   static constexpr DstScalar clamp_min =
       std::numeric_limits<DstScalar>::lowest();
   static constexpr DstScalar clamp_max = std::numeric_limits<DstScalar>::max();
+  static constexpr bool perchannel = false;
 };
 
 }  // namespace detail
