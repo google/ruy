@@ -16,7 +16,6 @@ limitations under the License.
 #ifndef RUY_RUY_TRMUL_PARAMS_H_
 #define RUY_RUY_TRMUL_PARAMS_H_
 
-#include <algorithm>
 #include <cstdint>
 
 #include "ruy/mat.h"
@@ -32,20 +31,26 @@ using RunKernelFn = void(Tuning, const SidePair<PEMat>&, const void*,
 
 using RunPackFn = void(Tuning, const EMat&, PEMat*, int, int);
 
+// This should not be needed since we require c++14, where std::max is already
+// constexpr, but TensorFlow continuous integration uses Ubuntu 16 with a
+// libstdc++ that does not support that.
+constexpr int constexpr_max(int a, int b) { return a > b ? a : b; }
+
 // Under-estimating these values would be caught by a static_assert in
 // StoreMulParams. Over-estimating these values cannot easily be caught, and
 // would cause unnecessary inflation of the TrMulParams data structure.
 constexpr int kMaxMulParamsAlignment =
-    std::max({alignof(void*), alignof(double)});
+    constexpr_max(alignof(void*), alignof(double));
 constexpr int kMaxMulParamsSizeFloatingPointCase =
     sizeof(MulParams<double, double>);
 constexpr int kMaxMulParamsSizeRawIntegerCase =
     sizeof(MulParams<std::int32_t, std::int32_t>);
 constexpr int kMaxMulParamsSizeQuantizedIntegerCase =
     sizeof(MulParams<std::int32_t, std::int16_t>);
-constexpr int kMaxMulParamsSize = std::max(
-    {kMaxMulParamsSizeFloatingPointCase, kMaxMulParamsSizeRawIntegerCase,
-     kMaxMulParamsSizeQuantizedIntegerCase});
+constexpr int kMaxMulParamsSize =
+    constexpr_max(kMaxMulParamsSizeFloatingPointCase,
+                  constexpr_max(kMaxMulParamsSizeRawIntegerCase,
+                                kMaxMulParamsSizeQuantizedIntegerCase));
 
 // Type-erased data needed for implementing TrMul.
 struct TrMulParams {
