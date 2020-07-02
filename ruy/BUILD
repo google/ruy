@@ -459,6 +459,17 @@ cc_library(
     ],
 )
 
+cc_test(
+    name = "apply_multiplier_test",
+    srcs = ["apply_multiplier_test.cc"],
+    copts = ruy_copts(),
+    deps = [
+        ":apply_multiplier",
+        ":gtest_wrapper",
+        ":mul_params",
+    ],
+)
+
 cc_library(
     name = "kernel_common",
     hdrs = [

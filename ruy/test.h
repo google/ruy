@@ -1271,7 +1271,8 @@ void EvalExternalPath(
 }
 
 template <typename Scalar>
-bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
+bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
+           ExternalPath external_path2, const Matrix<Scalar>& matrix2,
            int depth) {
   RUY_CHECK_EQ(matrix1.layout().rows(), matrix2.layout().rows());
   RUY_CHECK_EQ(matrix1.layout().cols(), matrix2.layout().cols());
@@ -1296,10 +1297,37 @@ bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
     tolerated_max_diff = max_abs_val * std::numeric_limits<Scalar>::epsilon() *
                          64 * std::sqrt(static_cast<float>(depth));
     tolerated_mean_diff = tolerated_max_diff / std::sqrt(size);
-  } else if (RUY_OPT(NATIVE_ROUNDING)) {
-    tolerated_max_diff = 1;
+  } else if (std::is_same<Scalar, std::int32_t>::value) {
+    // raw integer case, no rounding, so we can require exactness
+    tolerated_max_diff = 0;
+    tolerated_mean_diff = 0;
+  } else {
+    // quantized case, with rounding errors in downscaling int32 accumulators
+    // to final 8bit or 16bit values.
+
+    if (external_path1 != ExternalPath::kNone ||
+        external_path2 != ExternalPath::kNone) {
+      // In this case, we are comparing against some other library than ruy.
+      //
+      // We may have to tolerate an error of +/- 1 from using different
+      // rounding in fixed-point multiplication, and then again an error of +/-
+      // 1 from using different rounding in right shifts, so the tolerance on
+      // the difference may have to be as large as 2.
+      tolerated_max_diff = 2;
+    } else if (RUY_PLATFORM_ARM) {
+      // All our code paths on ARM, including SIMD paths, are bit-exact
+      // with the reference code (by design of the reference code).
+      tolerated_max_diff = 0;
+    } else {
+      // In this case, we are comparing ruy paths only, but outside of ARM.
+      // At the moment, it so happens that ruy's x86 SIMD code paths only have
+      // a difference of +/- 1, so we control that, but that is OK to relax as
+      // needed on x86 or any other architecture.
+      tolerated_max_diff = 1;
+    }
+
     // totally empirical
-    tolerated_mean_diff = std::min(1.0, 2.0 * std::pow(size, -0.2));
+    tolerated_mean_diff = std::min(1.0, 2.0 * std::pow(size, -0.18));
   }
   double sum_diff = 0;
   for (int row = 0; row < matrix1.layout().rows(); row++) {
@@ -1324,17 +1352,21 @@ bool Agree(const Matrix<Scalar>& matrix1, const Matrix<Scalar>& matrix2,
 }
 
 template <typename Scalar>
-bool Agree(const StorageMatrix<Scalar>& storage_matrix1,
+bool Agree(ExternalPath external_path1,
+           const StorageMatrix<Scalar>& storage_matrix1,
+           ExternalPath external_path2,
            const StorageMatrix<Scalar>& storage_matrix2, int depth) {
   VerifyConsistentFields(storage_matrix1);
   VerifyConsistentFields(storage_matrix2);
-  return Agree(storage_matrix1.matrix, storage_matrix2.matrix, depth);
+  return Agree(external_path1, storage_matrix1.matrix, external_path2,
+               storage_matrix2.matrix, depth);
 }
 
 template <typename Scalar>
 bool Agree(const TestResult<Scalar>& result1, const TestResult<Scalar>& result2,
            int depth) {
-  return Agree(result1.storage_matrix, result2.storage_matrix, depth);
+  return Agree(result1.external_path, result1.storage_matrix,
+               result2.external_path, result2.storage_matrix, depth);
 }
 
 struct Stats {

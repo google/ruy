@@ -21,8 +21,8 @@ limitations under the License.
 #include <limits>
 
 namespace ruy {
-
 namespace detail {
+namespace {
 
 // Copied from gemmlowp/fixedpoint.
 // Similar to the ARM64 instruction, SQRDMULH. The name of this function
@@ -43,23 +43,33 @@ std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a, std::int32_t b) {
   return overflow ? std::numeric_limits<std::int32_t>::max() : ab_x2_high32;
 }
 
-// Copied from gemmlowp/fixedpoint.
-// Returns numerator/2^exponent, with correct round-to-nearest, breaking ties
-// away-from-zero. That particular tie-breaking behavior is not particularly
-// important in practice. When RUY_OPT(NATIVE_ROUNDING),
-// optimized code paths may use whatever tie-breaking
-// behavior is more friendly to the target instruction set, typically breaking
-// ties upward.
-std::int32_t RoundingDivideByPOT(std::int32_t numerator, int exponent) {
-  std::int32_t sign = numerator >= 0 ? 1 : -1;
-  std::int32_t abs_numerator = std::abs(numerator);
-  std::int32_t mask = (1LL << exponent) - 1;
-  std::int32_t remainder = abs_numerator & mask;
-  std::int32_t threshold = mask >> 1;
-  std::int32_t abs_result =
-      (abs_numerator >> exponent) + (remainder > threshold ? 1 : 0);
-  return sign * abs_result;
+// Returns numerator/2^exponent, rounding to nearest, breaking ties
+// upwards. That particular tie-breaking behavior is not important in practice.
+// It happens to be cheap to implement in hardware and therefore, commonplace.
+// In particular, it matches the behavior of ARM NEON rounding right shifts
+// (RSHL with negative shift amount). By contrast, breaking ties away-from-zero
+// or to-nearest-even is a little more expensive and less commonplace in SIMD
+// hardware.
+std::int32_t RoundingRightShift(std::int32_t numerator, int exponent) {
+  // According to
+  //   https://en.cppreference.com/w/cpp/language/operator_arithmetic ,
+  // since C++20, "The value of a >> b is a/2^b rounded down (in other words,
+  // right shift on signed a is arithmetic right shift)". While we currently
+  // target C++14/17, this makes it reasonable to assume that the
+  // implementation-defined behavior of a>>b with a<0 has converged to this
+  // behavior on current compilers even in C++14/17 modes.
+  RUY_DCHECK_GE(exponent, 0);
+  RUY_DCHECK_LE(exponent, 31);
+  const std::int32_t nudge = (exponent > 0) ? (1 << (exponent - 1)) : 0;
+  // if numerator + nudge would overflow, do the computation as if it were 2^31.
+  if (numerator > std::numeric_limits<std::int32_t>::max() - nudge) {
+    RUY_DCHECK_GE(exponent, 1);  // This can't happen with exponent==0.
+    return 1 << (31 - exponent);
+  }
+  return (numerator + nudge) >> exponent;
 }
+
+}  // namespace
 
 // Copied from TF Lite code.
 std::int32_t MultiplyByQuantizedMultiplier(std::int32_t x,
@@ -67,9 +77,9 @@ std::int32_t MultiplyByQuantizedMultiplier(std::int32_t x,
                                            int shift) {
   int left_shift = shift > 0 ? shift : 0;
   int right_shift = shift > 0 ? 0 : -shift;
-  return RoundingDivideByPOT(SaturatingRoundingDoublingHighMul(
-                                 x * (1 << left_shift), quantized_multiplier),
-                             right_shift);
+  return RoundingRightShift(SaturatingRoundingDoublingHighMul(
+                                x * (1 << left_shift), quantized_multiplier),
+                            right_shift);
 }
 
 }  // namespace detail

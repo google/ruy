@@ -40,25 +40,6 @@ void ApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
 
 namespace detail {
 
-// Copied from gemmlowp/fixedpoint.
-// Similar to the ARM64 instruction, SQRDMULH. The name of this function
-// is copied from the name of that instruction.
-// Implements a fixed-point multiplication on values in Q0.31 format, i.e.
-// the int32 values represent real numbers in [-1, 1), the int32 value -2^31
-// represents the real number -1. The 'doubling' part of the name refers to
-// the fact that this returns (up to correct rounding) a*b/2^31, not a*b/2^32
-// as just 'high mul' would suggest.
-std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a, std::int32_t b);
-
-// Copied from gemmlowp/fixedpoint.
-// Returns numerator/2^exponent, with correct round-to-nearest, breaking ties
-// away-from-zero. That particular tie-breaking behavior is not particularly
-// important in practice. When RUY_OPT(NATIVE_ROUNDING),
-// optimized code paths may use whatever tie-breaking
-// behavior is more friendly to the target instruction set, typically breaking
-// ties upward.
-std::int32_t RoundingDivideByPOT(std::int32_t numerator, int exponent);
-
 // Copied from TF Lite code.
 std::int32_t MultiplyByQuantizedMultiplier(std::int32_t x,
                                            std::int32_t quantized_multiplier,
