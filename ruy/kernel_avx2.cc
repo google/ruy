@@ -738,9 +738,6 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
               _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
         }
 
-#if !RUY_OPT(NATIVE_ROUNDING)
-        RUY_DCHECK(false);
-#endif
         const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
 
         // We cannot do
@@ -1376,9 +1373,6 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
             _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
       }
 
-#if !RUY_OPT(NATIVE_ROUNDING)
-      RUY_DCHECK(false);
-#endif
       const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
 
       // See GEMM version for details of this process.

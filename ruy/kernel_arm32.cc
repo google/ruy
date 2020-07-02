@@ -963,6 +963,7 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
         RUY_MAKE_ZERO(q8)
         "vmax.s32 q12, q10, q8\n"
 
+        // Apply the positive exponent part of the multiplier.
         "vshl.s32 q14, q14, q12\n"
         "vshl.s32 q15, q15, q12\n"
 
@@ -981,42 +982,7 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
         "vqrdmulh.s32 q14, q14, q10\n"
         "vqrdmulh.s32 q15, q15, q10\n"
 
-        // We have some rounding division-by-power-of-two to do. This should
-        // always use "round to nearest". We allow for some
-        // freedom in how ties are broken, to strike a good compromise of
-        // performance on given hardware vs. perfect agreement of results
-        // across hardware.
-        //
-        // When RUY_OPT_NATIVE_ROUNDING is enabled, we allow for implementation
-        // defined tie-breaks to help performance. On NEON, this means that we
-        // can just use the NEON rounding instructions, such as srshl. They
-        // happen to be breaking ties upward.
-        //
-        // When RUY_OPT_NATIVE_ROUNDING is disabled, we implement strict
-        // break-ties-away-from zero, as described in Appendix B of
-        // https://arxiv.org/pdf/1712.05877.pdf
-        // When we wrote that, we thought that that would be better unbiased
-        // than the NEON upwards tie-breaks, and we had observed some
-        // improvement on some model. However, that is only more unbiased for
-        // data centered at zero, which was likely the case in that model,
-        // but is not always the case. If we wanted something more consistently
-        // unbiased then we should try breaking ties toward-nearest-even.
-#if !RUY_OPT(NATIVE_ROUNDING)
-        // Fix up values to be right-shifted, so that the (round to nearest,
-        // break ties upward) behavior of srshl applied to these fixed-up
-        // values, produces the same result as the desired (round to nearest,
-        // break ties away from zero) behavior on the original values.
-        "vand q8, q14, q12\n"
-        "vand q9, q15, q12\n"
-        "vshr.s32 q8, q8, #31\n"
-        "vshr.s32 q9, q9, #31\n"
-        "vqadd.s32 q14, q14, q8\n"
-        "vqadd.s34 q15, q15, q9\n"
-
-#endif
-        // At this point we have reduced the problem of correctly implementing
-        // rounding divide-by-power-of-two, to what the SRSHL instruction can
-        // do.
+        // Apply the negative exponent part of the multiplier.
         "vrshl.s32 q14, q14, q12\n"
         "vrshl.s32 q15, q15, q12\n"
 
@@ -1916,6 +1882,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
         RUY_MAKE_ZERO(q8)
         "vmax.s32 q12, q10, q8\n"
 
+        // Apply the positive exponent part of the multiplier.
         "vshl.s32 q14, q14, q12\n"
 
         "vmin.s32 q12, q10, q8\n"
@@ -1932,39 +1899,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
         // Apply the fixed-point part of the multiplier.
         "vqrdmulh.s32 q14, q14, q10\n"
 
-        // We have some rounding division-by-power-of-two to do. This should
-        // always use "round to nearest". We allow for some
-        // freedom in how ties are broken, to strike a good compromise of
-        // performance on given hardware vs. perfect agreement of results
-        // across hardware.
-        //
-        // When RUY_OPT_NATIVE_ROUNDING is enabled, we allow for implementation
-        // defined tie-breaks to help performance. On NEON, this means that we
-        // can just use the NEON rounding instructions, such as srshl. They
-        // happen to be breaking ties upward.
-        //
-        // When RUY_OPT_NATIVE_ROUNDING is disabled, we implement strict
-        // break-ties-away-from zero, as described in Appendix B of
-        // https://arxiv.org/pdf/1712.05877.pdf
-        // When we wrote that, we thought that that would be better unbiased
-        // than the NEON upwards tie-breaks, and we had observed some
-        // improvement on some model. However, that is only more unbiased for
-        // data centered at zero, which was likely the case in that model,
-        // but is not always the case. If we wanted something more consistently
-        // unbiased then we should try breaking ties toward-nearest-even.
-#if !RUY_OPT(NATIVE_ROUNDING)
-        // Fix up values to be right-shifted, so that the (round to nearest,
-        // break ties upward) behavior of srshl applied to these fixed-up
-        // values, produces the same result as the desired (round to nearest,
-        // break ties away from zero) behavior on the original values.
-        "vand q8, q14, q12\n"
-        "vshr.s32 q8, q8, #31\n"
-        "vqadd.s32 q14, q14, q8\n"
-
-#endif
-        // At this point we have reduced the problem of correctly implementing
-        // rounding divide-by-power-of-two, to what the SRSHL instruction can
-        // do.
+        // Apply the negative exponent part of the multiplier.
         "vrshl.s32 q14, q14, q12\n"
 
         "ldrb r10, [%[params], #" RUY_STR(RUY_OFFSET_DST_TYPE_ID) "]\n"

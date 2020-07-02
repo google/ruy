@@ -905,9 +905,6 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
           accum_data_vf = _mm512_inserti32x8(
               accum_data_vf, _mm512_cvtepi64_epi32(scaled_v_high), 1);
         }
-#if !RUY_OPT(NATIVE_ROUNDING)
-        RUY_DCHECK(false);
-#endif
 
         if (params.dst_zero_point != 0) {
           __m512i dst_zero_point = _mm512_set1_epi32(params.dst_zero_point);
@@ -1220,9 +1217,6 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
           _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
       accum_data_v0 = _mm512_inserti32x8(
           accum_data_v0, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-#if !RUY_OPT(NATIVE_ROUNDING)
-      RUY_DCHECK(false);
-#endif
 
       if (params.dst_zero_point != 0) {
         __m512i dst_zero_point = _mm512_set1_epi32(params.dst_zero_point);
