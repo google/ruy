@@ -22,3 +22,9 @@ ruy is currently only optimized for the ARM architectures (both 64-bit and
 ruy is currently optimized only for the following combination of storage orders:
 LHS = row-major, RHS = column-major, destination = column-major. All other
 combinations of storage orders fall back to slow reference code at the moment.
+
+## Documentation
+
+Some documentation will eventually be available in the doc/ directory, see
+[doc/README.md](doc/README.md).
+
