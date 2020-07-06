@@ -1728,7 +1728,10 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeResultPaths() {
   paths = PathsBitfieldAsVector(paths_bitfield);
 
   // kReference is a special 'external path' that's always available.
-  external_paths.push_back(ExternalPath::kReference);
+  // It can still be disabled by NOEXT.
+  if (!GetBoolEnvVarOrFalse("NOEXT")) {
+    external_paths.push_back(ExternalPath::kReference);
+  }
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
 
