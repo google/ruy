@@ -36,15 +36,37 @@ struct BenchmarkShape {
 };
 
 template <typename TestSetType>
-std::vector<std::unique_ptr<TestResult<DstScalar>>> BenchmarkRCC(
+std::vector<std::unique_ptr<TestResult<DstScalar>>> Benchmark(
     const BenchmarkShape& shape) {
   TestSetType test_set;
   test_set.rows = shape.rows;
   test_set.depth = shape.depth;
   test_set.cols = shape.cols;
-  test_set.lhs_order = Order::kRowMajor;
-  test_set.rhs_order = Order::kColMajor;
-  test_set.dst_order = Order::kColMajor;
+  const char* orders = "RCC";
+  const char* orders_env = getenv("ORDERS");
+  if (orders_env) {
+    bool error = false;
+    if (strlen(orders_env) != 3) {
+      error = true;
+    } else {
+      for (int i = 0; i < 3; i++) {
+        if (orders_env[i] != 'R' && orders_env[i] != 'C') {
+          error = true;
+        }
+      }
+    }
+    if (error) {
+      fprintf(stderr,
+              "ORDERS must contain 3 letters, each either R or C, indicating "
+              "whether to use Row-major or Column-major storage order for the "
+              "LHS, RHS and Destination matrix.\n");
+      exit(EXIT_FAILURE);
+    }
+    orders = orders_env;
+  }
+  test_set.lhs_order = orders[0] == 'R' ? Order::kRowMajor : Order::kColMajor;
+  test_set.rhs_order = orders[1] == 'R' ? Order::kRowMajor : Order::kColMajor;
+  test_set.dst_order = orders[2] == 'R' ? Order::kRowMajor : Order::kColMajor;
   test_set.layout_style = LayoutStyle::kUnstridedLinear;
   test_set.benchmark = true;
   const int asymmetry_lhs = shape.symm_lhs ? 0 : 1;
@@ -139,7 +161,7 @@ void Benchmark() {
 
   for (int i = 0; i < static_cast<int>(shapes.size()); i++) {
     const auto& shape = shapes[i];
-    const auto& results = BenchmarkRCC<TestSetType>(shape);
+    const auto& results = Benchmark<TestSetType>(shape);
     if (i == 0) {
       if (benchmark_cubic) {
         printf("size");

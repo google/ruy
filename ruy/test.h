@@ -1485,9 +1485,10 @@ inline void QuantizeMultiplier(double multiplier_double,
 
 template <typename TestSetType>
 void SwitchMultiplierToPerChannel(TestSetType* test_set) {
-  ChannelDimension channel_dimension = global_random_engine()() % 2
-                                           ? ChannelDimension::kRow
-                                           : ChannelDimension::kCol;
+  ChannelDimension channel_dimension =
+      (test_set->benchmark || global_random_engine()() % 2)
+          ? ChannelDimension::kRow
+          : ChannelDimension::kCol;
   test_set->mul_params.set_channel_dimension(channel_dimension);
   const int num_channels = channel_dimension == ChannelDimension::kRow
                                ? test_set->rows
