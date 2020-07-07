@@ -94,6 +94,29 @@ TEST(AllocatorTest, DestructorHandlesFallbackBlocks) {
   allocator.AllocateBytes(1);
 }
 
+TEST(AllocatorTest, AvoidAliasing) {
+  Allocator allocator;
+  // Run twice with a FreeAll in between, just in case some future
+  // change of internal logic makes that bug-prone.
+  for (int repeat = 0; repeat < 2; repeat++) {
+    for (int i = 1; i < 100; i++) {
+      const void *to_avoid =
+          reinterpret_cast<const void *>(0x1234567890123ull + 123 * i);
+      void *ptr = allocator.AllocateBytesAvoidingAliasingWith(i * 10, to_avoid);
+      auto unsigned_low_bits = [](const void *p) {
+        return static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(p));
+      };
+      static constexpr int kMinPeriod = 1024;
+      std::uint32_t unsigned_diff =
+          (unsigned_low_bits(ptr) - unsigned_low_bits(to_avoid)) % kMinPeriod;
+      std::uint32_t unsigned_diff_mod = unsigned_diff % kMinPeriod;
+      ASSERT_TRUE(unsigned_diff_mod >= (kMinPeriod / 4) &&
+                  unsigned_diff_mod <= 3 * (kMinPeriod / 4));
+    }
+    allocator.FreeAll();
+  }
+}
+
 }  // namespace
 }  // namespace ruy
 

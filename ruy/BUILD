@@ -241,6 +241,7 @@ cc_library(
     ],
     copts = ruy_copts(),
     deps = [
+        ":opt_set",
         ":size_util",
         ":system_aligned_alloc",
     ],

@@ -21,9 +21,6 @@ limitations under the License.
 #include <memory>
 #include <vector>
 
-#include "ruy/size_util.h"
-#include "ruy/system_aligned_alloc.h"
-
 namespace ruy {
 
 // Specialized allocator designed to converge to a steady-state where all
@@ -63,38 +60,27 @@ class Allocator final {
  public:
   ~Allocator();
 
-  void* AllocateBytes(std::ptrdiff_t num_bytes) {
-    if (num_bytes == 0) {
-      return nullptr;
-    }
-    const std::ptrdiff_t rounded_num_bytes =
-        round_up_pot(num_bytes, detail::kMinimumBlockAlignment);
-    if (void* p = AllocateFast(rounded_num_bytes)) {
-      return p;
-    }
-    return AllocateSlow(rounded_num_bytes);
-  }
-
+  // Allocate a buffer.
+  void* AllocateBytes(std::ptrdiff_t num_bytes);
+  // Allocate a buffer, trying to avoid having its address close to aliasing
+  // the specified `to_avoid` in the L1D cache.
+  void* AllocateBytesAvoidingAliasingWith(std::ptrdiff_t num_bytes,
+                                          const void* to_avoid);
+  // Allocate an array of `count` elements of the given `Pointer` type's
+  // element_type.
   template <typename Pointer>
   void Allocate(std::ptrdiff_t count, Pointer* out) {
     using T = typename std::pointer_traits<Pointer>::element_type;
     *out = static_cast<T*>(AllocateBytes(count * sizeof(T)));
   }
-
+  // Free all allocated blocks. Internally consolidate allocated buffers as
+  // explained in the class comment.
   void FreeAll();
 
  private:
   void operator=(const Allocator&) = delete;
+  void* AllocateFast(std::ptrdiff_t num_bytes);
   void* AllocateSlow(std::ptrdiff_t num_bytes);
-
-  void* AllocateFast(std::ptrdiff_t num_bytes) {
-    if (current_ + num_bytes > size_) {
-      return nullptr;
-    }
-    void* ret = static_cast<char*>(ptr_) + current_;
-    current_ += num_bytes;
-    return ret;
-  }
 
   void* ptr_ = nullptr;
   std::ptrdiff_t current_ = 0;

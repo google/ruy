@@ -34,8 +34,7 @@ namespace ruy {
 // internal implementation code is enclosed in namespace 'detail'.
 namespace detail {
 
-void CreatePackedLayout(const MatLayout& src, const Type& scalar,
-                        const KernelLayout& kernel_layout,
+void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
                         PMatLayout* packed_layout);
 
 template <typename Scalar, typename PackedScalar>
@@ -54,8 +53,7 @@ void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
   PEMat* packed_matrix = &params->packed_matrix[side];
   packed_matrix->data_type = Type::Create<PackedScalar>();
   packed_matrix->sums_type = Type::Create<SumsType>();
-  CreatePackedLayout(src.layout, packed_matrix->data_type, kernel_layout,
-                     &packed_matrix->layout);
+  CreatePackedLayout(src.layout, kernel_layout, &packed_matrix->layout);
   packed_matrix->zero_point = Pack<PackedScalar, Scalar>(src.zero_point);
 }
 

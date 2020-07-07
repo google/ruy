@@ -80,7 +80,8 @@ void PreparePackedMatrices(Ctx* ctx, TrMulParams* params) {
     } else {
       // Do not use a cached packed matrix. Only need to allocate buffers now.
       Allocator* allocator = ctx->GetMainAllocator();
-      packed_matrix.data = allocator->AllocateBytes(DataBytes(packed_matrix));
+      packed_matrix.data = allocator->AllocateBytesAvoidingAliasingWith(
+          DataBytes(packed_matrix), params->src[side].data);
       packed_matrix.sums = allocator->AllocateBytes(SumsBytes(packed_matrix));
     }
   }
