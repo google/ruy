@@ -656,7 +656,7 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::EvalRuy(
   DoMul(result);
   // If enabling caching, Mul is stateful, so we run it a second time to get
   // coverage of these aspects.
-  if (cache_lhs || cache_rhs) {
+  if (!benchmark && (cache_lhs || cache_rhs)) {
     DoMul(result);
   }
   RUY_CHECK_EQ(GlobalContext().last_used_path(), result->path);
