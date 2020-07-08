@@ -521,6 +521,7 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":asm_helpers",
+        ":check_macros",
         ":kernel_common",
         ":mat",
         ":mul_params",

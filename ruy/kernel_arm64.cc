@@ -16,6 +16,7 @@ limitations under the License.
 #include <cstdint>
 
 #include "ruy/asm_helpers.h"
+#include "ruy/check_macros.h"
 #include "ruy/kernel_arm.h"
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
@@ -1104,6 +1105,8 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params) {
   void* dst_ptr = dst_col_ptr;
   int row = params.start_row;
   int col = params.start_col;
+
+  RUY_DCHECK(!(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL));
 
   // The asm kernel below has the following NEON register allocation:
   //
@@ -4144,6 +4147,8 @@ void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params) {
   void* dst_ptr = dst_col_ptr;
   int row = params.start_row;
   int col = params.start_col;
+
+  RUY_DCHECK(!(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL));
 
   // The asm kernel below has the following NEON register allocation:
   //

@@ -64,7 +64,8 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeonOutOfOrder1Col(params);
       return;
     }
@@ -91,7 +92,8 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeonOutOfOrder1Col(params);
       return;
     }
@@ -114,7 +116,8 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t, DstSca
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeonDotprodOutOfOrder1Col(params);
     } else if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
       Kernel8bitNeonDotprodInOrder(params);

@@ -1552,6 +1552,8 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
 
+  RUY_DCHECK(!(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL));
+
   // The asm kernel below has the following NEON register allocation:
   //
   // q6 - q13 are 128-bit (4x32b) accumulators.
