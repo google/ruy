@@ -6379,9 +6379,15 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
         "ldrb w4, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
 
-        // Offset these base pointers as needed given the current row, col.
-        "add x5, x1, %x[row], lsl #2\n"
+        // Determine the channel index.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
 
+        // Offset the bias pointer as needed given the current row, col.
+        "add x5, x1, x3, lsl #2\n"
+
+        // If there is no bias, use no offset, just address the passed zero
+        // data.
         "tst w4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "csel x1, x1, x5, eq\n"
 
@@ -6398,8 +6404,11 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
         "ld1 {v2.4s}, [%[rhs_ptr]], #16\n"
         "ld1 {v3.4s}, [%[rhs_ptr]], #16\n"
 
-        // Perform the bias-addition (per the above, we have just folded into
-        // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Perform the bias-addition.
+        // Jump based on channel dimension.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows
         "fadd v16.4s, v16.4s, v14.4s\n"
         "fadd v17.4s, v17.4s, v15.4s\n"
         "fadd v18.4s, v18.4s, v14.4s\n"
@@ -6416,6 +6425,35 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
         "fadd v29.4s, v29.4s, v15.4s\n"
         "fadd v30.4s, v30.4s, v14.4s\n"
         "fadd v31.4s, v31.4s, v15.4s\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns
+        "dup v8.4s, v14.s[0]\n"
+        "dup v9.4s, v14.s[1]\n"
+        "dup v10.4s, v14.s[2]\n"
+        "dup v11.4s, v14.s[3]\n"
+        "dup v12.4s, v15.s[0]\n"
+        "dup v13.4s, v15.s[1]\n"
+        "dup v14.4s, v15.s[2]\n"
+        "dup v15.4s, v15.s[3]\n"
+        "fadd v16.4s, v16.4s, v8.4s\n"
+        "fadd v17.4s, v17.4s, v8.4s\n"
+        "fadd v18.4s, v18.4s, v9.4s\n"
+        "fadd v19.4s, v19.4s, v9.4s\n"
+        "fadd v20.4s, v20.4s, v10.4s\n"
+        "fadd v21.4s, v21.4s, v10.4s\n"
+        "fadd v22.4s, v22.4s, v11.4s\n"
+        "fadd v23.4s, v23.4s, v11.4s\n"
+        "fadd v24.4s, v24.4s, v12.4s\n"
+        "fadd v25.4s, v25.4s, v12.4s\n"
+        "fadd v26.4s, v26.4s, v13.4s\n"
+        "fadd v27.4s, v27.4s, v13.4s\n"
+        "fadd v28.4s, v28.4s, v14.4s\n"
+        "fadd v29.4s, v29.4s, v14.4s\n"
+        "fadd v30.4s, v30.4s, v15.4s\n"
+        "fadd v31.4s, v31.4s, v15.4s\n"
+        "7:\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldr w2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"
@@ -6833,8 +6871,15 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
         "ldrb w4, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
 
-        // Offset these base pointers as needed given the current row, col.
-        "add x5, x1, %x[row], lsl #2\n"
+        // Determine the channel index.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
+
+        // Offset the bias pointer as needed given the current row, col.
+        "add x5, x1, x3, lsl #2\n"
+
+        // If there is no bias, use no offset, just address the passed zero
+        // data.
 
         "tst w4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "csel x1, x1, x5, eq\n"
@@ -6852,8 +6897,11 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
         "ld1 {v2.4s}, [%[rhs_ptr]], #16\n"
         "ld1 {v3.4s}, [%[rhs_ptr]], #16\n"
 
-        // Perform the bias-addition (per the above, we have just folded into
-        // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Perform the bias-addition.
+        // Jump based on channel dimension.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows
         "fadd v16.4s, v16.4s, v14.4s\n"
         "fadd v17.4s, v17.4s, v15.4s\n"
         "fadd v18.4s, v18.4s, v14.4s\n"
@@ -6870,6 +6918,35 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
         "fadd v29.4s, v29.4s, v15.4s\n"
         "fadd v30.4s, v30.4s, v14.4s\n"
         "fadd v31.4s, v31.4s, v15.4s\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns
+        "dup v8.4s, v14.s[0]\n"
+        "dup v9.4s, v14.s[1]\n"
+        "dup v10.4s, v14.s[2]\n"
+        "dup v11.4s, v14.s[3]\n"
+        "dup v12.4s, v15.s[0]\n"
+        "dup v13.4s, v15.s[1]\n"
+        "dup v14.4s, v15.s[2]\n"
+        "dup v15.4s, v15.s[3]\n"
+        "fadd v16.4s, v16.4s, v8.4s\n"
+        "fadd v17.4s, v17.4s, v8.4s\n"
+        "fadd v18.4s, v18.4s, v9.4s\n"
+        "fadd v19.4s, v19.4s, v9.4s\n"
+        "fadd v20.4s, v20.4s, v10.4s\n"
+        "fadd v21.4s, v21.4s, v10.4s\n"
+        "fadd v22.4s, v22.4s, v11.4s\n"
+        "fadd v23.4s, v23.4s, v11.4s\n"
+        "fadd v24.4s, v24.4s, v12.4s\n"
+        "fadd v25.4s, v25.4s, v12.4s\n"
+        "fadd v26.4s, v26.4s, v13.4s\n"
+        "fadd v27.4s, v27.4s, v13.4s\n"
+        "fadd v28.4s, v28.4s, v14.4s\n"
+        "fadd v29.4s, v29.4s, v14.4s\n"
+        "fadd v30.4s, v30.4s, v15.4s\n"
+        "fadd v31.4s, v31.4s, v15.4s\n"
+        "7:\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldr w2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"
@@ -7287,8 +7364,15 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
         "ldrb w4, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
 
-        // Offset these base pointers as needed given the current row, col.
-        "add x5, x1, %x[row], lsl #2\n"
+        // Determine the channel index.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
+
+        // Offset the bias pointer as needed given the current row, col.
+        "add x5, x1, x3, lsl #2\n"
+
+        // If there is no bias, use no offset, just address the passed zero
+        // data.
 
         "tst w4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "csel x1, x1, x5, eq\n"
@@ -7306,8 +7390,11 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
         "ld1 {v2.4s}, [%[rhs_ptr]], #16\n"
         "ld1 {v3.4s}, [%[rhs_ptr]], #16\n"
 
-        // Perform the bias-addition (per the above, we have just folded into
-        // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Perform the bias-addition.
+        // Jump based on channel dimension.
+        "tst w4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows
         "fadd v16.4s, v16.4s, v14.4s\n"
         "fadd v17.4s, v17.4s, v15.4s\n"
         "fadd v18.4s, v18.4s, v14.4s\n"
@@ -7324,6 +7411,35 @@ void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
         "fadd v29.4s, v29.4s, v15.4s\n"
         "fadd v30.4s, v30.4s, v14.4s\n"
         "fadd v31.4s, v31.4s, v15.4s\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns
+        "dup v8.4s, v14.s[0]\n"
+        "dup v9.4s, v14.s[1]\n"
+        "dup v10.4s, v14.s[2]\n"
+        "dup v11.4s, v14.s[3]\n"
+        "dup v12.4s, v15.s[0]\n"
+        "dup v13.4s, v15.s[1]\n"
+        "dup v14.4s, v15.s[2]\n"
+        "dup v15.4s, v15.s[3]\n"
+        "fadd v16.4s, v16.4s, v8.4s\n"
+        "fadd v17.4s, v17.4s, v8.4s\n"
+        "fadd v18.4s, v18.4s, v9.4s\n"
+        "fadd v19.4s, v19.4s, v9.4s\n"
+        "fadd v20.4s, v20.4s, v10.4s\n"
+        "fadd v21.4s, v21.4s, v10.4s\n"
+        "fadd v22.4s, v22.4s, v11.4s\n"
+        "fadd v23.4s, v23.4s, v11.4s\n"
+        "fadd v24.4s, v24.4s, v12.4s\n"
+        "fadd v25.4s, v25.4s, v12.4s\n"
+        "fadd v26.4s, v26.4s, v13.4s\n"
+        "fadd v27.4s, v27.4s, v13.4s\n"
+        "fadd v28.4s, v28.4s, v14.4s\n"
+        "fadd v29.4s, v29.4s, v14.4s\n"
+        "fadd v30.4s, v30.4s, v15.4s\n"
+        "fadd v31.4s, v31.4s, v15.4s\n"
+        "7:\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldr w2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"

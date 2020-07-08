@@ -42,6 +42,11 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
     return true;
   }
 
+  if (RUY_PLATFORM_NEON_64) {
+    if (src[Side::kLhs].data_type == Type::Create<float>()) {
+      return false;
+    }
+  }
   // Ruy's optimized kernels currently only support the channel_dimension==kRow
   // case.
   if (channel_dimension != ChannelDimension::kRow) {
