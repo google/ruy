@@ -3355,19 +3355,20 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
 
         // Load some parameters needed for the end work on current block.
         RUY_MAKE_ZERO(v8)
-        "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
-        "ins v13.h[4], w4\n" // dst_zero_point
-        "ldr x4, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
         "ldrb w6, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "dup v9.4s, w3\n"   // create prod_zp_depth_vec
-        "add x5, x4, %x[row], lsl #2\n"
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "csel x4, x4, x5, eq\n"
 
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
-        "add x5, x1, %x[row], lsl #2\n"
+        // Determine the channel index.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
 
+        // Offset the bias pointer as needed given the current row, col.
+        "add x5, x1, x3, lsl #2\n"
+
+        // If there is no bias, use no offset, just address the passed zero
+        // data.
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "csel x1, x1, x5, eq\n"
 
@@ -3391,6 +3392,10 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
 
         // Perform the bias-addition (per the above, we have just folded into
         // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Jump based on channel dimension.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows
         "add v16.4s, v16.4s, v14.4s\n"
         "add v17.4s, v17.4s, v15.4s\n"
         "add v18.4s, v18.4s, v14.4s\n"
@@ -3407,6 +3412,35 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
         "add v29.4s, v29.4s, v15.4s\n"
         "add v30.4s, v30.4s, v14.4s\n"
         "add v31.4s, v31.4s, v15.4s\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns
+        "dup v10.4s, v14.s[0]\n"
+        "dup v11.4s, v14.s[1]\n"
+        "dup v12.4s, v14.s[2]\n"
+        "dup v13.4s, v14.s[3]\n"
+        "add v16.4s, v16.4s, v10.4s\n"
+        "add v17.4s, v17.4s, v10.4s\n"
+        "add v18.4s, v18.4s, v11.4s\n"
+        "add v19.4s, v19.4s, v11.4s\n"
+        "add v20.4s, v20.4s, v12.4s\n"
+        "add v21.4s, v21.4s, v12.4s\n"
+        "add v22.4s, v22.4s, v13.4s\n"
+        "add v23.4s, v23.4s, v13.4s\n"
+        "dup v10.4s, v15.s[0]\n"
+        "dup v11.4s, v15.s[1]\n"
+        "dup v12.4s, v15.s[2]\n"
+        "dup v13.4s, v15.s[3]\n"
+        "add v24.4s, v24.4s, v10.4s\n"
+        "add v25.4s, v25.4s, v10.4s\n"
+        "add v26.4s, v26.4s, v11.4s\n"
+        "add v27.4s, v27.4s, v11.4s\n"
+        "add v28.4s, v28.4s, v12.4s\n"
+        "add v29.4s, v29.4s, v12.4s\n"
+        "add v30.4s, v30.4s, v13.4s\n"
+        "add v31.4s, v31.4s, v13.4s\n"
+        "7:\n"
 
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_RHS_SUMS) "\n"
         "beq 401f\n"
@@ -3481,17 +3515,37 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
 
         //Load the exponent part of the multiplier.
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_EXPONENT) "]\n"
+        // Determine the channel index.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
+        // Compute the multiplier_exponent pointer
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "add x5, x1, %x[row], lsl #2\n"
+        "add x5, x1, x3, lsl #2\n"
         "csel x1, x1, x5, eq\n"
-
+        // Load multiplier_exponent
         "ldr q9, [x1]\n"
         "ldr q10, [x1, #16]\n"
-
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 403f\n"
+        // Separate positive and negative exponents
         "smax v11.4s, v9.4s, v8.4s\n"
         "smax v12.4s, v10.4s, v8.4s\n"
+        "smin v9.4s, v9.4s, v8.4s\n"
+        "smin v10.4s, v10.4s, v8.4s\n"
+
+        // Compute the multiplier_fixedpoint pointer
+        "ldr x4, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
+        "add x5, x4, x3, lsl #2\n"
+        "csel x4, x4, x5, eq\n"
+        // Load multiplier_fixedpoint
+        "ldr q14, [x4]\n"
+        "ldr q15, [x4, #16]\n"
+
+        // Jump based on channel dimension.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 8f\n"
+        // Case where channels are rows
+
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
+        "beq 10f\n"
         // Apply the positive exponent part of the multiplier.
         "sshl v16.4s, v16.4s, v11.4s\n"
         "sshl v17.4s, v17.4s, v12.4s\n"
@@ -3509,13 +3563,7 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
         "sshl v29.4s, v29.4s, v12.4s\n"
         "sshl v30.4s, v30.4s, v11.4s\n"
         "sshl v31.4s, v31.4s, v12.4s\n"
-        "403:\n"
-
-        "ldr q14, [x4]\n" // multiplier_fixedpoint
-        "ldr q15, [x4, #16]\n" // multiplier_fixedpoint
-
-        "smin v11.4s, v9.4s, v8.4s\n"
-        "smin v12.4s, v10.4s, v8.4s\n"
+        "10:\n"
 
         // Apply the fixed-point part of the multiplier.
         "sqrdmulh v16.4s, v16.4s, v14.4s\n"
@@ -3536,22 +3584,103 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
         "sqrdmulh v31.4s, v31.4s, v15.4s\n"
 
         // Apply the negative exponent part of the multiplier.
-        "srshl v16.4s, v16.4s, v11.4s\n"
-        "srshl v17.4s, v17.4s, v12.4s\n"
-        "srshl v18.4s, v18.4s, v11.4s\n"
-        "srshl v19.4s, v19.4s, v12.4s\n"
-        "srshl v20.4s, v20.4s, v11.4s\n"
-        "srshl v21.4s, v21.4s, v12.4s\n"
-        "srshl v22.4s, v22.4s, v11.4s\n"
-        "srshl v23.4s, v23.4s, v12.4s\n"
-        "srshl v24.4s, v24.4s, v11.4s\n"
-        "srshl v25.4s, v25.4s, v12.4s\n"
-        "srshl v26.4s, v26.4s, v11.4s\n"
-        "srshl v27.4s, v27.4s, v12.4s\n"
-        "srshl v28.4s, v28.4s, v11.4s\n"
-        "srshl v29.4s, v29.4s, v12.4s\n"
-        "srshl v30.4s, v30.4s, v11.4s\n"
-        "srshl v31.4s, v31.4s, v12.4s\n"
+        "srshl v16.4s, v16.4s, v9.4s\n"
+        "srshl v17.4s, v17.4s, v10.4s\n"
+        "srshl v18.4s, v18.4s, v9.4s\n"
+        "srshl v19.4s, v19.4s, v10.4s\n"
+        "srshl v20.4s, v20.4s, v9.4s\n"
+        "srshl v21.4s, v21.4s, v10.4s\n"
+        "srshl v22.4s, v22.4s, v9.4s\n"
+        "srshl v23.4s, v23.4s, v10.4s\n"
+        "srshl v24.4s, v24.4s, v9.4s\n"
+        "srshl v25.4s, v25.4s, v10.4s\n"
+        "srshl v26.4s, v26.4s, v9.4s\n"
+        "srshl v27.4s, v27.4s, v10.4s\n"
+        "srshl v28.4s, v28.4s, v9.4s\n"
+        "srshl v29.4s, v29.4s, v10.4s\n"
+        "srshl v30.4s, v30.4s, v9.4s\n"
+        "srshl v31.4s, v31.4s, v10.4s\n"
+        "b 9f\n"
+
+        "8:\n"
+        // Case where channels are columns
+
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
+        "beq 11f\n"
+        // Apply the positive exponent part of the multiplier.
+        "dup v4.4s, v11.s[0]\n"
+        "dup v5.4s, v11.s[1]\n"
+        "dup v6.4s, v11.s[2]\n"
+        "dup v7.4s, v11.s[3]\n"
+        "sshl v16.4s, v16.4s, v4.4s\n"
+        "sshl v17.4s, v17.4s, v4.4s\n"
+        "sshl v18.4s, v18.4s, v5.4s\n"
+        "sshl v19.4s, v19.4s, v5.4s\n"
+        "sshl v20.4s, v20.4s, v6.4s\n"
+        "sshl v21.4s, v21.4s, v6.4s\n"
+        "sshl v22.4s, v22.4s, v7.4s\n"
+        "sshl v23.4s, v23.4s, v7.4s\n"
+        "dup v4.4s, v12.s[0]\n"
+        "dup v5.4s, v12.s[1]\n"
+        "dup v6.4s, v12.s[2]\n"
+        "dup v7.4s, v12.s[3]\n"
+        "sshl v24.4s, v24.4s, v4.4s\n"
+        "sshl v25.4s, v25.4s, v4.4s\n"
+        "sshl v26.4s, v26.4s, v5.4s\n"
+        "sshl v27.4s, v27.4s, v5.4s\n"
+        "sshl v28.4s, v28.4s, v6.4s\n"
+        "sshl v29.4s, v29.4s, v6.4s\n"
+        "sshl v30.4s, v30.4s, v7.4s\n"
+        "sshl v31.4s, v31.4s, v7.4s\n"
+        "11:\n"
+
+        // Apply the fixed-point part of the multiplier.
+        "sqrdmulh v16.4s, v16.4s, v14.s[0]\n"
+        "sqrdmulh v17.4s, v17.4s, v14.s[0]\n"
+        "sqrdmulh v18.4s, v18.4s, v14.s[1]\n"
+        "sqrdmulh v19.4s, v19.4s, v14.s[1]\n"
+        "sqrdmulh v20.4s, v20.4s, v14.s[2]\n"
+        "sqrdmulh v21.4s, v21.4s, v14.s[2]\n"
+        "sqrdmulh v22.4s, v22.4s, v14.s[3]\n"
+        "sqrdmulh v23.4s, v23.4s, v14.s[3]\n"
+        "sqrdmulh v24.4s, v24.4s, v15.s[0]\n"
+        "sqrdmulh v25.4s, v25.4s, v15.s[0]\n"
+        "sqrdmulh v26.4s, v26.4s, v15.s[1]\n"
+        "sqrdmulh v27.4s, v27.4s, v15.s[1]\n"
+        "sqrdmulh v28.4s, v28.4s, v15.s[2]\n"
+        "sqrdmulh v29.4s, v29.4s, v15.s[2]\n"
+        "sqrdmulh v30.4s, v30.4s, v15.s[3]\n"
+        "sqrdmulh v31.4s, v31.4s, v15.s[3]\n"
+
+        // Apply the negative exponent part of the multiplier.
+        "dup v4.4s, v9.s[0]\n"
+        "dup v5.4s, v9.s[1]\n"
+        "dup v6.4s, v9.s[2]\n"
+        "dup v7.4s, v9.s[3]\n"
+        "srshl v16.4s, v16.4s, v4.4s\n"
+        "srshl v17.4s, v17.4s, v4.4s\n"
+        "srshl v18.4s, v18.4s, v5.4s\n"
+        "srshl v19.4s, v19.4s, v5.4s\n"
+        "srshl v20.4s, v20.4s, v6.4s\n"
+        "srshl v21.4s, v21.4s, v6.4s\n"
+        "srshl v22.4s, v22.4s, v7.4s\n"
+        "srshl v23.4s, v23.4s, v7.4s\n"
+        "dup v4.4s, v10.s[0]\n"
+        "dup v5.4s, v10.s[1]\n"
+        "dup v6.4s, v10.s[2]\n"
+        "dup v7.4s, v10.s[3]\n"
+        "srshl v24.4s, v24.4s, v4.4s\n"
+        "srshl v25.4s, v25.4s, v4.4s\n"
+        "srshl v26.4s, v26.4s, v5.4s\n"
+        "srshl v27.4s, v27.4s, v5.4s\n"
+        "srshl v28.4s, v28.4s, v6.4s\n"
+        "srshl v29.4s, v29.4s, v6.4s\n"
+        "srshl v30.4s, v30.4s, v7.4s\n"
+        "srshl v31.4s, v31.4s, v7.4s\n"
+        "9:\n"
+
+        "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
+        "ins v13.h[4], w4\n" // dst_zero_point
 
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT16) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT16) "f\n"
@@ -5172,18 +5301,20 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         // Load some parameters needed for the end work on current block.
         RUY_MAKE_ZERO(v8)
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
-        "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
-        "ins v13.h[4], w4\n" // dst_zero_point
-        "ldr x4, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
         "ldrb w6, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "dup v9.4s, w3\n"   // create prod_zp_depth_vec
-        "add x5, x4, %x[row], lsl #2\n"
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "csel x4, x4, x5, eq\n"
 
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
-        "add x5, x1, %x[row], lsl #2\n"
+        // Determine the channel index.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "csel w3, %w[row], %w[col], eq\n"
+
+        // Offset the bias pointer as needed given the current row, col.
+        "add x5, x1, x3, lsl #2\n"
+
+        // If there is no bias, use no offset, just address the passed zero
+        // data.
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "csel x1, x1, x5, eq\n"
 
@@ -5201,6 +5332,10 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         "add v15.4s, v15.4s, v9.4s\n"
         // Perform the bias-addition (per the above, we have just folded into
         // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Jump based on channel dimension.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows
         "add v16.4s, v16.4s, v14.4s\n"
         "add v17.4s, v17.4s, v15.4s\n"
         "add v18.4s, v18.4s, v14.4s\n"
@@ -5217,19 +5352,48 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         "add v29.4s, v29.4s, v15.4s\n"
         "add v30.4s, v30.4s, v14.4s\n"
         "add v31.4s, v31.4s, v15.4s\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns
+        "dup v10.4s, v14.s[0]\n"
+        "dup v11.4s, v14.s[1]\n"
+        "dup v12.4s, v14.s[2]\n"
+        "dup v13.4s, v14.s[3]\n"
+        "add v16.4s, v16.4s, v10.4s\n"
+        "add v17.4s, v17.4s, v10.4s\n"
+        "add v18.4s, v18.4s, v11.4s\n"
+        "add v19.4s, v19.4s, v11.4s\n"
+        "add v20.4s, v20.4s, v12.4s\n"
+        "add v21.4s, v21.4s, v12.4s\n"
+        "add v22.4s, v22.4s, v13.4s\n"
+        "add v23.4s, v23.4s, v13.4s\n"
+        "dup v10.4s, v15.s[0]\n"
+        "dup v11.4s, v15.s[1]\n"
+        "dup v12.4s, v15.s[2]\n"
+        "dup v13.4s, v15.s[3]\n"
+        "add v24.4s, v24.4s, v10.4s\n"
+        "add v25.4s, v25.4s, v10.4s\n"
+        "add v26.4s, v26.4s, v11.4s\n"
+        "add v27.4s, v27.4s, v11.4s\n"
+        "add v28.4s, v28.4s, v12.4s\n"
+        "add v29.4s, v29.4s, v12.4s\n"
+        "add v30.4s, v30.4s, v13.4s\n"
+        "add v31.4s, v31.4s, v13.4s\n"
+        "7:\n"
 
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_RHS_SUMS) "\n"
         "beq 401f\n"
-        "ldr x3, [%[params], #" RUY_STR(RUY_OFFSET_RHS_SUMS) "]\n"
-        "add x3, x3, %x[col], lsl #2\n"
         "ldr w5, [%[params], #" RUY_STR(RUY_OFFSET_LHS_ZERO_POINT) "]\n"
         "dup v10.4s, w5\n"  // create lhs_zero_point_vec
+        "ldr x5, [%[params], #" RUY_STR(RUY_OFFSET_RHS_SUMS) "]\n"
+        "add x5, x5, %x[col], lsl #2\n"
         // Load 8 rhs_sums values.
-        "ld1 {v14.2s}, [x3], #8\n"
-        "ldr x7, [x3], #8\n"
-        "ld1 {v15.2s}, [x3], #8\n"
+        "ld1 {v14.2s}, [x5], #8\n"
+        "ldr x7, [x5], #8\n"
+        "ld1 {v15.2s}, [x5], #8\n"
         "ins v14.d[1], x7\n"
-        "ldr x7, [x3], #8\n"
+        "ldr x7, [x5], #8\n"
         "ins v15.d[1], x7\n"
         // Subtract rhs_sums * lhs_zero_point, per
         // equation (7) in https://arxiv.org/pdf/1712.05877.pdf
@@ -5259,11 +5423,11 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         "ins v13.s[1], w5\n" // rhs_zero_point
         // Load 8 lhs_sums values.
         "ld1 {v11.2s}, [x2], #8\n"
-        "ldr x6, [x2], #8\n"
-        "ins v11.d[1], x6\n"
+        "ldr x4, [x2], #8\n"
+        "ins v11.d[1], x4\n"
         "ld1 {v12.2s}, [x2], #8\n"
-        "ldr x6, [x2], #8\n"
-        "ins v12.d[1], x6\n"
+        "ldr x4, [x2], #8\n"
+        "ins v12.d[1], x4\n"
         // Compute lhs_sums * rhs_zero_point.
         "mul v11.4s, v11.4s, v13.s[1]\n"
         "mul v12.4s, v12.4s, v13.s[1]\n"
@@ -5300,18 +5464,36 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
 
         //Load the exponent part of the multiplier.
         "ldr x1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_EXPONENT) "]\n"
+        // Compute the multiplier_exponent pointer
         "ldrb w6, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "tst w6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "add x5, x1, %x[row], lsl #2\n"
+        "add x5, x1, x3, lsl #2\n"
         "csel x1, x1, x5, eq\n"
-
+        // Load multiplier_exponent
         "ldr q9, [x1]\n"
         "ldr q10, [x1, #16]\n"
-
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 403f\n"
+        // Separate positive and negative exponents
         "smax v11.4s, v9.4s, v8.4s\n"
         "smax v12.4s, v10.4s, v8.4s\n"
+        "smin v9.4s, v9.4s, v8.4s\n"
+        "smin v10.4s, v10.4s, v8.4s\n"
+
+        // Compute the multiplier_fixedpoint pointer
+        "ldr x4, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
+        "add x5, x4, x3, lsl #2\n"
+        "csel x4, x4, x5, eq\n"
+        // Load multiplier_fixedpoint
+        "ldr q14, [x4]\n"
+        "ldr q15, [x4, #16]\n"
+
+        // Jump based on channel dimension.
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 8f\n"
+        // Case where channels are rows
+
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
+        "beq 10f\n"
+
         // Apply the positive exponent part of the multiplier.
         "sshl v16.4s, v16.4s, v11.4s\n"
         "sshl v17.4s, v17.4s, v12.4s\n"
@@ -5329,13 +5511,7 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         "sshl v29.4s, v29.4s, v12.4s\n"
         "sshl v30.4s, v30.4s, v11.4s\n"
         "sshl v31.4s, v31.4s, v12.4s\n"
-        "403:\n"
-
-        "ldr q14, [x4]\n" // multiplier_fixedpoint
-        "ldr q15, [x4, #16]\n" // multiplier_fixedpoint
-
-        "smin v11.4s, v9.4s, v8.4s\n"
-        "smin v12.4s, v10.4s, v8.4s\n"
+        "10:\n"
 
         // Apply the fixed-point part of the multiplier.
         //
@@ -5370,26 +5546,126 @@ void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
         "sqrdmulh v31.4s, v31.4s, v15.4s\n"
 
         // Apply the negative exponent part of the multiplier.
-        "srshl v16.4s, v16.4s, v11.4s\n"
-        "srshl v17.4s, v17.4s, v12.4s\n"
-        "srshl v18.4s, v18.4s, v11.4s\n"
-        "srshl v19.4s, v19.4s, v12.4s\n"
-        "srshl v20.4s, v20.4s, v11.4s\n"
-        "srshl v21.4s, v21.4s, v12.4s\n"
-        "srshl v22.4s, v22.4s, v11.4s\n"
-        "srshl v23.4s, v23.4s, v12.4s\n"
-        "srshl v24.4s, v24.4s, v11.4s\n"
-        "srshl v25.4s, v25.4s, v12.4s\n"
-        "srshl v26.4s, v26.4s, v11.4s\n"
-        "srshl v27.4s, v27.4s, v12.4s\n"
+        "srshl v16.4s, v16.4s, v9.4s\n"
+        "srshl v17.4s, v17.4s, v10.4s\n"
+        "srshl v18.4s, v18.4s, v9.4s\n"
+        "srshl v19.4s, v19.4s, v10.4s\n"
+        "srshl v20.4s, v20.4s, v9.4s\n"
+        "srshl v21.4s, v21.4s, v10.4s\n"
+        "srshl v22.4s, v22.4s, v9.4s\n"
+        "srshl v23.4s, v23.4s, v10.4s\n"
+        "srshl v24.4s, v24.4s, v9.4s\n"
+        "srshl v25.4s, v25.4s, v10.4s\n"
+        "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
+        "srshl v26.4s, v26.4s, v9.4s\n"
+        "ins v13.h[4], w4\n" // dst_zero_point
+        "srshl v27.4s, v27.4s, v10.4s\n"
         "ins v0.d[1], x1\n"
-        "srshl v28.4s, v28.4s, v11.4s\n"
+        "srshl v28.4s, v28.4s, v9.4s\n"
         "ins v1.d[1], x2\n"
-        "srshl v29.4s, v29.4s, v12.4s\n"
+        "srshl v29.4s, v29.4s, v10.4s\n"
         "ins v2.d[1], x5\n"
-        "srshl v30.4s, v30.4s, v11.4s\n"
+        "srshl v30.4s, v30.4s, v9.4s\n"
         "ins v3.d[1], x6\n"
-        "srshl v31.4s, v31.4s, v12.4s\n"
+        "srshl v31.4s, v31.4s, v10.4s\n"
+        "b 9f\n"
+
+        "8:\n"
+        // Case where channels are columns
+
+        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
+        "beq 11f\n"
+        // Apply the positive exponent part of the multiplier.
+        "dup v4.4s, v11.s[0]\n"
+        "dup v5.4s, v11.s[1]\n"
+        "dup v6.4s, v11.s[2]\n"
+        "dup v7.4s, v11.s[3]\n"
+        "sshl v16.4s, v16.4s, v4.4s\n"
+        "sshl v17.4s, v17.4s, v4.4s\n"
+        "sshl v18.4s, v18.4s, v5.4s\n"
+        "sshl v19.4s, v19.4s, v5.4s\n"
+        "sshl v20.4s, v20.4s, v6.4s\n"
+        "sshl v21.4s, v21.4s, v6.4s\n"
+        "sshl v22.4s, v22.4s, v7.4s\n"
+        "sshl v23.4s, v23.4s, v7.4s\n"
+        "dup v4.4s, v12.s[0]\n"
+        "dup v5.4s, v12.s[1]\n"
+        "dup v6.4s, v12.s[2]\n"
+        "dup v7.4s, v12.s[3]\n"
+        "sshl v24.4s, v24.4s, v4.4s\n"
+        "sshl v25.4s, v25.4s, v4.4s\n"
+        "sshl v26.4s, v26.4s, v5.4s\n"
+        "sshl v27.4s, v27.4s, v5.4s\n"
+        "sshl v28.4s, v28.4s, v6.4s\n"
+        "sshl v29.4s, v29.4s, v6.4s\n"
+        "sshl v30.4s, v30.4s, v7.4s\n"
+        "sshl v31.4s, v31.4s, v7.4s\n"
+        "11:\n"
+
+        // Apply the fixed-point part of the multiplier.
+        //
+        // ... and, interleaved into that:
+        // Now that we know what LHS and RHS data the next iteration of the
+        // main loop will need to load, we start loading the first 32 bytes of
+        // each of LHS and RHS, into v0 -- v3, as we don't need v0 -- v3 anymore
+        // in the rest of the work on the current block.
+        "ld1 {v0.8b}, [%[lhs_ptr]], #8\n"
+        "sqrdmulh v16.4s, v16.4s, v14.s[0]\n"
+        "ldr x1, [%[lhs_ptr]], #8\n"
+        "sqrdmulh v17.4s, v17.4s, v14.s[0]\n"
+        "ld1 {v1.8b}, [%[lhs_ptr]], #8\n"
+        "sqrdmulh v18.4s, v18.4s, v14.s[1]\n"
+        "ldr x2, [%[lhs_ptr]], #8\n"
+        "sqrdmulh v19.4s, v19.4s, v14.s[1]\n"
+        "ld1 {v2.8b}, [%[rhs_ptr]], #8\n"
+        "sqrdmulh v20.4s, v20.4s, v14.s[2]\n"
+        "ldr x5, [%[rhs_ptr]], #8\n"
+        "sqrdmulh v21.4s, v21.4s, v14.s[2]\n"
+        "ld1 {v3.8b}, [%[rhs_ptr]], #8\n"
+        "sqrdmulh v22.4s, v22.4s, v14.s[3]\n"
+        "ldr x6, [%[rhs_ptr]], #8\n"
+        "sqrdmulh v23.4s, v23.4s, v14.s[3]\n"
+        "sqrdmulh v24.4s, v24.4s, v15.s[0]\n"
+        "sqrdmulh v25.4s, v25.4s, v15.s[0]\n"
+        "sqrdmulh v26.4s, v26.4s, v15.s[1]\n"
+        "sqrdmulh v27.4s, v27.4s, v15.s[1]\n"
+        "sqrdmulh v28.4s, v28.4s, v15.s[2]\n"
+        "sqrdmulh v29.4s, v29.4s, v15.s[2]\n"
+        "sqrdmulh v30.4s, v30.4s, v15.s[3]\n"
+        "sqrdmulh v31.4s, v31.4s, v15.s[3]\n"
+
+        // Apply the negative exponent part of the multiplier.
+        "dup v4.4s, v9.s[0]\n"
+        "dup v5.4s, v9.s[1]\n"
+        "dup v6.4s, v9.s[2]\n"
+        "dup v7.4s, v9.s[3]\n"
+        "srshl v16.4s, v16.4s, v4.4s\n"
+        "srshl v17.4s, v17.4s, v4.4s\n"
+        "srshl v18.4s, v18.4s, v5.4s\n"
+        "srshl v19.4s, v19.4s, v5.4s\n"
+        "srshl v20.4s, v20.4s, v6.4s\n"
+        "srshl v21.4s, v21.4s, v6.4s\n"
+        "srshl v22.4s, v22.4s, v7.4s\n"
+        "srshl v23.4s, v23.4s, v7.4s\n"
+        "dup v4.4s, v10.s[0]\n"
+        "dup v5.4s, v10.s[1]\n"
+        "dup v6.4s, v10.s[2]\n"
+        "dup v7.4s, v10.s[3]\n"
+        "srshl v24.4s, v24.4s, v4.4s\n"
+        "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
+        "srshl v25.4s, v25.4s, v4.4s\n"
+        "ins v13.h[4], w4\n" // dst_zero_point
+        "srshl v26.4s, v26.4s, v5.4s\n"
+        "ins v0.d[1], x1\n"
+        "srshl v27.4s, v27.4s, v5.4s\n"
+        "ins v1.d[1], x2\n"
+        "srshl v28.4s, v28.4s, v6.4s\n"
+        "ins v2.d[1], x5\n"
+        "srshl v29.4s, v29.4s, v6.4s\n"
+        "ins v3.d[1], x6\n"
+        "srshl v30.4s, v30.4s, v7.4s\n"
+        "srshl v31.4s, v31.4s, v7.4s\n"
+        "9:\n"
 
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT16) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT16) "f\n"
