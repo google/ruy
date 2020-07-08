@@ -61,6 +61,7 @@ struct Kernel;
 #define RUY_ASM_FLAG_HAS_RHS_SUMS 0x4
 #define RUY_ASM_FLAG_HAS_PERCHANNEL 0x8
 #define RUY_ASM_FLAG_NEEDS_LEFT_SHIFT 0x10
+#define RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL 0x20
 
 #define RUY_ASM_TYPE_ID_UINT8 1
 #define RUY_ASM_TYPE_ID_INT8 2
@@ -159,6 +160,9 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
     params->rhs_sums = rhs.sums;
     params->flags |= RUY_ASM_FLAG_HAS_RHS_SUMS;
   }
+  if (mul_params.channel_dimension() == ChannelDimension::kCol) {
+    params->flags |= RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL;
+  }
   params->start_row = start_row;
   params->start_col = start_col;
   params->last_row = end_row - LhsCols;
@@ -247,6 +251,9 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
   if (mul_params.bias()) {
     params->bias = mul_params.bias();
     flags |= RUY_ASM_FLAG_HAS_BIAS;
+  }
+  if (mul_params.channel_dimension() == ChannelDimension::kCol) {
+    flags |= RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL;
   }
   params->flags = flags;
   params->start_row = start_row;

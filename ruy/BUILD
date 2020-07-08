@@ -894,6 +894,7 @@ cc_library(
         ":opt_set",
         ":pack",
         ":path",
+        ":platform",
         ":side_pair",
         ":trmul_params",
     ],

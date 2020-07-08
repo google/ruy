@@ -18,6 +18,7 @@ limitations under the License.
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
 #include "ruy/opt_set.h"
+#include "ruy/platform.h"
 
 namespace ruy {
 namespace detail {
@@ -31,13 +32,13 @@ void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
   packed_layout->kernel = kernel_layout;
 }
 
-bool FallBackToStandardCpp(const MatLayout& lhs_layout,
-                           const MatLayout& rhs_layout,
+bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
                            ChannelDimension channel_dimension) {
   // Supporting row-major LHS/RHS would require transposing blocks in the
   // packing code. This isn't implemented at the moment, so we fall back to
   // StandardCpp when that would be needed.
-  if (!IsColMajor(lhs_layout) || !IsColMajor(rhs_layout)) {
+  if (!IsColMajor(src[Side::kLhs].layout) ||
+      !IsColMajor(src[Side::kRhs].layout)) {
     return true;
   }
 
@@ -47,6 +48,7 @@ bool FallBackToStandardCpp(const MatLayout& lhs_layout,
     return true;
   }
 
+  (void)path;
   return false;
 }
 

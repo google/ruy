@@ -229,8 +229,7 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
                              DstScalar>::Search(the_path, params);
 }
 
-bool FallBackToStandardCpp(const MatLayout& lhs_layout,
-                           const MatLayout& rhs_layout,
+bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
                            ChannelDimension channel_dimension);
 
 // Copy the underlying bytes of `mul_params` to `dst`, except that the specified
@@ -270,7 +269,7 @@ void CreateTrMulParamsAssumingColMajorDst(
   params->dst = EraseType(dst);
   StoreMulParams(mul_params, channel_dimension, params->mul_params_bytes);
 
-  if (FallBackToStandardCpp(lhs.layout, rhs.layout, channel_dimension)) {
+  if (FallBackToStandardCpp(the_path, params->src, channel_dimension)) {
     return PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar,
                                AccumScalar, DstScalar>(params);
   }
