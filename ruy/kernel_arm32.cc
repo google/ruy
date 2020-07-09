@@ -280,16 +280,24 @@ void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params) {
         "ldrb r4, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_BIAS) "]\n"
 
-        // Offset these base pointers as needed given the current row, col.
-        "ldr r8, [sp, #" RUY_STR(RUY_STACK_OFFSET_ROW) "]\n"
-        "add r5, r1, r8, lsl #2\n"
-
+        // Let r8 be stack offset of the row or column variable, whichever
+        // is the channel index.
+        "tst r4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "ite eq\n"
+        "moveq r8, #" RUY_STR(RUY_STACK_OFFSET_ROW) "\n"
+        "movne r8, #" RUY_STR(RUY_STACK_OFFSET_COL) "\n"
+        // Let r8 be the channel index.
+        "ldr r8, [sp, r8]\n"
+        // Compute the bias pointer, by conditionally using the channel index
+        // (r8) as offset into bias buffer (r1).
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "it ne\n"
-        "movne r1, r5\n"
+        "addne r1, r1, r8, lsl #2\n"
 
-        // Load 8 bias values.
-        "vld1.32 {d24, d25, d26, d27}, [r1]\n"
+        // Load 4 bias values. When the channel dimension is rows, we will load
+        // another 4 bias values just before performing the bias addition below,
+        // as this kernel has a 8x4 rectangular shape.
+        "vld1.32 {d24, d25}, [r1]!\n"
 
         // Now that we know what LHS and RHS data the next iteration of the
         // main loop will need to load, we start loading the first 32 bytes of
@@ -302,16 +310,39 @@ void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params) {
         "vld1.32 {d4, d5}, [%[rhs_ptr]]!\n"
         RUY_PREFETCH_LOAD("pld [%[rhs_ptr]]\n")
 
-        // Perform the bias-addition (per the above, we have just folded into
-        // the bias the (depth * lhs_zero_point * rhs_zero_point) term.)
+        // Perform the bias-addition.
+        // Jump based on channel dimension.
+        "tst r4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
+        "bne 6f\n"
+        // Case where channels are rows.
+        // Load the remaining 4 bias values, since we're on the width-8 side
+        // of this 8x4 kernel.
+        "vld1.32 {d26, d27}, [r1]\n"
         "vadd.f32 q3, q3, q12\n"
-        "vadd.f32 q4, q4, q13\n"
         "vadd.f32 q5, q5, q12\n"
-        "vadd.f32 q6, q6, q13\n"
         "vadd.f32 q7, q7, q12\n"
-        "vadd.f32 q8, q8, q13\n"
         "vadd.f32 q9, q9, q12\n"
+        "vadd.f32 q4, q4, q13\n"
+        "vadd.f32 q6, q6, q13\n"
+        "vadd.f32 q8, q8, q13\n"
         "vadd.f32 q10, q10, q13\n"
+        "b 7f\n"
+
+        "6:\n"
+        // Case where channels are columns.
+        "vdup.32 q11, d24[0]\n"
+        "vdup.32 q13, d24[1]\n"
+        "vdup.32 q14, d25[0]\n"
+        "vdup.32 q15, d25[1]\n"
+        "vadd.f32 q3, q3, q11\n"
+        "vadd.f32 q4, q4, q11\n"
+        "vadd.f32 q5, q5, q13\n"
+        "vadd.f32 q6, q6, q13\n"
+        "vadd.f32 q7, q7, q14\n"
+        "vadd.f32 q8, q8, q14\n"
+        "vadd.f32 q9, q9, q15\n"
+        "vadd.f32 q10, q10, q15\n"
+        "7:\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldr r2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"
