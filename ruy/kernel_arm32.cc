@@ -1869,11 +1869,10 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
 
         // Offset these base pointers as needed given the current row, col.
         "ldr r8, [sp, #" RUY_STR(RUY_STACK_OFFSET_ROW) "]\n"
-        "add r5, r1, r8, lsl #2\n"
 
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
         "it ne\n"
-        "movne r1, r5\n"
+        "addne r1, r1, r8, lsl #2\n"
 
         // Load 4 bias values.
         "vld1.32 {d24, d25}, [r1]\n"
@@ -1960,9 +1959,8 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_EXPONENT) "]\n"
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
         "ldr r4, [sp, #" RUY_STR(RUY_STACK_OFFSET_ROW) "]\n"
-        "add r5, r1, r4, lsl #2\n"
         "it ne\n"
-        "movne r1, r5\n"
+        "addne r1, r1, r4, lsl #2\n"
 
         "vld1.32 {q10}, [r1]\n"
 
@@ -1977,10 +1975,9 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
         // Load fixed point part of the multiplier
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
         // r6 has flags, r4 has row
-        "add r5, r1, r4, lsl #2\n"
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
         "it ne\n"
-        "movne r1, r5\n"
+        "addne r1, r1, r4, lsl #2\n"
         "vld1.32 {q10}, [r1]\n" // multiplier_fixedpoint
 
         // Apply the fixed-point part of the multiplier.
