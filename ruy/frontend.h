@@ -29,7 +29,6 @@ limitations under the License.
 
 #include "ruy/create_trmul_params.h"
 #include "ruy/ctx.h"
-#include "ruy/path.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/trmul_params.h"
 #include "ruy/validate.h"
@@ -60,20 +59,13 @@ void MulFrontEndUpToCreateTrMulParams(
   // transposition.
   Validate(lhs, rhs, dst);
 
-  // Determine which exact Path we're going to take in this Mul call.
-  // This is cheap because it's cached in `ctx`. In user scenarios this always
-  // evaluates to the same value on a given machine with given `CompiledPaths`,
-  // but could be invalidated by a call to Ctx::SetRuntimeEnabledPaths(), which
-  // might be exposed publicly in Context in the future.
-  const Path the_path = ctx->SelectPath(CompiledPaths);
-
   // De-templatize this Mul call by creating a TrMulParams structure.
   // This is also where the specific kernel and pack code paths corresponding to
   // `the_path` are selected, among all the code paths in `CompiledPaths`, and
   // recorded as function pointers in the TrMulParams.
   // The Transpose(lhs) here is where we switch from 'Mul' to 'TrMul'.
-  CreateTrMulParams<CompiledPaths>(Transpose(lhs), rhs, dst, mul_params,
-                                   the_path, params);
+  CreateTrMulParams<CompiledPaths>(Transpose(lhs), rhs, dst, mul_params, ctx,
+                                   params);
 }
 
 // The second part of the front-end work, starting from where we have freshly

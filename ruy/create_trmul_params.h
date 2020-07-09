@@ -18,8 +18,10 @@ limitations under the License.
 #ifndef RUY_RUY_CREATE_TRMUL_PARAMS_H_
 #define RUY_RUY_CREATE_TRMUL_PARAMS_H_
 
+#include <cstdint>
 #include <type_traits>
 
+#include "ruy/allocator.h"
 #include "ruy/ctx.h"
 #include "ruy/kernel.h"
 #include "ruy/mat.h"
@@ -232,50 +234,157 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
 bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
                            ChannelDimension channel_dimension);
 
-// Copy the underlying bytes of `mul_params` to `dst`, except that the specified
-// `channel_dimension` value overrides the channel_dimension member in
-// mul_params. The reason why channel_dimension is being special-cased among
-// MulParams members is that we will need to transpose MulParams, and that
-// consists just in toggling channel_dimension. In the typical envisioned usage
-// pattern, mul_params is constant, so we cannot conveniently toggle its
-// channel_dimension in place, and it would be slightly unfortunate to have to
-// perform another copy of mul_params just for that.
+template <typename AccumScalar, typename DstScalar,
+          bool HaveQuantizedMultipliers =
+              std::is_same<AccumScalar, std::int32_t>::value &&
+              !std::is_same<DstScalar, std::int32_t>::value>
+struct EnsurePerChannelBuffersLargeEnoughImpl {
+  static void Run(const TrMulParams& params, Allocator* allocator,
+                  MulParams<AccumScalar, DstScalar>* dst_mul_params) {
+    const Side channel_side =
+        dst_mul_params->channel_dimension() == ChannelDimension::kRow
+            ? Side::kLhs
+            : Side::kRhs;
+    const int required_size = params.packed_matrix[channel_side].layout.cols;
+    const int user_size = params.src[channel_side].layout.cols;
+    // We should have already checked earlier for the case where the user-facing
+    // size matches the required size.
+    RUY_DCHECK_GT(required_size, user_size);
+    if (dst_mul_params->bias()) {
+      AccumScalar* new_data = allocator->Allocate<AccumScalar>(required_size);
+      std::memcpy(new_data, dst_mul_params->bias(),
+                  user_size * sizeof(AccumScalar));
+      std::memset(new_data + user_size, 0,
+                  (required_size - user_size) * sizeof(AccumScalar));
+      dst_mul_params->set_bias(new_data);
+    }
+    if (dst_mul_params->multiplier_fixedpoint_perchannel()) {
+      AccumScalar* new_data = allocator->Allocate<AccumScalar>(required_size);
+      std::memcpy(new_data, dst_mul_params->multiplier_fixedpoint_perchannel(),
+                  user_size * sizeof(AccumScalar));
+      std::memset(new_data + user_size, 0,
+                  (required_size - user_size) * sizeof(AccumScalar));
+      dst_mul_params->set_multiplier_fixedpoint_perchannel(new_data);
+    }
+    if (dst_mul_params->multiplier_exponent_perchannel()) {
+      int* new_data = allocator->Allocate<int>(required_size);
+      std::memcpy(new_data, dst_mul_params->multiplier_exponent_perchannel(),
+                  user_size * sizeof(int));
+      std::memset(new_data + user_size, 0,
+                  (required_size - user_size) * sizeof(int));
+      dst_mul_params->set_multiplier_exponent_perchannel(new_data);
+    }
+  }
+};
+
 template <typename AccumScalar, typename DstScalar>
-void StoreMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
-                    ChannelDimension channel_dimension, void* dst) {
+struct EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar, false> {
+  static void Run(const TrMulParams& params, Allocator* allocator,
+                  MulParams<AccumScalar, DstScalar>* dst_mul_params) {
+    const Side channel_side =
+        dst_mul_params->channel_dimension() == ChannelDimension::kRow
+            ? Side::kLhs
+            : Side::kRhs;
+    const int required_size = params.packed_matrix[channel_side].layout.cols;
+    const int user_size = params.src[channel_side].layout.cols;
+    // We should have already checked earlier for the case where the user-facing
+    // size matches the required size.
+    RUY_DCHECK_GT(required_size, user_size);
+    if (dst_mul_params->bias()) {
+      AccumScalar* new_data = allocator->Allocate<AccumScalar>(required_size);
+      std::memcpy(new_data, dst_mul_params->bias(),
+                  user_size * sizeof(AccumScalar));
+      std::memset(new_data + user_size, 0,
+                  (required_size - user_size) * sizeof(AccumScalar));
+      dst_mul_params->set_bias(new_data);
+    }
+  }
+};
+
+template <typename AccumScalar, typename DstScalar>
+void EnsurePerChannelBuffersLargeEnough(
+    const TrMulParams& params, Allocator* allocator,
+    MulParams<AccumScalar, DstScalar>* dst_mul_params) {
+  // Early exit in the common case where the packed matrix size matches the
+  // number of channels (as opposed to having been rounded up to a slightly
+  // larger value).
+  const Side channel_side =
+      dst_mul_params->channel_dimension() == ChannelDimension::kRow
+          ? Side::kLhs
+          : Side::kRhs;
+  if (params.packed_matrix[channel_side].layout.cols ==
+      params.src[channel_side].layout.cols) {
+    return;
+  }
+  EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar>::Run(
+      params, allocator, dst_mul_params);
+}
+
+// Ensures that `params->mul_params_bytes` contains MulParams data that's ready
+// to be consumed by the kernel. As a first-order approximation, that is simply
+// copying the user-provided `mul_params`, however there are a few changes.
+//
+//   1. The specified `channel_dimension` value overrides the channel_dimension
+//      member in `mul_params`. The reason why `channel_dimension` is being
+//      special-cased among MulParams members is that we will need to transpose
+//      MulParams, and that consists just in toggling channel_dimension.
+//   2. Per-channel buffers may be reallocated, see
+//      EnsurePerChannelBuffersLargeEnough.
+template <typename AccumScalar, typename DstScalar>
+void FinalizeMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
+                       ChannelDimension channel_dimension, Allocator* allocator,
+                       TrMulParams* params) {
   using MulParamsType = MulParams<AccumScalar, DstScalar>;
   static_assert(alignof(MulParamsType) <= kMaxMulParamsAlignment, "");
   static_assert(sizeof(MulParamsType) <= kMaxMulParamsSize, "");
   static_assert(std::is_trivially_copyable<MulParamsType>::value, "");
-  std::memcpy(dst, &mul_params, sizeof(MulParamsType));
-  static_cast<MulParamsType*>(dst)->set_channel_dimension(channel_dimension);
+  auto* dst_mul_params =
+      reinterpret_cast<MulParamsType*>(params->mul_params_bytes);
+  std::memcpy(dst_mul_params, &mul_params, sizeof(MulParamsType));
+  dst_mul_params->set_channel_dimension(channel_dimension);
+  EnsurePerChannelBuffersLargeEnough(*params, allocator, dst_mul_params);
 }
 
 // In this function, the `channel_dimension` parameter overrides the value
 // of the channel_dimension member in the `mul_params` parameter. See the
-// StoreMulParams comment.
+// FinalizeMulParams comment.
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
 void CreateTrMulParamsAssumingColMajorDst(
     const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
     const Mat<DstScalar>& dst,
     const MulParams<AccumScalar, DstScalar>& mul_params,
-    ChannelDimension channel_dimension, Path the_path, TrMulParams* params) {
+    ChannelDimension channel_dimension, Ctx* ctx, TrMulParams* params) {
   RUY_DCHECK(IsColMajor(dst.layout));
 
   // Fill in the fields we already know.
   params->src[Side::kLhs] = EraseType(lhs);
   params->src[Side::kRhs] = EraseType(rhs);
   params->dst = EraseType(dst);
-  StoreMulParams(mul_params, channel_dimension, params->mul_params_bytes);
 
+  // Determine which exact Path we're going to take in this Mul call.
+  // This is cheap because it's cached in `ctx`. In user scenarios this always
+  // evaluates to the same value on a given machine with given `CompiledPaths`,
+  // but could be invalidated by a call to Ctx::SetRuntimeEnabledPaths(), which
+  // might be exposed publicly in Context in the future.
+  const Path the_path = ctx->SelectPath(CompiledPaths);
+
+  // Maybe fall back to slow standard-c++ code (no CPU-specific optimization).
   if (FallBackToStandardCpp(the_path, params->src, channel_dimension)) {
-    return PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar,
-                               AccumScalar, DstScalar>(params);
+    PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, AccumScalar,
+                        DstScalar>(params);
+  } else {
+    PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
+                                        AccumScalar, DstScalar>(the_path,
+                                                                params);
   }
 
-  PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
-                                      AccumScalar, DstScalar>(the_path, params);
+  // This must be done last, as it depends on the specific choice of kernel.
+  // Specifically, the EnsurePerChannelBuffersLargeEnough part of this will read
+  // the packed matrix layouts that are written to `params` by the above
+  // PopulateTrMulParams* call.
+  FinalizeMulParams(mul_params, channel_dimension, ctx->GetMainAllocator(),
+                    params);
 }
 
 }  // namespace detail
@@ -302,15 +411,15 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
 void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                        const Mat<DstScalar>& dst,
                        const MulParams<AccumScalar, DstScalar>& mul_params,
-                       Path the_path, TrMulParams* params) {
+                       Ctx* ctx, TrMulParams* params) {
   ChannelDimension channel_dimension = mul_params.channel_dimension();
   if (IsColMajor(dst.layout)) {
     detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
-        lhs, rhs, dst, mul_params, channel_dimension, the_path, params);
+        lhs, rhs, dst, mul_params, channel_dimension, ctx, params);
   } else {
     detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
-        rhs, lhs, Transpose(dst), mul_params, Transpose(channel_dimension),
-        the_path, params);
+        rhs, lhs, Transpose(dst), mul_params, Transpose(channel_dimension), ctx,
+        params);
   }
 }
 

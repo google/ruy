@@ -49,6 +49,7 @@ limitations under the License.
 #include "ruy/pmu.h"
 #include "ruy/reference_mul.h"
 #include "ruy/ruy.h"
+#include "ruy/size_util.h"
 #include "ruy/time.h"
 
 #ifdef RUY_TEST_EXTERNAL_PATHS
@@ -65,6 +66,11 @@ limitations under the License.
 
 #ifdef RUY_PROFILER
 #include "ruy/profiler/profiler.h"
+#endif
+
+#ifdef __linux__
+#include <sys/mman.h>
+#include <unistd.h>
 #endif
 
 namespace ruy {
@@ -371,9 +377,77 @@ void MakeRandomScalar(UniformRandomDistribution<Scalar>* uniform_dist,
   *dst = uniform_dist->Get();
 }
 
-template <typename Scalar>
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define RUY_TEST_BUILT_WITH_ASAN
+#endif
+#endif
+
+// Don't use separate mappings when building with Address Sanitizer, as the
+// manual mappings could hide actual address errors from ASan (ASan can't see
+// the actual buffer valid address range inside the manual mapping).
+#if defined __linux__ && !defined RUY_TEST_BUILT_WITH_ASAN
+#define RUY_TEST_USE_SEPARATE_MAPPINGS
+#endif
+
+template <typename T>
+struct SeparateMappingAllocator {
+  using value_type = T;
+
+  T* allocate(std::size_t n) {
+#ifdef RUY_TEST_USE_SEPARATE_MAPPINGS
+    const std::size_t page_size = getpagesize();
+    std::size_t buffer_size = n * sizeof(T);
+    std::size_t rounded_buffer_size = round_up_pot(buffer_size, page_size);
+    // We are going to map an additional page at the end of our buffer, then
+    // unmap it, to ensure that our buffer's end is the last mapped byte, so as
+    // to catch any overrun.
+    void* mapping =
+        mmap(nullptr, rounded_buffer_size + page_size, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    RUY_CHECK_NE(mapping, MAP_FAILED);
+    int unmap_result =
+        munmap(static_cast<char*>(mapping) + rounded_buffer_size, page_size);
+    RUY_CHECK_EQ(unmap_result, 0);
+    // Clearing bytes should be redundant since mmap has do do it already, but
+    // it does not hurt and acts as an assertion checking that we got the above
+    // mapping and unmapping right.
+    std::memset(mapping, 0, rounded_buffer_size);
+    // Compute the offset to make our buffer end at the last mapped byte.
+    std::size_t buffer_offset = rounded_buffer_size - buffer_size;
+    void* buffer =
+        static_cast<void*>(static_cast<char*>(mapping) + buffer_offset);
+    return static_cast<T*>(buffer);
+#else
+    T* ret = new T[n];
+    std::memset(ret, 0, n * sizeof(T));
+    return ret;
+#endif
+  }
+  void deallocate(T* p, std::size_t n) {
+#ifdef RUY_TEST_USE_SEPARATE_MAPPINGS
+    // The mapped bytes are the buffer address range, rounded on both ends
+    // to page boundary.
+    const std::size_t page_size = getpagesize();
+    std::size_t buffer_size = n * sizeof(T);
+    std::size_t rounded_buffer_size = round_up_pot(buffer_size, page_size);
+    std::uintptr_t p_addr = reinterpret_cast<std::uintptr_t>(p);
+    void* mapping = reinterpret_cast<void*>(p_addr & ~(page_size - 1));
+    int ret = munmap(mapping, rounded_buffer_size);
+    RUY_CHECK_EQ(ret, 0);
+#else
+    (void)n;
+    delete[] p;
+#endif
+  }
+};
+
+template <typename T>
+using SeparateMappingVector = std::vector<T, SeparateMappingAllocator<T>>;
+
+template <typename Scalar, typename Allocator>
 void MakeRandomVector(UniformRandomDistribution<Scalar>* uniform_dist, int size,
-                      std::vector<Scalar>* dst) {
+                      std::vector<Scalar, Allocator>* dst) {
   dst->resize(size);
   for (auto& x : *dst) {
     MakeRandomScalar(uniform_dist, &x);
@@ -392,8 +466,9 @@ void MakeRandomScalar(RandomRange range, Scalar* dst) {
   }
 }
 
-template <typename Scalar>
-void MakeRandomVector(RandomRange range, int size, std::vector<Scalar>* dst) {
+template <typename Scalar, typename Allocator>
+void MakeRandomVector(RandomRange range, int size,
+                      std::vector<Scalar, Allocator>* dst) {
   UniformRandomDistribution<Scalar> dist(range);
   dst->resize(size);
   for (auto& x : *dst) {
@@ -579,13 +654,13 @@ struct TestSet final {
   RhsScalar rhs_zero_point = 0;
   DstScalar dst_zero_point = 0;
 
-  std::vector<AccumScalar> per_channel_multiplier_fixedpoint;
-  std::vector<int> per_channel_multiplier_exponent;
+  SeparateMappingVector<AccumScalar> per_channel_multiplier_fixedpoint;
+  SeparateMappingVector<int> per_channel_multiplier_exponent;
 
   StorageMatrix<LhsScalar> lhs;
   StorageMatrix<RhsScalar> rhs;
   MulParamsType mul_params;
-  std::vector<AccumScalar> bias_data;
+  SeparateMappingVector<AccumScalar> bias_data;
   std::vector<std::unique_ptr<TestResultType>> results;
 
   std::vector<Path> paths;
@@ -1826,10 +1901,10 @@ const char* TypeName() {
   return nullptr;
 }
 
-#define RUY_TYPENAME(TYPE)       \
-  template <>                    \
-  const char* TypeName<TYPE>() { \
-    return #TYPE;                \
+#define RUY_TYPENAME(TYPE)              \
+  template <>                           \
+  inline const char* TypeName<TYPE>() { \
+    return #TYPE;                       \
   }
 
 RUY_TYPENAME(f32)

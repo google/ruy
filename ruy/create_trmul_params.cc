@@ -17,7 +17,6 @@ limitations under the License.
 
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
-#include "ruy/opt_set.h"
 #include "ruy/platform.h"
 
 namespace ruy {

@@ -66,13 +66,19 @@ class Allocator final {
   // the specified `to_avoid` in the L1D cache.
   void* AllocateBytesAvoidingAliasingWith(std::ptrdiff_t num_bytes,
                                           const void* to_avoid);
+  // Allocate an array of `count` elements of type T.
+  template <typename T>
+  T* Allocate(std::ptrdiff_t count) {
+    return static_cast<T*>(AllocateBytes(count * sizeof(T)));
+  }
   // Allocate an array of `count` elements of the given `Pointer` type's
   // element_type.
   template <typename Pointer>
   void Allocate(std::ptrdiff_t count, Pointer* out) {
     using T = typename std::pointer_traits<Pointer>::element_type;
-    *out = static_cast<T*>(AllocateBytes(count * sizeof(T)));
+    *out = Allocate<T>(count);
   }
+
   // Free all allocated blocks. Internally consolidate allocated buffers as
   // explained in the class comment.
   void FreeAll();
