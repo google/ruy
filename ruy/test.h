@@ -499,11 +499,7 @@ template <typename Scalar>
 struct StorageMatrix {
   StorageMatrix() = default;
   StorageMatrix(const StorageMatrix&) = delete;
-#if RUY_PLATFORM_ARM_32
-  std::vector<Scalar> data;
-#else
   SeparateMappingVector<Scalar> data;
-#endif
   Matrix<Scalar> matrix;
 };
 

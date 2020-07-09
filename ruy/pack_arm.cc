@@ -1851,6 +1851,8 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
   "vld1.32 { d6[" #I "] }, [%[src_ptr3]]!\n"
 
 #define RUY_LOAD_ONE_ROW_SECOND_HALF(R, I)      \
+  "cmp r2, #" #R "\n"                        \
+  "beq 5f\n"                                 \
   "vld1.32 { d1[" #I "] }, [%[src_ptr0]]!\n" \
   "vld1.32 { d3[" #I "] }, [%[src_ptr1]]!\n" \
   "vld1.32 { d5[" #I "] }, [%[src_ptr2]]!\n" \
