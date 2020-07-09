@@ -36,27 +36,36 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
   profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
   asm volatile(
       // clang-format off
+          // v26 will be the vector to XOR input values with to perform
+          // any input data type conversion (e.g. uint8 to int8).
           "dup v26.16b, %w[input_xor]\n"
+          // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
+          // v28--v32 will be used to accumulate the sums
           "dup v28.4s, wzr\n"
           "dup v29.4s, wzr\n"
           "dup v30.4s, wzr\n"
           "dup v31.4s, wzr\n"
-
-          "and w2, %w[rows], #-16\n"
-          "cmp w1, w2\n"
+          // Let w2 be `rows` rounded down to multiple of 16.
+          "ands w2, %w[rows], #-16\n"
+          // If there are no full blocks of 16 rows to process, jump to the
+          // code handling the last < 16 rows.
           "beq 3f\n"
-
+          // Load the first block of 16 rows.
           "add w1, w1, #16\n"
           "ld1 {v0.16b}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.16b}, [%[src_ptr1]], %[src_inc1]\n"
+          // Check if these were the only full block of 16 rows to load.
           "cmp w1, w2\n"
           "ld1 {v2.16b}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v3.16b}, [%[src_ptr3]], %[src_inc3]\n"
+          // In that case, jump to the code handling the last loaded block of
+          // 16 rows.
           "beq 2f\n"
-
+          // Main loop processing blocks of 16 rows.
           "1:\n"
-
+          // Load the next 16 rows, interleaved with the XOR input type
+          // conversion (e.g. uint8->int8) on the already loaded inputs.
           "add w1, w1, #16\n"
           "eor v4.16b, v0.16b, v26.16b\n"
           "ld1 {v0.16b}, [%[src_ptr0]], %[src_inc0]\n"
@@ -66,7 +75,7 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v2.16b}, [%[src_ptr2]], %[src_inc2]\n"
           "eor v7.16b, v3.16b, v26.16b\n"
           "ld1 {v3.16b}, [%[src_ptr3]], %[src_inc3]\n"
-
+          // Compute the sums, interleaved with storing to the packed matrix.
           "saddlp v16.8h, v4.16b\n"
           "str q4, [%[packed_ptr], #0]\n"
           "saddlp v17.8h, v5.16b\n"
@@ -76,16 +85,19 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "saddlp v19.8h, v7.16b\n"
           "str q7, [%[packed_ptr], #48]\n"
           "sadalp v28.4s, v16.8h\n"
+          // Was this the last block of 16 rows to load?
           "cmp w1, w2\n"
           "sadalp v29.4s, v17.8h\n"
           "add %[packed_ptr], %[packed_ptr], #64\n"
           "sadalp v30.4s, v18.8h\n"
           "sadalp v31.4s, v19.8h\n"
-
+          // End of main loop on blocks of 16 rows.
           "bne 1b\n"
 
+          // Code handling the last already-loaded block of 16 rows.
           "2:\n"
 
+          // Process the last loaded full 16x4 block.
           "eor v4.16b, v0.16b, v26.16b\n"
           "eor v5.16b, v1.16b, v26.16b\n"
           "eor v6.16b, v2.16b, v26.16b\n"
@@ -106,10 +118,15 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 
           "add %[packed_ptr], %[packed_ptr], #64\n"
 
+          // End of code handling full blocks of 16 rows.
+          // Now we handle any remaining rows.
           "3:\n"
-
+          // Let w2 be the number of rows left to handle.
           "ands w2, %w[rows], #15\n"
+          // If w2==0, there are no remaining rows, jump to the end.
           "beq 4f\n"
+          // Zero out a 16x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
           "dup v0.16b, %w[src_zero_point]\n"
           "dup v1.16b, %w[src_zero_point]\n"
           "dup v2.16b, %w[src_zero_point]\n"
@@ -137,10 +154,11 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_LOAD_ONE_ROW(12)
           RUY_LOAD_ONE_ROW(13)
           RUY_LOAD_ONE_ROW(14)
-          RUY_LOAD_ONE_ROW(15)
+          // Here we know that w2==15, so RUY_LOAD_ONE_ROW(15) would be a no-op.
 #undef RUY_LOAD_ONE_ROW
           "5:\n"
 
+          // Process the last zero-padded 16x4 block.
           "eor v4.16b, v0.16b, v26.16b\n"
           "eor v5.16b, v1.16b, v26.16b\n"
           "eor v6.16b, v2.16b, v26.16b\n"
@@ -163,25 +181,27 @@ void Pack8bitNeonOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 
           "4:\n"
 
+          // Horizontal reduction of the registers used to accumulate sums.
           "addp v28.4s, v28.4s, v29.4s\n"
           "addp v30.4s, v30.4s, v31.4s\n"
           "addp v28.4s, v28.4s, v30.4s\n"
 
+          // Store the sums.
           "cmp %[sums_ptr], #0\n"
           "beq 6f\n"
           "st1 {v28.4s}, [%[sums_ptr]], #16\n"
           "6:\n"
       // clang-format on
 
-      : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1),
-        [ src_ptr2 ] "+r"(src_ptr2), [ src_ptr3 ] "+r"(src_ptr3),
-        [ packed_ptr ] "+r"(packed_ptr), [ sums_ptr ] "+r"(sums_ptr)
-      : [ src_inc0 ] "r"(static_cast<std::int64_t>(src_inc0)),
-        [ src_inc1 ] "r"(static_cast<std::int64_t>(src_inc1)),
-        [ src_inc2 ] "r"(static_cast<std::int64_t>(src_inc2)),
-        [ src_inc3 ] "r"(static_cast<std::int64_t>(src_inc3)),
-        [ rows ] "r"(src_rows), [ src_zero_point ] "r"(src_zero_point),
-        [ input_xor ] "r"(input_xor)
+      : [src_ptr0] "+r"(src_ptr0), [src_ptr1] "+r"(src_ptr1),
+        [src_ptr2] "+r"(src_ptr2), [src_ptr3] "+r"(src_ptr3),
+        [packed_ptr] "+r"(packed_ptr), [sums_ptr] "+r"(sums_ptr)
+      : [src_inc0] "r"(static_cast<std::int64_t>(src_inc0)),
+        [src_inc1] "r"(static_cast<std::int64_t>(src_inc1)),
+        [src_inc2] "r"(static_cast<std::int64_t>(src_inc2)),
+        [src_inc3] "r"(static_cast<std::int64_t>(src_inc3)),
+        [rows] "r"(src_rows), [src_zero_point] "r"(src_zero_point),
+        [input_xor] "r"(input_xor)
       : "cc", "memory", "x1", "x2", "v0", "v1", "v2", "v3", "v4", "v5", "v6",
         "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16",
         "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26",
@@ -611,17 +631,24 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
                          int input_xor) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
   asm volatile(
-          // clang-format off
+      // clang-format off
+          // v26 will be the vector to XOR input values with to perform
+          // any input data type conversion (e.g. uint8 to int8).
           "dup v26.16b, %w[input_xor]\n"
+          // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
+          // v28--v32 will be used to accumulate the sums
           "dup v28.4s, wzr\n"
           "dup v29.4s, wzr\n"
           "dup v30.4s, wzr\n"
           "dup v31.4s, wzr\n"
-
-          "and w2, %w[rows], #-16\n"
-          "cmp w1, w2\n"
+          // Let w2 be `rows` rounded down to multiple of 16.
+          "ands w2, %w[rows], #-16\n"
+          // If there are no full blocks of 16 rows to process, jump to the
+          // code handling the last < 16 rows.
           "beq 3f\n"
+          // Load the first block of 16 rows.
+          "add w1, w1, #16\n"
           "ldr x10, [%[src_ptr0], #8]\n"
           "ld1 {v0.8b}, [%[src_ptr0]], %[src_inc0]\n"
           "ldr x11, [%[src_ptr1], #8]\n"
@@ -630,6 +657,8 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v2.8b}, [%[src_ptr2]], %[src_inc2]\n"
           "ldr x13, [%[src_ptr3], #8]\n"
           "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
+          // Check if these were the only full block of 16 rows to load.
+          "cmp w1, w2\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #64]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #64]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #64]\n")
@@ -642,12 +671,13 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #192]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #192]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #192]\n")
-          "add w1, w1, #16\n"
-          "cmp w1, w2\n"
-
+          // In that case, jump to the code handling the last loaded block of
+          // 16 rows.
           "beq 2f\n"
-
+          // Main loop processing blocks of 16 rows.
           "1:\n"
+          // Load the next 16 rows, interleaved with the XOR input type
+          // conversion (e.g. uint8->int8) on the already loaded inputs.
           "add w1, w1, #16\n"
           "ins v0.d[1], x10\n"
           "ldr x10, [%[src_ptr0], #8]\n"
@@ -665,6 +695,7 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v2.8b}, [%[src_ptr2]], %[src_inc2]\n"
           "eor v7.16b, v3.16b, v26.16b\n"
           "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
+          // Compute the sums, interleaved with storing to the packed matrix.
           "saddlp v16.8h, v4.16b\n"
           "str q4, [%[packed_ptr], #0]\n"
           "saddlp v17.8h, v5.16b\n"
@@ -675,6 +706,7 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           "str q7, [%[packed_ptr], #48]\n"
           "sadalp v28.4s, v16.8h\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #240]\n")
+          // Was this the last block of 16 rows to load?
           "cmp w1, w2\n"
           "sadalp v29.4s, v17.8h\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #240]\n")
@@ -683,10 +715,12 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #240]\n")
           "sadalp v31.4s, v19.8h\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #240]\n")
-
+          // End of main loop on blocks of 16 rows.
           "bne 1b\n"
 
+          // Code handling the last already-loaded block of 16 rows.
           "2:\n"
+          // Process the last loaded full 16x4 block.
           "ins v0.d[1], x10\n"
           "ins v1.d[1], x11\n"
           "ins v2.d[1], x12\n"
@@ -711,10 +745,15 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
 
           "add %[packed_ptr], %[packed_ptr], #64\n"
 
+          // End of code handling full blocks of 16 rows.
+          // Now we handle any remaining rows.
           "3:\n"
-
+          // Let w2 be the number of rows left to handle.
           "ands w2, %w[rows], #15\n"
+          // If w2==0, there are no remaining rows, jump to the end.
           "beq 4f\n"
+          // Zero out a 16x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
           "dup v0.16b, %w[src_zero_point]\n"
           "dup v1.16b, %w[src_zero_point]\n"
           "dup v2.16b, %w[src_zero_point]\n"
@@ -742,10 +781,11 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_LOAD_ONE_ROW(12)
           RUY_LOAD_ONE_ROW(13)
           RUY_LOAD_ONE_ROW(14)
-          RUY_LOAD_ONE_ROW(15)
+          // Here we know that w2==15, so RUY_LOAD_ONE_ROW(15) would be a no-op.
 #undef RUY_LOAD_ONE_ROW
           "5:\n"
 
+          // Process the last zero-padded 16x4 block.
           "eor v4.16b, v0.16b, v26.16b\n"
           "eor v5.16b, v1.16b, v26.16b\n"
           "eor v6.16b, v2.16b, v26.16b\n"
@@ -768,10 +808,12 @@ void Pack8bitNeonInOrder(const void* src_ptr0, const void* src_ptr1,
 
           "4:\n"
 
+          // Horizontal reduction of the registers used to accumulate sums.
           "addp v28.4s, v28.4s, v29.4s\n"
           "addp v30.4s, v30.4s, v31.4s\n"
           "addp v28.4s, v28.4s, v30.4s\n"
 
+          // Store the sums.
           "cmp %[sums_ptr], #0\n"
           "beq 6f\n"
           "st1 {v28.4s}, [%[sums_ptr]], #16\n"
@@ -802,18 +844,28 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
       "Pack (kNeonDotprod, optimized for in-order cores)");
   asm volatile(
           // clang-format off
+          // v26 will be the vector to XOR input values with to perform
+          // any input data type conversion (e.g. uint8 to int8).
           "dup v26.16b, %w[input_xor]\n"
+          // v27 will be filled with 1's. It will be used as an operand
+          // to SDOT to compute the sums.
           "mov w1, #1\n"
           "dup v27.16b, w1\n"
+          // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
+          // v28--v32 will be used to accumulate the sums
           "dup v28.4s, wzr\n"
           "dup v29.4s, wzr\n"
           "dup v30.4s, wzr\n"
           "dup v31.4s, wzr\n"
 
-          "and w2, %w[rows], #-16\n"
-          "cmp w1, w2\n"
+          // Let w2 be `rows` rounded down to multiple of 16.
+          "ands w2, %w[rows], #-16\n"
+          // If there are no full blocks of 16 rows to process, jump to the
+          // code handling the last < 16 rows.
           "beq 3f\n"
+          // Load the first block of 16 rows.
+          "add w1, w1, #16\n"
           "ldr x10, [%[src_ptr0], #8]\n"
           "ld1 {v0.8b}, [%[src_ptr0]], %[src_inc0]\n"
           "ldr x11, [%[src_ptr1], #8]\n"
@@ -822,6 +874,8 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v2.8b}, [%[src_ptr2]], %[src_inc2]\n"
           "ldr x13, [%[src_ptr3], #8]\n"
           "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
+          // Check if these were the only full block of 16 rows to load.
+          "cmp w1, w2\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #64]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #64]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #64]\n")
@@ -834,13 +888,17 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #192]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #192]\n")
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #192]\n")
-          "add w1, w1, #16\n"
-          "cmp w1, w2\n"
-
+          // In that case, jump to the code handling the last loaded block of
+          // 16 rows.
           "beq 2f\n"
 
+          // Main loop processing blocks of 16 rows.
           "1:\n"
           "add w1, w1, #16\n"
+          // Prepare the already-loaded 16 rows by inserting the parts
+          // loaded into general purpose registers x10--x13 into the
+          // NEON registers v0--v3 where the other parts had already been
+          // loaded.
           "ins v0.d[1], x10\n"
           "ldr x10, [%[src_ptr0], #8]\n"
           "ins v1.d[1], x11\n"
@@ -850,6 +908,9 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "ins v3.d[1], x13\n"
           "ldr x13, [%[src_ptr3], #8]\n"
 
+          // Load the next 16 rows and, interleaved with that,
+          // perform the input type conversion (e.g. uint8->int8) on the
+          // current 16 rows.
           "eor v4.16b, v0.16b, v26.16b\n"
           "ld1 {v0.8b}, [%[src_ptr0]], %[src_inc0]\n"
           "eor v5.16b, v1.16b, v26.16b\n"
@@ -859,6 +920,7 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "eor v7.16b, v3.16b, v26.16b\n"
           "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
 
+          // Transposition of 4x4 blocks, part 1
           "trn1 v16.4s, v4.4s, v5.4s\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #240]\n")
           "trn2 v17.4s, v4.4s, v5.4s\n"
@@ -868,12 +930,15 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "trn2 v19.4s, v6.4s, v7.4s\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #240]\n")
 
+          // Transposition of 4x4 blocks, part 2
           "trn1 v20.2d, v16.2d, v18.2d\n"
           "trn2 v22.2d, v16.2d, v18.2d\n"
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
           "cmp w1, w2\n"
 
+          // Store the block to the packed matrix and, interleaved with
+          // that, compute sums using sdot instructions.
           ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           "str q20, [%[packed_ptr], #0]\n"
           ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
@@ -882,12 +947,13 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "str q22, [%[packed_ptr], #64]\n"
           ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           "str q23, [%[packed_ptr], #96]\n"
-
           "add %[packed_ptr], %[packed_ptr], #128\n"
-
+          // End of main loop on blocks of 16 rows.
           "bne 1b\n"
 
+          // Code handling the last already-loaded block of 16 rows.
           "2:\n"
+          // Process the last loaded full 16x4 block.
           "ins v0.d[1], x10\n"
           "ins v1.d[1], x11\n"
           "ins v2.d[1], x12\n"
@@ -917,10 +983,15 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // End of code handling full blocks of 16 rows.
+          // Now we handle any remaining rows.
           "3:\n"
-
+          // Let w2 be the number of rows left to handle.
           "ands w2, %w[rows], #15\n"
+          // If w2==0, there are no remaining rows, jump to the end.
           "beq 4f\n"
+          // Zero out a 16x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
           "dup v0.16b, %w[src_zero_point]\n"
           "dup v1.16b, %w[src_zero_point]\n"
           "dup v2.16b, %w[src_zero_point]\n"
@@ -948,10 +1019,11 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_LOAD_ONE_ROW(12)
           RUY_LOAD_ONE_ROW(13)
           RUY_LOAD_ONE_ROW(14)
-          RUY_LOAD_ONE_ROW(15)
+          // Here we know that w2==15, so RUY_LOAD_ONE_ROW(15) would be a no-op.
 #undef RUY_LOAD_ONE_ROW
-          "5:\n"
 
+          "5:\n"
+          // Process the last zero-padded 16x4 block.
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
@@ -985,10 +1057,12 @@ void Pack8bitNeonDotprodInOrder(const void* src_ptr0, const void* src_ptr1,
 
           "4:\n"
 
+          // Reduction of the registers used to accumulate sums.
           "add v28.4s, v28.4s, v29.4s\n"
           "add v30.4s, v30.4s, v31.4s\n"
           "add v28.4s, v28.4s, v30.4s\n"
 
+          // Store the sums.
           "cmp %[sums_ptr], #0\n"
           "beq 6f\n"
           "st1 {v28.4s}, [%[sums_ptr]], #16\n"
@@ -1017,20 +1091,33 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
       "Pack (kNeonDotprod, optimized for out-of-order cores)");
   asm volatile(
       // clang-format off
+          // v26 will be the vector to XOR input values with to perform
+          // any input data type conversion (e.g. uint8 to int8).
           "dup v26.16b, %w[input_xor]\n"
+          // v27 will be filled with 1's. It will be used as an operand
+          // to SDOT to compute the sums.
           "mov w1, #1\n"
           "dup v27.16b, w1\n"
+          // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
+          // v28--v32 will be used to accumulate the sums
           "dup v28.4s, wzr\n"
           "dup v29.4s, wzr\n"
           "dup v30.4s, wzr\n"
           "dup v31.4s, wzr\n"
 
+          // 4x partially unrolled code processing blocks of 64 rows.
+          // Read the original loop below first, it has more comments.
 #if RUY_OPT(MAX_STREAMING)
-          "and w2, %w[rows], #-64\n"
-          "cmp w1, w2\n"
+          // Let w2 be `rows` rounded down to multiple of 64.
+          // Each iteration of this 4x partially unrolled loop handles
+          // 64 rows.
+          "ands w2, %w[rows], #-64\n"
+          // If there are no full blocks of 64 rows to process, jump to
+          // the main loop below handling 16 rows per iteration.
           "beq 9f\n"
-
+          // Load the first block of 64 rows.
+          "add w1, w1, #64\n"
           "ld1 {v0.16b}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.16b}, [%[src_ptr1]], %[src_inc1]\n"
           "ld1 {v2.16b}, [%[src_ptr2]], %[src_inc2]\n"
@@ -1045,13 +1132,16 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v11.16b}, [%[src_ptr3]], %[src_inc3]\n"
           "ld1 {v12.16b}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v13.16b}, [%[src_ptr1]], %[src_inc1]\n"
+          // Was that the last full block of 64 rows to load?
+          "cmp w1, w2\n"
           "ld1 {v14.16b}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v15.16b}, [%[src_ptr3]], %[src_inc3]\n"
-          "add w1, w1, #64\n"
-          "cmp w1, w2\n"
+          // Then jump to the end of the 64-rows-at-a-time code.
           "beq 8f\n"
 
+          // Start of the main 4x partially unrolled loop.
           "7:\n"
+          // Process rows 0 -- 15 out of 64.
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
@@ -1084,6 +1174,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 16 -- 31 out of 64.
           "eor v4.16b, v4.16b, v26.16b\n"
           "eor v5.16b, v5.16b, v26.16b\n"
           "eor v6.16b, v6.16b, v26.16b\n"
@@ -1116,6 +1207,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 32 -- 47 out of 64.
           "eor v8.16b, v8.16b, v26.16b\n"
           "eor v9.16b, v9.16b, v26.16b\n"
           "eor v10.16b, v10.16b, v26.16b\n"
@@ -1148,6 +1240,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 48 -- 63 out of 64.
           "eor v12.16b, v12.16b, v26.16b\n"
           "eor v13.16b, v13.16b, v26.16b\n"
           "eor v14.16b, v14.16b, v26.16b\n"
@@ -1174,17 +1267,21 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
+          "cmp w1, w2\n"
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
           "str q22, [%[packed_ptr], #64]\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
-          "cmp w1, w2\n"
+          // End of main 4x partially unrolled loop.
           "bne 7b\n"
 
+          // Last part of the 4x partially unrolled code:
+          // handle the last already-loaded 64 rows.
           "8:\n"
 
+          // Process rows 0 -- 15 out of 64.
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
@@ -1211,6 +1308,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 16 -- 31 out of 64.
           "eor v4.16b, v4.16b, v26.16b\n"
           "eor v5.16b, v5.16b, v26.16b\n"
           "eor v6.16b, v6.16b, v26.16b\n"
@@ -1237,6 +1335,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 32 -- 47 out of 64.
           "eor v8.16b, v8.16b, v26.16b\n"
           "eor v9.16b, v9.16b, v26.16b\n"
           "eor v10.16b, v10.16b, v26.16b\n"
@@ -1263,6 +1362,7 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // Process rows 48 -- 63 out of 64.
           "eor v12.16b, v12.16b, v26.16b\n"
           "eor v13.16b, v13.16b, v26.16b\n"
           "eor v14.16b, v14.16b, v26.16b\n"
@@ -1291,57 +1391,70 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 
           "9:\n"
 #endif  // #if RUY_OPT(MAX_STREAMING)
+          // End of 4x partially unrolled code processing blocks of 64 rows.
+
+          // Main part of the code, processing blocks of 16 rows.
+
+          // Let w2 be `rows` rounded down to multiple of 16.
           "and w2, %w[rows], #-16\n"
+          // If there are no full blocks of 16 rows to process, jump to the
+          // code handling the last < 16 rows.
           "cmp w1, w2\n"
           "beq 3f\n"
 
+          // Load the first block of 16 rows.
+          "add w1, w1, #16\n"
           "ld1 {v0.16b}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.16b}, [%[src_ptr1]], %[src_inc1]\n"
+          // Check if these were the only full block of 16 rows to load.
+          "cmp w1, w2\n"
           "ld1 {v2.16b}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v3.16b}, [%[src_ptr3]], %[src_inc3]\n"
-          "add w1, w1, #16\n"
-          "cmp w1, w2\n"
+          // In that case, jump to the code handling the last loaded block of
+          // 16 rows.
           "beq 2f\n"
-
+          // Main loop processing blocks of 16 rows.
           "1:\n"
-
+          // Input type conversion (e.g. uint8->int8).
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
           "eor v3.16b, v3.16b, v26.16b\n"
-
+          // Transposition of 4x4 blocks, part 1
           "trn1 v16.4s, v0.4s, v1.4s\n"
           "trn2 v17.4s, v0.4s, v1.4s\n"
           "trn1 v18.4s, v2.4s, v3.4s\n"
           "trn2 v19.4s, v2.4s, v3.4s\n"
-
+          // Load the next 16 rows
           "ld1 {v0.16b}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.16b}, [%[src_ptr1]], %[src_inc1]\n"
           "ld1 {v2.16b}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v3.16b}, [%[src_ptr3]], %[src_inc3]\n"
           "add w1, w1, #16\n"
-
+          // Transposition of 4x4 blocks, part 2
           "trn1 v20.2d, v16.2d, v18.2d\n"
           "trn2 v22.2d, v16.2d, v18.2d\n"
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
-
+          // Compute sums using sdot instructions.
           ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
           ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
-
+          // Store the block to the packed matrix.
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
+          "cmp w1, w2\n"
           "str q22, [%[packed_ptr], #64]\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
-
-          "cmp w1, w2\n"
+          // End of main loop on blocks of 16 rows.
           "bne 1b\n"
 
+          // Code handling the last already-loaded block of 16 rows.
           "2:\n"
 
+          // Process the last loaded full 16x4 block.
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
@@ -1368,10 +1481,15 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // End of code handling full blocks of 16 rows.
+          // Now we handle any remaining rows.
           "3:\n"
-
+          // Let w2 be the number of rows left to handle.
           "ands w2, %w[rows], #15\n"
+          // If w2==0, there are no remaining rows, jump to the end.
           "beq 4f\n"
+          // Zero out a 16x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
           "dup v0.16b, %w[src_zero_point]\n"
           "dup v1.16b, %w[src_zero_point]\n"
           "dup v2.16b, %w[src_zero_point]\n"
@@ -1399,10 +1517,11 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
           RUY_LOAD_ONE_ROW(12)
           RUY_LOAD_ONE_ROW(13)
           RUY_LOAD_ONE_ROW(14)
-          RUY_LOAD_ONE_ROW(15)
+          // Here we know that w2==15, so RUY_LOAD_ONE_ROW(15) would be a no-op.
 #undef RUY_LOAD_ONE_ROW
-          "5:\n"
 
+          "5:\n"
+          // Process the last zero-padded 16x4 block.
           "eor v0.16b, v0.16b, v26.16b\n"
           "eor v1.16b, v1.16b, v26.16b\n"
           "eor v2.16b, v2.16b, v26.16b\n"
@@ -1436,10 +1555,12 @@ void Pack8bitNeonDotprodOutOfOrder(const void* src_ptr0, const void* src_ptr1,
 
           "4:\n"
 
+          // Reduction of the registers used to accumulate sums.
           "add v28.4s, v28.4s, v29.4s\n"
           "add v30.4s, v30.4s, v31.4s\n"
           "add v28.4s, v28.4s, v30.4s\n"
 
+          // Store the sums.
           "cmp %[sums_ptr], #0\n"
           "beq 6f\n"
           "st1 {v28.4s}, [%[sums_ptr]], #16\n"
@@ -1472,48 +1593,55 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
   profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
   asm volatile(
       // clang-format off
+          // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
-
-          "and w2, %w[rows], #-4\n"
-          "cmp w1, w2\n"
+          // Let w2 be `rows` rounded down to multiple of 4.
+          "ands w2, %w[rows], #-4\n"
+          // If there are no full blocks of 4 rows to process, jump to the
+          // code handling the last < 4 rows.
           "beq 3f\n"
+          // Load the first block of 16 rows.
+          "add w1, w1, #4\n"
           "ld1 {v0.4s}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.4s}, [%[src_ptr1]], %[src_inc1]\n"
+          // Check if these were the only full block of 4 rows to load.
+          "cmp w1, w2\n"
           "ld1 {v2.4s}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v3.4s}, [%[src_ptr3]], %[src_inc3]\n"
-          "add w1, w1, #4\n"
-          "cmp w1, w2\n"
-
+          // In that case, jump to the code handling the last loaded block of
+          // 4 rows.
           "beq 2f\n"
-
+          // Main loop processing blocks of 4 rows.
           "1:\n"
+          // Advance by 4 rows.
           "add w1, w1, #4\n"
-
+          // Transposition of the already-loaded 4x4 block, part 1.
           "trn1 v16.4s, v0.4s, v1.4s\n"
           "trn2 v17.4s, v0.4s, v1.4s\n"
           "trn1 v18.4s, v2.4s, v3.4s\n"
           "trn2 v19.4s, v2.4s, v3.4s\n"
-
+          // Load the next 4x4 block.
           "ld1 {v0.4s}, [%[src_ptr0]], %[src_inc0]\n"
           "ld1 {v1.4s}, [%[src_ptr1]], %[src_inc1]\n"
           "ld1 {v2.4s}, [%[src_ptr2]], %[src_inc2]\n"
           "ld1 {v3.4s}, [%[src_ptr3]], %[src_inc3]\n"
-
+          // Transposition of the already-loaded 4x4 block, part 2.
           "trn1 v20.2d, v16.2d, v18.2d\n"
           "trn2 v22.2d, v16.2d, v18.2d\n"
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
+          // Was this the last full 4x4 block to load?
           "cmp w1, w2\n"
-
+          // Store the transposed 4x4 block.
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
           "str q22, [%[packed_ptr], #64]\n"
           "str q23, [%[packed_ptr], #96]\n"
-
           "add %[packed_ptr], %[packed_ptr], #128\n"
-
+          // End of main loop on 4x4 blocks.
           "bne 1b\n"
 
+          // Code handling the last already-loaded 4x4 block.
           "2:\n"
 
           "trn1 v16.4s, v0.4s, v1.4s\n"
@@ -1532,10 +1660,15 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
+          // End of code handling full 4x4 blocks.
+          // Now we handle any remaining rows.
           "3:\n"
-
+          // Let w2 be the number of rows left to handle.
           "ands w2, %w[rows], #3\n"
+          // If w2==0, there are no remaining rows, jump to the end.
           "beq 4f\n"
+          // Zero out a 4x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
           "dup v0.16b, wzr\n"
           "dup v1.16b, wzr\n"
           "dup v2.16b, wzr\n"
@@ -1551,10 +1684,11 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
           RUY_LOAD_ONE_ROW(0)
           RUY_LOAD_ONE_ROW(1)
           RUY_LOAD_ONE_ROW(2)
-          RUY_LOAD_ONE_ROW(3)
+          // Here we know that w2==3, so RUY_LOAD_ONE_ROW(3) would be a no-op.
 #undef RUY_LOAD_ONE_ROW
           "5:\n"
 
+          // Transpose that last zero-padded 4x4 block.
           "trn1 v16.4s, v0.4s, v1.4s\n"
           "trn2 v17.4s, v0.4s, v1.4s\n"
           "trn1 v18.4s, v2.4s, v3.4s\n"
@@ -1565,8 +1699,8 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
+          // Store that last zero-padded block to the packed matrix.
           "mov x1, #32\n"
-
 #define RUY_STORE_ONE_ROW(ROW, REGISTER)                  \
           "cmp w2, #" #ROW "\n"                           \
           "beq 4f\n"                                      \
@@ -1583,14 +1717,14 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 
       // clang-format on
 
-      : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1),
-        [ src_ptr2 ] "+r"(src_ptr2), [ src_ptr3 ] "+r"(src_ptr3),
-        [ packed_ptr ] "+r"(packed_ptr)
-      : [ src_inc0 ] "r"(static_cast<std::int64_t>(src_inc0)),
-        [ src_inc1 ] "r"(static_cast<std::int64_t>(src_inc1)),
-        [ src_inc2 ] "r"(static_cast<std::int64_t>(src_inc2)),
-        [ src_inc3 ] "r"(static_cast<std::int64_t>(src_inc3)),
-        [ rows ] "r"(src_rows)
+      : [src_ptr0] "+r"(src_ptr0), [src_ptr1] "+r"(src_ptr1),
+        [src_ptr2] "+r"(src_ptr2), [src_ptr3] "+r"(src_ptr3),
+        [packed_ptr] "+r"(packed_ptr)
+      : [src_inc0] "r"(static_cast<std::int64_t>(src_inc0)),
+        [src_inc1] "r"(static_cast<std::int64_t>(src_inc1)),
+        [src_inc2] "r"(static_cast<std::int64_t>(src_inc2)),
+        [src_inc3] "r"(static_cast<std::int64_t>(src_inc3)),
+        [rows] "r"(src_rows)
       : "cc", "memory", "x1", "x2", "x10", "x11", "x12", "x13", "v0", "v1",
         "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12",
         "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22",
