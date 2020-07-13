@@ -1,7 +1,7 @@
 # Ruy is not BLAS
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2", "ruy_copts_avx512")
+load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
@@ -624,14 +624,14 @@ cc_library(
 )
 
 cc_library(
-    name = "kernel_avx2",
+    name = "kernel_avx2_fma",
     srcs = [
-        "kernel_avx2.cc",
+        "kernel_avx2_fma.cc",
     ],
     hdrs = [
         "kernel_x86.h",
     ],
-    copts = ruy_copts() + ruy_copts_avx2(),
+    copts = ruy_copts() + ruy_copts_avx2_fma(),
     deps = [
         ":check_macros",
         ":kernel_common",
@@ -646,14 +646,14 @@ cc_library(
 )
 
 cc_library(
-    name = "pack_avx2",
+    name = "pack_avx2_fma",
     srcs = [
-        "pack_avx2.cc",
+        "pack_avx2_fma.cc",
     ],
     hdrs = [
         "pack_x86.h",
     ],
-    copts = ruy_copts() + ruy_copts_avx2(),
+    copts = ruy_copts() + ruy_copts_avx2_fma(),
     deps = [
         ":check_macros",
         ":mat",
@@ -667,14 +667,14 @@ cc_library(
 )
 
 cc_library(
-    name = "have_built_path_for_avx2",
+    name = "have_built_path_for_avx2_fma",
     srcs = [
-        "have_built_path_for_avx2.cc",
+        "have_built_path_for_avx2_fma.cc",
     ],
     hdrs = [
         "have_built_path_for.h",
     ],
-    copts = ruy_copts() + ruy_copts_avx2(),
+    copts = ruy_copts() + ruy_copts_avx2_fma(),
     deps = [
         ":opt_set",
         ":platform",
@@ -691,7 +691,7 @@ cc_library(
         ":apply_multiplier",
         ":check_macros",
         ":kernel_arm",  # fixdeps: keep
-        ":kernel_avx2",  # fixdeps: keep
+        ":kernel_avx2_fma",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
         ":kernel_common",
         ":mat",
@@ -719,7 +719,7 @@ cc_library(
         ":matrix",
         ":opt_set",
         ":pack_arm",  # fixdeps: keep
-        ":pack_avx2",  # fixdeps: keep
+        ":pack_avx2_fma",  # fixdeps: keep
         ":pack_avx512",  # fixdeps: keep
         ":pack_common",
         ":path",
@@ -735,7 +735,7 @@ cc_library(
         "have_built_path_for.h",
     ],
     deps = [
-        ":have_built_path_for_avx2",
+        ":have_built_path_for_avx2_fma",
         ":have_built_path_for_avx512",
         ":platform",
     ],

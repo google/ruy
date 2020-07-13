@@ -33,11 +33,11 @@ namespace ruy {
 
 #if RUY_PLATFORM_X86
 
-RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx2)
-RUY_INHERIT_PACK(Path::kAvx2, Path::kAvx512)
+RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx2Fma)
+RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx512)
 
 template <>
-struct PackedTypeImpl<Path::kAvx2, std::uint8_t> {
+struct PackedTypeImpl<Path::kAvx2Fma, std::uint8_t> {
   using Type = std::int8_t;
 };
 template <>
@@ -53,8 +53,8 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
                   std::int32_t* sums_ptr);
 
 template <typename Scalar>
-struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
-                std::int8_t, std::int32_t> {
+struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
+                Scalar, std::int8_t, std::int32_t> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -98,8 +98,8 @@ void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
                    int remaining_src_cols, int src_rows, float* packed_ptr);
 
 template <>
-struct PackImpl<Path::kAvx2, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
-                float, float> {
+struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>,
+                float, float, float> {
   using Layout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   static void Run(Tuning, const Mat<float>& src_matrix,
                   PMat<float>* packed_matrix, int start_col, int end_col) {

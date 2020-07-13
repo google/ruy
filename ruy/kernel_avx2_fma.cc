@@ -24,13 +24,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#if RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_AVX2 && RUY_OPT(ASM))
+#if !(RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM))
 
 void Kernel8bitAvx2(const KernelParams8bit<8, 8>&) {
   // CPU-ID-based checks should disable the path that would reach this point.
@@ -52,7 +52,7 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>&) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#else  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 
 static constexpr int kAvx8bitBlockSize = 8;
 static constexpr int kAvx8bitInnerSize = 4;
@@ -393,7 +393,7 @@ inline void mm256_n_storeu_ps(float* dst, int residual_rows, const __m256 v) {
 }  // namespace
 
 void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
-  profiler::ScopeLabel label("Kernel kAvx2 8-bit");
+  profiler::ScopeLabel label("Kernel kAvx2Fma 8-bit");
   const std::int8_t splitter_idx_data[32] = {
       0, 1, 4, 5, 8,  9,  12, 13,  //
       2, 3, 6, 7, 10, 11, 14, 15,  //
@@ -1185,7 +1185,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
 }  // NOLINT(readability/fn_size)
 
 void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
-  profiler::ScopeLabel label("Kernel kAvx2 8-bit GEMV");
+  profiler::ScopeLabel label("Kernel kAvx2Fma 8-bit GEMV");
 
   RUY_DCHECK_EQ(params.dst_cols, 1);
   RUY_DCHECK_EQ(params.last_col, 0);
@@ -1450,7 +1450,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
 }  // NOLINT(readability/fn_size)
 
 void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
-  profiler::ScopeLabel label("Kernel kAvx2 float");
+  profiler::ScopeLabel label("Kernel kAvx2Fma float");
 
   // As parameters are defined, we need to scale by sizeof(float).
   const std::int64_t lhs_stride = params.lhs_stride >> 2;
@@ -1603,7 +1603,7 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
 }
 
 void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params) {
-  profiler::ScopeLabel label("Kernel kAvx2 float GEMV");
+  profiler::ScopeLabel label("Kernel kAvx2Fma float GEMV");
 
   RUY_DCHECK_EQ(params.dst_cols, 1);
   RUY_DCHECK_EQ(params.last_col, 0);
@@ -1707,6 +1707,6 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params) {
   }  // End handling of residual rows.
 }
 
-#endif  //  RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#endif  //  RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 
 }  // namespace ruy

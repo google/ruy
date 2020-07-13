@@ -23,13 +23,13 @@ limitations under the License.
 #include "ruy/platform.h"
 #include "ruy/profiler/instrumentation.h"
 
-#if RUY_PLATFORM_AVX2 && RUY_OPT(INTRINSICS)
+#if RUY_PLATFORM_AVX2_FMA && RUY_OPT(INTRINSICS)
 #include <immintrin.h>  // IWYU pragma: keep
 #endif
 
 namespace ruy {
 
-#if !(RUY_PLATFORM_AVX2 && RUY_OPT(ASM))
+#if !(RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM))
 
 void Pack8bitAvx2(const std::int8_t*, std::int8_t, const std::int8_t*, int, int,
                   int, std::int8_t*, std::int32_t*) {
@@ -42,16 +42,16 @@ void PackFloatAvx2(const float*, const float*, int, int, int, float*) {
   RUY_DCHECK(false);
 }
 
-#else  // RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#else  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 
 // The first int8_t template parameter is arbitrary: this routine is common to
 // all 8-bit source matrix types.
 using PackImpl8bitAvx2 =
-    PackImpl<Path::kAvx2, FixedKernelLayout<Order::kColMajor, 4, 8>,
+    PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
              std::int8_t, std::int8_t, std::int32_t>;
 
 using PackImplFloatAvx2 =
-    PackImpl<Path::kAvx2, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
+    PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
              float, float>;
 
 namespace {
@@ -752,7 +752,7 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
                   const std::int8_t* zerobuf, int src_stride,
                   int remaining_src_cols, int src_rows, std::int8_t* packed_ptr,
                   std::int32_t* sums_ptr) {
-  profiler::ScopeLabel label("Pack kAvx2 8bit");
+  profiler::ScopeLabel label("Pack kAvx2Fma 8bit");
 
   using Layout = PackImpl8bitAvx2::Layout;
   RUY_DCHECK_EQ(Layout::kCols, 8);
@@ -789,7 +789,7 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
 
 void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
                    int remaining_src_cols, int src_rows, float* packed_ptr) {
-  profiler::ScopeLabel label("Pack kAvx2 float");
+  profiler::ScopeLabel label("Pack kAvx2Fma float");
   static constexpr int kPackCols = 8;  // Source cols packed together.
   static constexpr int kPackRows = 8;  // Short input is padded.
   float trailing_buf[(kPackRows - 1) * kPackCols];
@@ -807,6 +807,6 @@ void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
   }
 }
 
-#endif  // RUY_PLATFORM_AVX2 && RUY_OPT(INTRINSICS)
+#endif  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(INTRINSICS)
 
 }  // namespace ruy

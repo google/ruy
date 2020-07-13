@@ -21,15 +21,15 @@ namespace ruy {
 #if RUY_PLATFORM_X86
 // IMPORTANT:
 // These patterns must match those in the pack and kernel cc files.
-#if !(RUY_PLATFORM_AVX2 && RUY_OPT(ASM))
+#if !(RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM))
 
-bool HaveBuiltPathForAvx2() { return false; }
+bool HaveBuiltPathForAvx2Fma() { return false; }
 
-#else  // RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#else  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 
-bool HaveBuiltPathForAvx2() { return true; }
+bool HaveBuiltPathForAvx2Fma() { return true; }
 
-#endif  // RUY_PLATFORM_AVX2 && RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 #endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy

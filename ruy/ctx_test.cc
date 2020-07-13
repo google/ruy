@@ -33,9 +33,9 @@ TEST(ContextInternalTest, EnabledPathsGeneral) {
 #if RUY_PLATFORM_X86
 TEST(ContextInternalTest, EnabledPathsX86Explicit) {
   CtxImpl ctx;
-  ctx.SetRuntimeEnabledPaths(Path::kAvx2);
+  ctx.SetRuntimeEnabledPaths(Path::kAvx2Fma);
   const auto ruy_paths = ctx.GetRuntimeEnabledPaths();
-  EXPECT_EQ(ruy_paths, Path::kStandardCpp | Path::kAvx2);
+  EXPECT_EQ(ruy_paths, Path::kStandardCpp | Path::kAvx2Fma);
 }
 #endif  // RUY_PLATFORM_X86
 
