@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "ruy/mat.h"
 #include "ruy/mul_params.h"
+#include "ruy/path.h"
 #include "ruy/platform.h"
 
 namespace ruy {
@@ -33,6 +34,14 @@ void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
 
 bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
                            ChannelDimension channel_dimension) {
+  // Non-architecture-specific paths, including internal test-only paths,
+  // are currently just variants of kStandardCpp, supporting every case thus
+  // not requiring a fallback. Not falling back preserves test coverage that
+  // is enabled by these internal test-only paths.
+  if ((path & kNonArchPathsIncludingInternalVariants) != Path::kNone) {
+    return false;
+  }
+
   // Supporting row-major LHS/RHS would require transposing blocks in the
   // packing code. This isn't implemented at the moment, so we fall back to
   // StandardCpp when that would be needed.

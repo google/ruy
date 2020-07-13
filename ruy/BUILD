@@ -390,6 +390,13 @@ cc_library(
 )
 
 cc_library(
+    name = "performance_advisory",
+    hdrs = ["performance_advisory.h"],
+    copts = ruy_copts(),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
     copts = ruy_copts(),
@@ -414,6 +421,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":check_macros",
+        ":size_util",
     ],
 )
 
@@ -747,6 +755,7 @@ cc_library(
         ":ctx",
         ":have_built_path_for",
         ":path",
+        ":performance_advisory",
         ":platform",
         ":prepacked_cache",
         ":thread_pool",
@@ -794,6 +803,7 @@ cc_library(
         ":cpuinfo",
         ":have_built_path_for",
         ":path",
+        ":performance_advisory",
         ":platform",
         ":prepacked_cache",
         ":thread_pool",
@@ -895,6 +905,7 @@ cc_library(
         ":mul_params",
         ":pack",
         ":path",
+        ":performance_advisory",
         ":platform",
         ":side_pair",
         ":trmul_params",
@@ -952,6 +963,21 @@ cc_library(
         ":matrix",
         ":mul_params",
         ":path",
+    ],
+)
+
+cc_test(
+    name = "perchannel_buffers_reallocation_test",
+    srcs = ["perchannel_buffers_reallocation_test.cc"],
+    copts = ruy_copts(),
+    deps = [
+        ":context",
+        ":gtest_wrapper",
+        ":kernel",
+        ":matrix",
+        ":path",
+        ":performance_advisory",
+        ":ruy",
     ],
 )
 

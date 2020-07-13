@@ -21,6 +21,7 @@ limitations under the License.
 #include <type_traits>
 
 #include "ruy/check_macros.h"
+#include "ruy/size_util.h"
 
 namespace ruy {
 
@@ -117,6 +118,38 @@ class MulParams final {
   void set_channel_dimension(ChannelDimension value) {
     storage_.channel_dimension = value;
   }
+  // Specifies the upward rounding of the allocated capacity of per-channel
+  // buffers such as bias vectors and per-channel quantization multipliers.
+  // The unit is matrix entries, not bytes.
+  //
+  // This value must be a power of two.
+  //
+  // The default value, 1, means no upward rounding, meaning that the buffers
+  // are not required to have a capacity greater than the size of the
+  // corresponding matrix dimension, i.e. the number of rows (respectively
+  // columns) of the destination matrix if `channel_dimension()` is kRow
+  // (respectively kCol).
+  //
+  // Higher values allow the implementation to assume that it is OK to access
+  // these buffers a little past this boundary, which is useful in SIMD
+  // optimized kernels. In practice, when this value is lower than what the
+  // kernel requires, ruy has to internally reallocate and copy per-channel
+  // buffers. When this value is high enough, this reallocation and copy is
+  // avoided.
+  //
+  // When a value greater than 1 is specified, the tail region of the buffer
+  // (past the end of the values actually corresponding to channels) is required
+  // to be zero-initialized.
+  //
+  // As of 2020, values as high as 16 may be useful on some CPU architectures
+  // (corresponding to the widest kernels used on any CPU architecture).
+  int perchannel_buffers_capacity_rounding() const {
+    return 1 << storage_.perchannel_buffers_capacity_rounding_log2;
+  }
+  void set_perchannel_buffers_capacity_rounding(int value) {
+    // Note: pot_log2 asserts (debug-only) that its argument is a power-of-two.
+    storage_.perchannel_buffers_capacity_rounding_log2 = pot_log2(value);
+  }
 
  private:
   detail::MulParamsStorage<AccumScalar, DstScalar> storage_;
@@ -149,6 +182,7 @@ struct MulParamsStorage final {
   DstScalar clamp_min = -std::numeric_limits<DstScalar>::infinity();
   DstScalar clamp_max = std::numeric_limits<DstScalar>::infinity();
   ChannelDimension channel_dimension = ChannelDimension::kRow;
+  std::int8_t perchannel_buffers_capacity_rounding_log2 = 0;
 
   // Data members that are disabled in this case are left as `static constexpr`
   // so that one can write some generic code.
@@ -181,6 +215,7 @@ struct MulParamsStorage<std::int32_t, DstScalar> final {
   DstScalar clamp_max = std::numeric_limits<DstScalar>::max();
   ChannelDimension channel_dimension = ChannelDimension::kRow;
   bool perchannel = false;
+  std::int8_t perchannel_buffers_capacity_rounding_log2 = 0;
 };
 
 // Specialization used in the integer case when outputting raw int32
@@ -194,6 +229,7 @@ struct MulParamsStorage<std::int32_t, std::int32_t> final {
 
   const AccumScalar* bias = nullptr;
   ChannelDimension channel_dimension = ChannelDimension::kRow;
+  std::int8_t perchannel_buffers_capacity_rounding_log2 = 0;
 
   // Data members that are disabled in this case are left as `static constexpr`
   // so that one can write some generic code.

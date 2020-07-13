@@ -38,15 +38,18 @@ TEST(MulParamsTest, SpecClassSanity) {
   EXPECT_EQ(mul_params.clamp_min(), -128);
   EXPECT_EQ(mul_params.clamp_max(), 127);
   EXPECT_EQ(mul_params.channel_dimension(), ChannelDimension::kRow);
+  EXPECT_EQ(mul_params.perchannel_buffers_capacity_rounding(), 1);
   std::int32_t bias_data[1];
   mul_params.set_bias(bias_data);
   mul_params.set_multiplier_fixedpoint(123);
   mul_params.set_multiplier_exponent(4);
   mul_params.set_channel_dimension(ChannelDimension::kCol);
+  mul_params.set_perchannel_buffers_capacity_rounding(8);
   EXPECT_EQ(mul_params.bias(), bias_data);
   EXPECT_EQ(mul_params.multiplier_fixedpoint(), 123);
   EXPECT_EQ(mul_params.multiplier_exponent(), 4);
   EXPECT_EQ(mul_params.channel_dimension(), ChannelDimension::kCol);
+  EXPECT_EQ(mul_params.perchannel_buffers_capacity_rounding(), 8);
   mul_params.set_multiplier_fixedpoint(0);
   mul_params.set_multiplier_exponent(0);
   std::int32_t multiplier_fixedpoint_perchannel_data[1];

@@ -84,6 +84,7 @@ void MulFrontEnd(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
   profiler::ScopeLabel shape_specific_label("matmul shape: %dx%dx%d",
                                             lhs.layout.rows, lhs.layout.cols,
                                             rhs.layout.cols);
+  ctx->clear_performance_advisories();
   TrMulParams params;
   MulFrontEndUpToCreateTrMulParams<CompiledPaths>(lhs, rhs, *dst, mul_params,
                                                   ctx, &params);

@@ -24,6 +24,7 @@ limitations under the License.
 #include "ruy/ctx_impl.h"
 #include "ruy/have_built_path_for.h"
 #include "ruy/path.h"
+#include "ruy/performance_advisory.h"
 #include "ruy/platform.h"
 #include "ruy/prepacked_cache.h"
 
@@ -42,6 +43,17 @@ ThreadPool* Ctx::mutable_thread_pool() { return &mutable_impl()->thread_pool_; }
 int Ctx::max_num_threads() const { return impl().max_num_threads_; }
 void Ctx::set_max_num_threads(int value) {
   mutable_impl()->max_num_threads_ = value;
+}
+void Ctx::clear_performance_advisories() {
+  mutable_impl()->performance_advisory_ = PerformanceAdvisory::kNone;
+}
+void Ctx::set_performance_advisory(PerformanceAdvisory advisory) {
+  mutable_impl()->performance_advisory_ =
+      mutable_impl()->performance_advisory_ | advisory;
+}
+bool Ctx::performance_advisory(PerformanceAdvisory advisory) const {
+  return (impl().performance_advisory_ & advisory) !=
+         PerformanceAdvisory::kNone;
 }
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {
