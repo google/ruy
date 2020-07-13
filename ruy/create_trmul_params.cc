@@ -59,8 +59,7 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
 #endif
 
 #if RUY_PLATFORM_X86
-  if (src[Side::kLhs].data_type == Type::Create<float>() &&
-      path == Path::kAvx2) {
+  if (src[Side::kLhs].data_type == Type::Create<float>()) {
     return false;
   }
 #endif
