@@ -18,6 +18,7 @@ limitations under the License.
 #include <cstring>
 
 #include "ruy/check_macros.h"
+#include "ruy/kernel_common.h"
 #include "ruy/kernel_x86.h"
 #include "ruy/opt_set.h"
 #include "ruy/platform.h"
@@ -1467,10 +1468,12 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
       params.dst_base_ptr - params.start_col * dst_stride - params.start_row;
   const float* adj_lhs_col_ptr =
       params.lhs_base_ptr - params.start_row * lhs_stride;
-  const float* bias_col_ptr = params.bias;
+  const float* bias_ptr = params.bias;
 
   const __m256 clamp_max_v = _mm256_set1_ps(params.clamp_max);
   const __m256 clamp_min_v = _mm256_set1_ps(params.clamp_min);
+  const bool channel_dimension_is_col =
+      params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL;
 
   int col = params.start_col;
   // Loop through cols by float block size, leaving incomplete remainder
@@ -1485,14 +1488,21 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
 
       const float* lhs_col_ptr = adj_lhs_col_ptr + row * lhs_stride;
       float* dst_ptr = dst_col_ptr + row;
-      const float* bias_ptr = bias_col_ptr + row * bias_ptr_block_increment;
 
       // Initialize with bias.
-      const __m256 initial_accum_data =
-          intrin_utils::mm256_n_loadu_ps(residual_rows, bias_ptr);
+      if (channel_dimension_is_col) {
+        const float* bias_elem_ptr = bias_ptr + col * bias_ptr_block_increment;
+        for (int j = 0; j < 8; ++j) {
+          accum_data_v[j] = _mm256_broadcast_ss(bias_elem_ptr + j);
+        }
+      } else {
+        const float* bias_elem_ptr = bias_ptr + row * bias_ptr_block_increment;
+        const __m256 initial_accum_data =
+            intrin_utils::mm256_n_loadu_ps(residual_rows, bias_elem_ptr);
 
-      for (int j = 0; j < 8; ++j) {
-        accum_data_v[j] = initial_accum_data;
+        for (int j = 0; j < 8; ++j) {
+          accum_data_v[j] = initial_accum_data;
+        }
       }
 
       const float* lhs_ptr = lhs_col_ptr;
@@ -1549,14 +1559,21 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
 
       const float* lhs_col_ptr = adj_lhs_col_ptr + row * lhs_stride;
       float* dst_ptr = dst_col_ptr + row;
-      const float* bias_ptr = bias_col_ptr + row * bias_ptr_block_increment;
 
       // Initialize with bias.
-      const __m256 initial_accum_data =
-          intrin_utils::mm256_n_loadu_ps(residual_rows, bias_ptr);
+      if (channel_dimension_is_col) {
+        const float* bias_elem_ptr = bias_ptr + col * bias_ptr_block_increment;
+        for (int j = 0; j < 8; ++j) {
+          accum_data_v[j] = _mm256_broadcast_ss(bias_elem_ptr + j);
+        }
+      } else {
+        const float* bias_elem_ptr = bias_ptr + row * bias_ptr_block_increment;
+        const __m256 initial_accum_data =
+            intrin_utils::mm256_n_loadu_ps(residual_rows, bias_elem_ptr);
 
-      for (int j = 0; j < 8; ++j) {
-        accum_data_v[j] = initial_accum_data;
+        for (int j = 0; j < 8; ++j) {
+          accum_data_v[j] = initial_accum_data;
+        }
       }
 
       const float* lhs_ptr = lhs_col_ptr;

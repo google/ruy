@@ -49,7 +49,8 @@ struct Kernel<Path::kAvx512, std::int8_t, std::int8_t, std::int32_t, DstScalar> 
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitAvx512SingleCol(params);
     } else {
       Kernel8bitAvx512(params);
@@ -73,7 +74,8 @@ struct Kernel<Path::kAvx512, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       KernelFloatAvx512SingleCol(params);
     } else {
       KernelFloatAvx512(params);
@@ -97,7 +99,8 @@ struct Kernel<Path::kAvx2, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitAvx2SingleCol(params);
     } else {
       Kernel8bitAvx2(params);
@@ -121,7 +124,8 @@ struct Kernel<Path::kAvx2, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (dst->layout.cols == 1) {
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
       KernelFloatAvx2SingleCol(params);
     } else {
       KernelFloatAvx2(params);
