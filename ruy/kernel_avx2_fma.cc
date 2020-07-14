@@ -357,6 +357,45 @@ inline void mm256_n_storeu_ps(float* dst, int residual_rows, const __m256 v) {
     dst[i] = intrin_utils::mm256_get1_ps(v, i);
   }
 }
+
+// Transpose a 8x8 matrix of floats.
+void mm256_transpose8x8_ps(__m256* v0, __m256* v1, __m256* v2, __m256* v3,
+                           __m256* v4, __m256* v5, __m256* v6, __m256* v7) {
+  __m256 t2x2_0 = _mm256_unpacklo_ps(*v0, *v1);
+  __m256 t2x2_1 = _mm256_unpackhi_ps(*v0, *v1);
+  __m256 t2x2_2 = _mm256_unpacklo_ps(*v2, *v3);
+  __m256 t2x2_3 = _mm256_unpackhi_ps(*v2, *v3);
+  __m256 t2x2_4 = _mm256_unpacklo_ps(*v4, *v5);
+  __m256 t2x2_5 = _mm256_unpackhi_ps(*v4, *v5);
+  __m256 t2x2_6 = _mm256_unpacklo_ps(*v6, *v7);
+  __m256 t2x2_7 = _mm256_unpackhi_ps(*v6, *v7);
+  __m256 t4x4_0 = _mm256_shuffle_ps(t2x2_0, t2x2_2, _MM_SHUFFLE(1, 0, 1, 0));
+  __m256 t4x4_1 = _mm256_shuffle_ps(t2x2_0, t2x2_2, _MM_SHUFFLE(3, 2, 3, 2));
+  __m256 t4x4_2 = _mm256_shuffle_ps(t2x2_1, t2x2_3, _MM_SHUFFLE(1, 0, 1, 0));
+  __m256 t4x4_3 = _mm256_shuffle_ps(t2x2_1, t2x2_3, _MM_SHUFFLE(3, 2, 3, 2));
+  __m256 t4x4_4 = _mm256_shuffle_ps(t2x2_4, t2x2_6, _MM_SHUFFLE(1, 0, 1, 0));
+  __m256 t4x4_5 = _mm256_shuffle_ps(t2x2_4, t2x2_6, _MM_SHUFFLE(3, 2, 3, 2));
+  __m256 t4x4_6 = _mm256_shuffle_ps(t2x2_5, t2x2_7, _MM_SHUFFLE(1, 0, 1, 0));
+  __m256 t4x4_7 = _mm256_shuffle_ps(t2x2_5, t2x2_7, _MM_SHUFFLE(3, 2, 3, 2));
+  *v0 = _mm256_permute2f128_ps(t4x4_0, t4x4_4, 0x20);
+  *v1 = _mm256_permute2f128_ps(t4x4_1, t4x4_5, 0x20);
+  *v2 = _mm256_permute2f128_ps(t4x4_2, t4x4_6, 0x20);
+  *v3 = _mm256_permute2f128_ps(t4x4_3, t4x4_7, 0x20);
+  *v4 = _mm256_permute2f128_ps(t4x4_0, t4x4_4, 0x31);
+  *v5 = _mm256_permute2f128_ps(t4x4_1, t4x4_5, 0x31);
+  *v6 = _mm256_permute2f128_ps(t4x4_2, t4x4_6, 0x31);
+  *v7 = _mm256_permute2f128_ps(t4x4_3, t4x4_7, 0x31);
+}
+// Transpose a 8x8 matrix of int32's.
+void mm256_transpose8x8_epi32(__m256i* v0, __m256i* v1, __m256i* v2,
+                              __m256i* v3, __m256i* v4, __m256i* v5,
+                              __m256i* v6, __m256i* v7) {
+  mm256_transpose8x8_ps(
+      reinterpret_cast<__m256*>(v0), reinterpret_cast<__m256*>(v1),
+      reinterpret_cast<__m256*>(v2), reinterpret_cast<__m256*>(v3),
+      reinterpret_cast<__m256*>(v4), reinterpret_cast<__m256*>(v5),
+      reinterpret_cast<__m256*>(v6), reinterpret_cast<__m256*>(v7));
+}
 }  // namespace intrin_utils
 }  // namespace
 
@@ -381,21 +420,13 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
     RUY_DCHECK(false);
   }
 
-  int bias_ptr_block_increment =
-      params.flags & RUY_ASM_FLAG_HAS_BIAS ? kAvx8bitBlockSize : 0;
-
   const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
-  const std::int32_t* bias_col_ptr = params.bias;
-  if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
-    bias_col_ptr += params.start_row;
-  }
 
   for (int col = params.start_col; col <= params.last_col;
        col += kAvx8bitBlockSize) {
     const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
     void* dst_ptr = dst_col_ptr;
-    const std::int32_t* bias_ptr = bias_col_ptr;
 
     const std::int32_t lhs_zero_point = params.lhs_zero_point;
     const bool has_rhs_sums_offsets =
@@ -412,6 +443,10 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
 
     for (int row = params.start_row; row <= params.last_row;
          row += kAvx8bitBlockSize) {
+      int channel =
+          (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) ? col : row;
+      int multiplier_channel =
+          (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? channel : 0;
       const int residual_rows =
           std::min(params.dst_rows - row, kAvx8bitBlockSize);
       const int residual_cols =
@@ -429,10 +464,19 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
       __m256i accum_data_v6;
       __m256i accum_data_v7;
 
-      // Initialize with bias.
-      __m256i initial_accum_data =
-          _mm256_loadu_si256(reinterpret_cast<const __m256i*>(bias_ptr));
-      bias_ptr += bias_ptr_block_increment;
+      // initial_accum_data will be the initialize of each of the
+      // accum_data_* accumulator registers. We compute into it terms that are
+      // identical across columns.
+      __m256i initial_accum_data = _mm256_set1_epi32(params.prod_zp_depth);
+
+      // In the channels-are-rows case, we can load bias here.
+      if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
+          !(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
+        initial_accum_data = _mm256_add_epi32(
+            initial_accum_data,
+            _mm256_loadu_si256(
+                reinterpret_cast<const __m256i*>(params.bias + row)));
+      }
 
       // Adjustments common across columns.
       const std::int32_t rhs_zero_point = params.rhs_zero_point;
@@ -443,11 +487,6 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
                 reinterpret_cast<__m256i const*>(&params.lhs_sums[row])));
         initial_accum_data =
             _mm256_sub_epi32(initial_accum_data, lhs_sums_offset);
-      }
-      const std::int32_t prod_zp_depth = params.prod_zp_depth;
-      if (prod_zp_depth) {
-        initial_accum_data = _mm256_add_epi32(initial_accum_data,
-                                              _mm256_set1_epi32(prod_zp_depth));
       }
 
       // Adjustments differing across columns.
@@ -477,6 +516,37 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         accum_data_v5 = initial_accum_data;
         accum_data_v6 = initial_accum_data;
         accum_data_v7 = initial_accum_data;
+      }
+
+      // Finally, in the channels-are-columns case, load bias data here.
+      if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
+          (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
+        const __m256i bias_data = _mm256_loadu_si256(
+            reinterpret_cast<const __m256i*>(params.bias + col));
+        accum_data_v0 = _mm256_add_epi32(
+            accum_data_v0,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(0)));
+        accum_data_v1 = _mm256_add_epi32(
+            accum_data_v1,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(1)));
+        accum_data_v2 = _mm256_add_epi32(
+            accum_data_v2,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(2)));
+        accum_data_v3 = _mm256_add_epi32(
+            accum_data_v3,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(3)));
+        accum_data_v4 = _mm256_add_epi32(
+            accum_data_v4,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(4)));
+        accum_data_v5 = _mm256_add_epi32(
+            accum_data_v5,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(5)));
+        accum_data_v6 = _mm256_add_epi32(
+            accum_data_v6,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(6)));
+        accum_data_v7 = _mm256_add_epi32(
+            accum_data_v7,
+            _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(7)));
       }
 
       const std::int8_t* lhs_ptr = lhs_col_ptr;
@@ -648,11 +718,10 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         __m256i m_vector;
         __m256i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-        int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
         m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
-            params.multiplier_fixedpoint + channel));
+            params.multiplier_fixedpoint + multiplier_channel));
         e_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
-            params.multiplier_exponent + channel));
+            params.multiplier_exponent + multiplier_channel));
 
         const __m256i m_64bit_low =
             _mm256_cvtepi32_epi64(_mm256_extracti128_si256(m_vector, 0));
@@ -758,6 +827,23 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         //     _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
         // results = _mm256_permutevar8x32_epi32(results, repack_perm);
         // accum_data_v[j] = _mm256_sub_epi32(results, post_scaling_offset);
+
+        // This multiplier code is complex and expensive enough on x86, that
+        // we prefer to implement the channels-are-columns case by transposing
+        // around it, rather than duplicate it (which would also require
+        // duplicating the above code computing the multiplier constants).
+        // This is one instance where channels-are-columns has lower performance
+        // than channels-are-rows.
+        const bool transpose_around_multiplier =
+            (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) &&
+            (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL);
+        if (transpose_around_multiplier) {
+          // Transpose the 8x8 accumulators block. Will be un-transposed below
+          // after the multplier implementation.
+          intrin_utils::mm256_transpose8x8_epi32(
+              &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
+              &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
+        }
         {
           __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v0, left_shift);
           // Apply the fixed-point part of the multiplier.
@@ -949,6 +1035,14 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
           results = _mm256_permutevar8x32_epi32(results, repack_perm);
 
           accum_data_v7 = _mm256_sub_epi32(results, post_scaling_offset);
+        }
+        // See above comment: here we transpose again to undo the transposition
+        // of the 8x8 block of accumulators used to implement the
+        // channels-are-columns case.
+        if (transpose_around_multiplier) {
+          intrin_utils::mm256_transpose8x8_epi32(
+              &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
+              &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
         }
       }
       const __m256i clamp_max_v = _mm256_set1_epi32(params.clamp_max);
