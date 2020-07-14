@@ -648,16 +648,11 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         __m256i m_vector;
         __m256i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-        if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-          m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
-              params.multiplier_fixedpoint + row));
-          e_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
-              params.multiplier_exponent + row));
-        } else {
-          // These arrays have size LhsCols, and are pre-filled.
-          m_vector = _mm256_set1_epi32(params.multiplier_fixedpoint[0]);
-          e_vector = _mm256_set1_epi32(params.multiplier_exponent[0]);
-        }
+        int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
+        m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+            params.multiplier_fixedpoint + channel));
+        e_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+            params.multiplier_exponent + channel));
 
         const __m256i m_64bit_low =
             _mm256_cvtepi32_epi64(_mm256_extracti128_si256(m_vector, 0));
@@ -1284,16 +1279,11 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
       __m256i m_vector;
       __m256i e_vector;
       // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-      if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-        m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
-            params.multiplier_fixedpoint + row));
-        e_vector = _mm256_loadu_si256(
-            reinterpret_cast<const __m256i*>(params.multiplier_exponent + row));
-      } else {
-        // These arrays have size LhsCols, and are pre-filled.
-        m_vector = _mm256_set1_epi32(params.multiplier_fixedpoint[0]);
-        e_vector = _mm256_set1_epi32(params.multiplier_exponent[0]);
-      }
+      int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
+      m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+          params.multiplier_fixedpoint + channel));
+      e_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+          params.multiplier_exponent + channel));
 
       const __m256i m_64bit_low =
           _mm256_cvtepi32_epi64(_mm256_extracti128_si256(m_vector, 0));

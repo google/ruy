@@ -468,16 +468,11 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         __m512i m_vector;
         __m512i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-        if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-          m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
-              params.multiplier_fixedpoint + row));
-          e_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
-              params.multiplier_exponent + row));
-        } else {
-          // These arrays have size LhsCols, and are pre-filled.
-          m_vector = _mm512_set1_epi32(params.multiplier_fixedpoint[0]);
-          e_vector = _mm512_set1_epi32(params.multiplier_exponent[0]);
-        }
+        int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
+        m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+            params.multiplier_fixedpoint + channel));
+        e_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+            params.multiplier_exponent + channel));
 
         const __m512i m_64bit_low =
             _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(m_vector, 0));
@@ -1162,16 +1157,11 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
       __m512i m_vector;
       __m512i e_vector;
       // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-      if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-        m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
-            params.multiplier_fixedpoint + row));
-        e_vector = _mm512_loadu_si512(
-            reinterpret_cast<const __m512i*>(params.multiplier_exponent + row));
-      } else {
-        // These arrays have size LhsCols, and are pre-filled.
-        m_vector = _mm512_set1_epi32(params.multiplier_fixedpoint[0]);
-        e_vector = _mm512_set1_epi32(params.multiplier_exponent[0]);
-      }
+      int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
+      m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+          params.multiplier_fixedpoint + channel));
+      e_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+          params.multiplier_exponent + channel));
 
       const __m512i m_64bit_low =
           _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(m_vector, 0));
