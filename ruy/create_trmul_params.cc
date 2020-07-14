@@ -33,7 +33,8 @@ void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
 }
 
 bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
-                           ChannelDimension channel_dimension) {
+                           ChannelDimension channel_dimension,
+                           bool perchannel_multiplier) {
   // Non-architecture-specific paths, including internal test-only paths,
   // are currently just variants of kStandardCpp, supporting every case thus
   // not requiring a fallback. Not falling back preserves test coverage that
@@ -60,7 +61,7 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
 
 #if RUY_PLATFORM_X86
   if (src[Side::kLhs].data_type == Type::Create<float>() ||
-      path == Path::kAvx2Fma) {
+      path == Path::kAvx2Fma || perchannel_multiplier == false) {
     return false;
   }
 #endif
@@ -72,6 +73,7 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
   }
 
   (void)path;
+  (void)perchannel_multiplier;
   return false;
 }
 

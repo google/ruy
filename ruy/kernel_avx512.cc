@@ -67,19 +67,12 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
     RUY_DCHECK(false);
   }
 
-  int bias_ptr_block_increment = params.flags & RUY_ASM_FLAG_HAS_BIAS ? 16 : 0;
-
   const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
-  const std::int32_t* bias_col_ptr = params.bias;
-  if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
-    bias_col_ptr += params.start_row;
-  }
 
   for (int col = params.start_col; col <= params.last_col; col += 16) {
     const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
     void* dst_ptr = dst_col_ptr;
-    const std::int32_t* bias_ptr = bias_col_ptr;
 
     const std::int32_t lhs_zero_point = params.lhs_zero_point;
     const bool has_rhs_sums_offsets =
@@ -94,6 +87,11 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
     }
 
     for (int row = params.start_row; row <= params.last_row; row += 16) {
+      int channel =
+          (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) ? col : row;
+      int multiplier_channel =
+          (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? channel : 0;
+
       const int residual_rows = std::min(params.dst_rows - row, 16);
       const int residual_cols = std::min(params.dst_cols - col, 16);
 
@@ -114,12 +112,22 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       __m512i accum_data_ve;
       __m512i accum_data_vf;
 
-      // Initialize with bias.
       const __mmask16 row_mask =
           (static_cast<std::uint32_t>(1) << residual_rows) - 1;
-      __m512i initial_accum_data =
-          _mm512_loadu_si512(reinterpret_cast<const __m512i*>(bias_ptr));
-      bias_ptr += bias_ptr_block_increment;
+
+      // initial_accum_data will be the initialize of each of the
+      // accum_data_* accumulator registers. We compute into it terms that are
+      // identical across columns.
+      __m512i initial_accum_data = _mm512_set1_epi32(params.prod_zp_depth);
+
+      // In the channels-are-rows case, we can load bias here.
+      if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
+          !(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
+        initial_accum_data = _mm512_add_epi32(
+            initial_accum_data,
+            _mm512_loadu_si512(
+                reinterpret_cast<const __m512i*>(params.bias + row)));
+      }
 
       const std::int32_t rhs_zero_point = params.rhs_zero_point;
       if ((params.flags & RUY_ASM_FLAG_HAS_LHS_SUMS) && rhs_zero_point) {
@@ -128,12 +136,6 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
                                _mm512_loadu_si512(&params.lhs_sums[row]));
         initial_accum_data =
             _mm512_sub_epi32(initial_accum_data, lhs_sums_offset);
-      }
-
-      const std::int32_t prod_zp_depth = params.prod_zp_depth;
-      if (prod_zp_depth != 0) {
-        initial_accum_data = _mm512_add_epi32(initial_accum_data,
-                                              _mm512_set1_epi32(prod_zp_depth));
       }
 
       // Adjustments differing across columns.
@@ -187,6 +189,61 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         accum_data_vd = initial_accum_data;
         accum_data_ve = initial_accum_data;
         accum_data_vf = initial_accum_data;
+      }
+
+      // Finally, in the channels-are-columns case, load bias data here.
+      if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
+          (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
+        const __m512i bias_data = _mm512_loadu_si512(
+            reinterpret_cast<const __m512i*>(params.bias + col));
+        accum_data_v0 = _mm512_add_epi32(
+            accum_data_v0,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(0), bias_data));
+        accum_data_v1 = _mm512_add_epi32(
+            accum_data_v1,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(1), bias_data));
+        accum_data_v2 = _mm512_add_epi32(
+            accum_data_v2,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(2), bias_data));
+        accum_data_v3 = _mm512_add_epi32(
+            accum_data_v3,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(3), bias_data));
+        accum_data_v4 = _mm512_add_epi32(
+            accum_data_v4,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(4), bias_data));
+        accum_data_v5 = _mm512_add_epi32(
+            accum_data_v5,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(5), bias_data));
+        accum_data_v6 = _mm512_add_epi32(
+            accum_data_v6,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(6), bias_data));
+        accum_data_v7 = _mm512_add_epi32(
+            accum_data_v7,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(7), bias_data));
+        accum_data_v8 = _mm512_add_epi32(
+            accum_data_v8,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(8), bias_data));
+        accum_data_v9 = _mm512_add_epi32(
+            accum_data_v9,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(9), bias_data));
+        accum_data_va = _mm512_add_epi32(
+            accum_data_va,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(10), bias_data));
+        accum_data_vb = _mm512_add_epi32(
+            accum_data_vb,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(11), bias_data));
+        accum_data_vc = _mm512_add_epi32(
+            accum_data_vc,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(12), bias_data));
+        accum_data_vd = _mm512_add_epi32(
+            accum_data_vd,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(13), bias_data));
+        accum_data_ve = _mm512_add_epi32(
+            accum_data_ve,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(14), bias_data));
+        accum_data_vf = _mm512_add_epi32(
+            accum_data_vf,
+            _mm512_permutevar_epi32(_mm512_set1_epi32(15), bias_data));
       }
 
       const std::int8_t* lhs_ptr = lhs_col_ptr;
@@ -468,11 +525,10 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         __m512i m_vector;
         __m512i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
-        int channel = (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) ? row : 0;
         m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
-            params.multiplier_fixedpoint + channel));
+            params.multiplier_fixedpoint + multiplier_channel));
         e_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
-            params.multiplier_exponent + channel));
+            params.multiplier_exponent + multiplier_channel));
 
         const __m512i m_64bit_low =
             _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(m_vector, 0));
