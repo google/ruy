@@ -60,10 +60,7 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
 #endif
 
 #if RUY_PLATFORM_X86
-  if (src[Side::kLhs].data_type == Type::Create<float>() ||
-      path == Path::kAvx2Fma || perchannel_multiplier == false) {
-    return false;
-  }
+  return false;
 #endif
 
   // Ruy's optimized kernels currently only support the channel_dimension==kRow

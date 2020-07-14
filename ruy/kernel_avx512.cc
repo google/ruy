@@ -52,6 +52,88 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
 
 #else  // RUY_PLATFORM_AVX512 && RUY_OPT(ASM)
 
+namespace {
+namespace intrin_utils {
+
+// Transpose a 8x8 matrix of int32's.
+void mm512_transpose16x16_epi32(__m512i* v0, __m512i* v1, __m512i* v2,
+                                __m512i* v3, __m512i* v4, __m512i* v5,
+                                __m512i* v6, __m512i* v7, __m512i* v8,
+                                __m512i* v9, __m512i* va, __m512i* vb,
+                                __m512i* vc, __m512i* vd, __m512i* ve,
+                                __m512i* vf) {
+  __m512i t2x2_0 = _mm512_unpacklo_epi32(*v0, *v1);
+  __m512i t2x2_1 = _mm512_unpackhi_epi32(*v0, *v1);
+  __m512i t2x2_2 = _mm512_unpacklo_epi32(*v2, *v3);
+  __m512i t2x2_3 = _mm512_unpackhi_epi32(*v2, *v3);
+  __m512i t2x2_4 = _mm512_unpacklo_epi32(*v4, *v5);
+  __m512i t2x2_5 = _mm512_unpackhi_epi32(*v4, *v5);
+  __m512i t2x2_6 = _mm512_unpacklo_epi32(*v6, *v7);
+  __m512i t2x2_7 = _mm512_unpackhi_epi32(*v6, *v7);
+  __m512i t2x2_8 = _mm512_unpacklo_epi32(*v8, *v9);
+  __m512i t2x2_9 = _mm512_unpackhi_epi32(*v8, *v9);
+  __m512i t2x2_a = _mm512_unpacklo_epi32(*va, *vb);
+  __m512i t2x2_b = _mm512_unpackhi_epi32(*va, *vb);
+  __m512i t2x2_c = _mm512_unpacklo_epi32(*vc, *vd);
+  __m512i t2x2_d = _mm512_unpackhi_epi32(*vc, *vd);
+  __m512i t2x2_e = _mm512_unpacklo_epi32(*ve, *vf);
+  __m512i t2x2_f = _mm512_unpackhi_epi32(*ve, *vf);
+
+  __m512i t4x4_0 = _mm512_unpacklo_epi64(t2x2_0, t2x2_2);
+  __m512i t4x4_1 = _mm512_unpackhi_epi64(t2x2_0, t2x2_2);
+  __m512i t4x4_2 = _mm512_unpacklo_epi64(t2x2_1, t2x2_3);
+  __m512i t4x4_3 = _mm512_unpackhi_epi64(t2x2_1, t2x2_3);
+  __m512i t4x4_4 = _mm512_unpacklo_epi64(t2x2_4, t2x2_6);
+  __m512i t4x4_5 = _mm512_unpackhi_epi64(t2x2_4, t2x2_6);
+  __m512i t4x4_6 = _mm512_unpacklo_epi64(t2x2_5, t2x2_7);
+  __m512i t4x4_7 = _mm512_unpackhi_epi64(t2x2_5, t2x2_7);
+  __m512i t4x4_8 = _mm512_unpacklo_epi64(t2x2_8, t2x2_a);
+  __m512i t4x4_9 = _mm512_unpackhi_epi64(t2x2_8, t2x2_a);
+  __m512i t4x4_a = _mm512_unpacklo_epi64(t2x2_9, t2x2_b);
+  __m512i t4x4_b = _mm512_unpackhi_epi64(t2x2_9, t2x2_b);
+  __m512i t4x4_c = _mm512_unpacklo_epi64(t2x2_c, t2x2_e);
+  __m512i t4x4_d = _mm512_unpackhi_epi64(t2x2_c, t2x2_e);
+  __m512i t4x4_e = _mm512_unpacklo_epi64(t2x2_d, t2x2_f);
+  __m512i t4x4_f = _mm512_unpackhi_epi64(t2x2_d, t2x2_f);
+
+  __m512i t8x8_0 = _mm512_shuffle_i32x4(t4x4_0, t4x4_4, 0x88);
+  __m512i t8x8_1 = _mm512_shuffle_i32x4(t4x4_1, t4x4_5, 0x88);
+  __m512i t8x8_2 = _mm512_shuffle_i32x4(t4x4_2, t4x4_6, 0x88);
+  __m512i t8x8_3 = _mm512_shuffle_i32x4(t4x4_3, t4x4_7, 0x88);
+  __m512i t8x8_4 = _mm512_shuffle_i32x4(t4x4_0, t4x4_4, 0xdd);
+  __m512i t8x8_5 = _mm512_shuffle_i32x4(t4x4_1, t4x4_5, 0xdd);
+  __m512i t8x8_6 = _mm512_shuffle_i32x4(t4x4_2, t4x4_6, 0xdd);
+  __m512i t8x8_7 = _mm512_shuffle_i32x4(t4x4_3, t4x4_7, 0xdd);
+  __m512i t8x8_8 = _mm512_shuffle_i32x4(t4x4_8, t4x4_c, 0x88);
+  __m512i t8x8_9 = _mm512_shuffle_i32x4(t4x4_9, t4x4_d, 0x88);
+  __m512i t8x8_a = _mm512_shuffle_i32x4(t4x4_a, t4x4_e, 0x88);
+  __m512i t8x8_b = _mm512_shuffle_i32x4(t4x4_b, t4x4_f, 0x88);
+  __m512i t8x8_c = _mm512_shuffle_i32x4(t4x4_8, t4x4_c, 0xdd);
+  __m512i t8x8_d = _mm512_shuffle_i32x4(t4x4_9, t4x4_d, 0xdd);
+  __m512i t8x8_e = _mm512_shuffle_i32x4(t4x4_a, t4x4_e, 0xdd);
+  __m512i t8x8_f = _mm512_shuffle_i32x4(t4x4_b, t4x4_f, 0xdd);
+
+  *v0 = _mm512_shuffle_i32x4(t8x8_0, t8x8_8, 0x88);
+  *v1 = _mm512_shuffle_i32x4(t8x8_1, t8x8_9, 0x88);
+  *v2 = _mm512_shuffle_i32x4(t8x8_2, t8x8_a, 0x88);
+  *v3 = _mm512_shuffle_i32x4(t8x8_3, t8x8_b, 0x88);
+  *v4 = _mm512_shuffle_i32x4(t8x8_4, t8x8_c, 0x88);
+  *v5 = _mm512_shuffle_i32x4(t8x8_5, t8x8_d, 0x88);
+  *v6 = _mm512_shuffle_i32x4(t8x8_6, t8x8_e, 0x88);
+  *v7 = _mm512_shuffle_i32x4(t8x8_7, t8x8_f, 0x88);
+  *v8 = _mm512_shuffle_i32x4(t8x8_0, t8x8_8, 0xdd);
+  *v9 = _mm512_shuffle_i32x4(t8x8_1, t8x8_9, 0xdd);
+  *va = _mm512_shuffle_i32x4(t8x8_2, t8x8_a, 0xdd);
+  *vb = _mm512_shuffle_i32x4(t8x8_3, t8x8_b, 0xdd);
+  *vc = _mm512_shuffle_i32x4(t8x8_4, t8x8_c, 0xdd);
+  *vd = _mm512_shuffle_i32x4(t8x8_5, t8x8_d, 0xdd);
+  *ve = _mm512_shuffle_i32x4(t8x8_6, t8x8_e, 0xdd);
+  *vf = _mm512_shuffle_i32x4(t8x8_7, t8x8_f, 0xdd);
+}
+
+}  // namespace intrin_utils
+}  // namespace
+
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   profiler::ScopeLabel label("Kernel kAvx512 8-bit");
 
@@ -557,6 +639,25 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             offset_vector,
             _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 1)));
 
+        // This multiplier code is complex and expensive enough on x86, that
+        // we prefer to implement the channels-are-columns case by transposing
+        // around it, rather than duplicate it (which would also require
+        // duplicating the above code computing the multiplier constants).
+        // This is one instance where channels-are-columns has lower performance
+        // than channels-are-rows.
+        const bool transpose_around_multiplier =
+            (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) &&
+            (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL);
+        if (transpose_around_multiplier) {
+          // Transpose the 16x16 accumulators block. Will be un-transposed below
+          // after the multplier implementation.
+          intrin_utils::mm512_transpose16x16_epi32(
+              &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
+              &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7,
+              &accum_data_v8, &accum_data_v9, &accum_data_va, &accum_data_vb,
+              &accum_data_vc, &accum_data_vd, &accum_data_ve, &accum_data_vf);
+        }
+
         // Shift and round column 0.
         {
           accum_data_v0 = _mm512_sllv_epi32(accum_data_v0, left_shift);
@@ -956,6 +1057,16 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
               _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
           accum_data_vf = _mm512_inserti32x8(
               accum_data_vf, _mm512_cvtepi64_epi32(scaled_v_high), 1);
+        }
+        if (transpose_around_multiplier) {
+          // See above comment: here we transpose again to undo the
+          // transposition of the 16x16 block of accumulators used to implement
+          // the channels-are-columns case.
+          intrin_utils::mm512_transpose16x16_epi32(
+              &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
+              &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7,
+              &accum_data_v8, &accum_data_v9, &accum_data_va, &accum_data_vb,
+              &accum_data_vc, &accum_data_vd, &accum_data_ve, &accum_data_vf);
         }
 
         if (params.dst_zero_point != 0) {
