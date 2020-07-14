@@ -60,38 +60,6 @@ static constexpr int kAvx8bitInnerSize = 4;
 namespace {
 namespace intrin_utils {
 
-inline __m256i mm256_n_loadu_epi32(int n, const std::int32_t* src) {
-  switch (n) {
-    case 0:
-      return _mm256_setzero_si256();
-    case 1:
-      return _mm256_setr_m128i(_mm_setr_epi32(src[0], 0, 0, 0),
-                               _mm_setzero_si128());
-    case 2:
-      return _mm256_setr_m128i(_mm_setr_epi32(src[0], src[1], 0, 0),
-                               _mm_setzero_si128());
-    case 3:
-      return _mm256_setr_m128i(_mm_setr_epi32(src[0], src[1], src[2], 0),
-                               _mm_setzero_si128());
-    case 4:
-      return _mm256_castsi128_si256(
-          _mm_loadu_si128(reinterpret_cast<__m128i const*>(src)));
-    case 5:
-      return _mm256_setr_epi32(src[0], src[1], src[2], src[3], src[4], 0, 0, 0);
-    case 6:
-      return _mm256_setr_epi32(src[0], src[1], src[2], src[3], src[4], src[5],
-                               0, 0);
-    case 7:
-      return _mm256_setr_epi32(src[0], src[1], src[2], src[3], src[4], src[5],
-                               src[6], 0);
-    case 8:
-      return _mm256_loadu_si256(reinterpret_cast<__m256i const*>(src));
-    default:
-      RUY_DCHECK_LT(n, 9);
-      return _mm256_setzero_si256();
-  }
-}
-
 // Polyfill for _mm_storeu_si16(dst, v).
 inline void mm_storeu_si16(void* dst, __m128i v) {
 #if defined __clang__
@@ -463,7 +431,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
 
       // Initialize with bias.
       __m256i initial_accum_data =
-          intrin_utils::mm256_n_loadu_epi32(residual_rows, bias_ptr);
+          _mm256_loadu_si256(reinterpret_cast<const __m256i*>(bias_ptr));
       bias_ptr += bias_ptr_block_increment;
 
       // Adjustments common across columns.
@@ -681,10 +649,10 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         __m256i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
         if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-          m_vector = intrin_utils::mm256_n_loadu_epi32(
-              residual_rows, &params.multiplier_fixedpoint[row]);
-          e_vector = intrin_utils::mm256_n_loadu_epi32(
-              residual_rows, &params.multiplier_exponent[row]);
+          m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+              params.multiplier_fixedpoint + row));
+          e_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+              params.multiplier_exponent + row));
         } else {
           // These arrays have size LhsCols, and are pre-filled.
           m_vector = _mm256_set1_epi32(params.multiplier_fixedpoint[0]);
@@ -1237,7 +1205,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
 
     // Initialize with bias.
     __m256i initial_accum_data =
-        intrin_utils::mm256_n_loadu_epi32(residual_rows, bias_ptr);
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(bias_ptr));
     bias_ptr += bias_ptr_block_increment;
 
     // Adjustments common across columns.
@@ -1317,10 +1285,10 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
       __m256i e_vector;
       // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
       if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-        m_vector = intrin_utils::mm256_n_loadu_epi32(
-            residual_rows, &params.multiplier_fixedpoint[row]);
-        e_vector = intrin_utils::mm256_n_loadu_epi32(
-            residual_rows, &params.multiplier_exponent[row]);
+        m_vector = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+            params.multiplier_fixedpoint + row));
+        e_vector = _mm256_loadu_si256(
+            reinterpret_cast<const __m256i*>(params.multiplier_exponent + row));
       } else {
         // These arrays have size LhsCols, and are pre-filled.
         m_vector = _mm256_set1_epi32(params.multiplier_fixedpoint[0]);

@@ -117,7 +117,8 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       // Initialize with bias.
       const __mmask16 row_mask =
           (static_cast<std::uint32_t>(1) << residual_rows) - 1;
-      __m512i initial_accum_data = _mm512_maskz_loadu_epi32(row_mask, bias_ptr);
+      __m512i initial_accum_data =
+          _mm512_loadu_si512(reinterpret_cast<const __m512i*>(bias_ptr));
       bias_ptr += bias_ptr_block_increment;
 
       const std::int32_t rhs_zero_point = params.rhs_zero_point;
@@ -468,10 +469,10 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         __m512i e_vector;
         // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
         if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-          m_vector = _mm512_maskz_loadu_epi32(
-              row_mask, &params.multiplier_fixedpoint[row]);
-          e_vector = _mm512_maskz_loadu_epi32(row_mask,
-                                              &params.multiplier_exponent[row]);
+          m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+              params.multiplier_fixedpoint + row));
+          e_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+              params.multiplier_exponent + row));
         } else {
           // These arrays have size LhsCols, and are pre-filled.
           m_vector = _mm512_set1_epi32(params.multiplier_fixedpoint[0]);
@@ -1089,7 +1090,8 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
     // Initialize with bias.
     const __mmask16 row_mask =
         (static_cast<std::uint32_t>(1) << residual_rows) - 1;
-    __m512i initial_accum_data = _mm512_maskz_loadu_epi32(row_mask, bias_ptr);
+    __m512i initial_accum_data =
+        _mm512_loadu_si512(reinterpret_cast<const __m512i*>(bias_ptr));
     bias_ptr += bias_ptr_block_increment;
 
     const std::int32_t rhs_zero_point = params.rhs_zero_point;
@@ -1161,10 +1163,10 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
       __m512i e_vector;
       // Does not make use of RUY_ASM_FLAG_NEEDS_LEFT_SHIFT.
       if (params.flags & RUY_ASM_FLAG_HAS_PERCHANNEL) {
-        m_vector = _mm512_maskz_loadu_epi32(row_mask,
-                                            &params.multiplier_fixedpoint[row]);
-        e_vector = _mm512_maskz_loadu_epi32(row_mask,
-                                            &params.multiplier_exponent[row]);
+        m_vector = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+            params.multiplier_fixedpoint + row));
+        e_vector = _mm512_loadu_si512(
+            reinterpret_cast<const __m512i*>(params.multiplier_exponent + row));
       } else {
         // These arrays have size LhsCols, and are pre-filled.
         m_vector = _mm512_set1_epi32(params.multiplier_fixedpoint[0]);
@@ -1859,7 +1861,7 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& params) {
     // Initialize with bias.
     const __mmask16 row_mask =
         (static_cast<std::uint32_t>(1) << residual_rows) - 1;
-    accum_data_v = _mm512_maskz_loadu_ps(row_mask, bias_ptr);
+    accum_data_v = _mm512_loadu_ps(bias_ptr);
 
     const float* lhs_ptr = lhs_col_ptr;
     const float* rhs_ptr = rhs_col_ptr;
