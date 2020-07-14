@@ -32,9 +32,7 @@ void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
   packed_layout->kernel = kernel_layout;
 }
 
-bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
-                           ChannelDimension channel_dimension,
-                           bool perchannel_multiplier) {
+bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src) {
   // Non-architecture-specific paths, including internal test-only paths,
   // are currently just variants of kStandardCpp, supporting every case thus
   // not requiring a fallback. Not falling back preserves test coverage that
@@ -51,26 +49,6 @@ bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
     return true;
   }
 
-#if RUY_PLATFORM_NEON_64
-  return false;
-#endif
-
-#if RUY_PLATFORM_NEON_32
-  return false;
-#endif
-
-#if RUY_PLATFORM_X86
-  return false;
-#endif
-
-  // Ruy's optimized kernels currently only support the channel_dimension==kRow
-  // case.
-  if (channel_dimension != ChannelDimension::kRow) {
-    return true;
-  }
-
-  (void)path;
-  (void)perchannel_multiplier;
   return false;
 }
 

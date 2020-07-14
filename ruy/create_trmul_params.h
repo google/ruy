@@ -232,9 +232,7 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
                              DstScalar>::Search(the_path, params);
 }
 
-bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src,
-                           ChannelDimension channel_dimension,
-                           bool perchannel_multiplier);
+bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src);
 
 template <typename AccumScalar, typename DstScalar>
 void AssertThatExtraCapacityInPerChannelBuffersIsZeroInitialized(
@@ -412,8 +410,7 @@ void CreateTrMulParamsAssumingColMajorDst(
   const Path the_path = ctx->SelectPath(CompiledPaths);
 
   // Maybe fall back to slow standard-c++ code (no CPU-specific optimization).
-  if (FallBackToStandardCpp(the_path, params->src, channel_dimension,
-                            mul_params.multiplier_fixedpoint_perchannel())) {
+  if (FallBackToStandardCpp(the_path, params->src)) {
     PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, AccumScalar,
                         DstScalar>(params);
   } else {
