@@ -19,6 +19,7 @@ limitations under the License.
 #define RUY_RUY_CREATE_TRMUL_PARAMS_H_
 
 #include <cstdint>
+#include <cstring>
 #include <type_traits>
 
 #include "ruy/allocator.h"

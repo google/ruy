@@ -280,52 +280,52 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             reinterpret_cast<const __m512i*>(params.bias + col));
         accum_data_v0 = _mm512_add_epi32(
             accum_data_v0,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(0), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(0), bias_data));
         accum_data_v1 = _mm512_add_epi32(
             accum_data_v1,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(1), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(1), bias_data));
         accum_data_v2 = _mm512_add_epi32(
             accum_data_v2,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(2), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(2), bias_data));
         accum_data_v3 = _mm512_add_epi32(
             accum_data_v3,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(3), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(3), bias_data));
         accum_data_v4 = _mm512_add_epi32(
             accum_data_v4,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(4), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(4), bias_data));
         accum_data_v5 = _mm512_add_epi32(
             accum_data_v5,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(5), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(5), bias_data));
         accum_data_v6 = _mm512_add_epi32(
             accum_data_v6,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(6), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(6), bias_data));
         accum_data_v7 = _mm512_add_epi32(
             accum_data_v7,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(7), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(7), bias_data));
         accum_data_v8 = _mm512_add_epi32(
             accum_data_v8,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(8), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(8), bias_data));
         accum_data_v9 = _mm512_add_epi32(
             accum_data_v9,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(9), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(9), bias_data));
         accum_data_va = _mm512_add_epi32(
             accum_data_va,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(10), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(10), bias_data));
         accum_data_vb = _mm512_add_epi32(
             accum_data_vb,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(11), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(11), bias_data));
         accum_data_vc = _mm512_add_epi32(
             accum_data_vc,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(12), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(12), bias_data));
         accum_data_vd = _mm512_add_epi32(
             accum_data_vd,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(13), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(13), bias_data));
         accum_data_ve = _mm512_add_epi32(
             accum_data_ve,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(14), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(14), bias_data));
         accum_data_vf = _mm512_add_epi32(
             accum_data_vf,
-            _mm512_permutevar_epi32(_mm512_set1_epi32(15), bias_data));
+            _mm512_permutexvar_epi32(_mm512_set1_epi32(15), bias_data));
       }
 
       const std::int8_t* lhs_ptr = lhs_col_ptr;
