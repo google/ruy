@@ -893,7 +893,6 @@ cc_library(
 
 cc_library(
     name = "create_trmul_params",
-    srcs = ["create_trmul_params.cc"],
     hdrs = ["create_trmul_params.h"],
     copts = ruy_copts(),
     deps = [

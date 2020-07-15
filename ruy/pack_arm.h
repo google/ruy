@@ -121,7 +121,7 @@ void Pack8bitNeonOutOfOrder2Cols(const PackParams8bit& params);
 
 template <typename Scalar>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
-                std::int8_t, std::int32_t> {
+                std::int8_t, std::int32_t, Order::kColMajor> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -205,7 +205,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
 // columns.
 template <typename Scalar>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
-                std::int8_t, std::int32_t> {
+                std::int8_t, std::int32_t, Order::kColMajor> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -253,7 +253,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 template <typename Scalar>
 struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
-                Scalar, std::int8_t, std::int32_t> {
+                Scalar, std::int8_t, std::int32_t, Order::kColMajor> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -339,7 +339,7 @@ void PackFloatNeonOutOfOrder(const float* src_ptr0, const float* src_ptr1,
 
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
-                float, float> {
+                float, float, Order::kColMajor> {
   static void Run(Tuning tuning, const Mat<float>& src_matrix,
                   PMat<float>* packed_matrix, int start_col, int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));
@@ -415,7 +415,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
 // specialization for a FixedKernelLayout with 4 columns.
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
-                float, float> {
+                float, float, Order::kColMajor> {
   static void Run(Tuning, const Mat<float>& src_matrix,
                   PMat<float>* packed_matrix, int start_col, int end_col) {
     RUY_DCHECK(IsColMajor(src_matrix.layout));

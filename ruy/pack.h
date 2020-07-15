@@ -83,8 +83,10 @@ limitations under the License.
 #ifndef RUY_RUY_PACK_H_
 #define RUY_RUY_PACK_H_
 
-#include "ruy/platform.h"
+#include "ruy/mat.h"
 #include "ruy/pack_common.h"
+#include "ruy/path.h"
+#include "ruy/platform.h"
 
 // IWYU pragma: begin_exports
 #if RUY_PLATFORM_NEON
@@ -100,12 +102,13 @@ namespace ruy {
 // specializations for specific SIMD code paths. This general implementation
 // covers Path::kStandardCpp and its internal test-only variants.
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
-          typename PackedScalar, typename SumsType>
+          typename PackedScalar, typename SumsType, Order SrcOrder>
 struct PackImpl {
   static void Run(Tuning, const Mat<Scalar>& src_matrix,
                   PMat<PackedScalar>* packed_matrix, int start_col,
                   int end_col) {
     profiler::ScopeLabel label("Pack (generic)");
+    RUY_DCHECK_EQ(SrcOrder, src_matrix.layout.order);
     RUY_DCHECK_EQ((end_col - start_col) % FixedKernelLayout::kCols, 0);
     SumsType* sums = packed_matrix->sums;
     for (int col = start_col; col < end_col; col++) {
@@ -135,8 +138,13 @@ void RunPack(Tuning tuning, const EMat& src_matrix, PEMat* packed_matrix,
   using SumsType = typename PMat<PackedScalar>::SumsType;
   Mat<Scalar> src = UneraseType<Scalar>(src_matrix);
   PMat<PackedScalar> packed = UneraseType<PackedScalar>(*packed_matrix);
-  PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType>::Run(
-      tuning, src, &packed, start_col, end_col);
+  if (src.layout.order == Order::kColMajor) {
+    PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType,
+             Order::kColMajor>::Run(tuning, src, &packed, start_col, end_col);
+  } else {
+    PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType,
+             Order::kRowMajor>::Run(tuning, src, &packed, start_col, end_col);
+  }
 }
 
 }  // namespace ruy

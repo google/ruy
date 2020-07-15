@@ -48,7 +48,7 @@ void PackFloatAvx512(const float*, const float*, int, int, int, float*) {
 // all 8-bit source matrix types.
 using PackImpl8bitAvx512 =
     PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
-             std::int8_t, std::int8_t, std::int32_t>;
+             std::int8_t, std::int8_t, std::int32_t, Order::kColMajor>;
 
 namespace {
 

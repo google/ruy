@@ -48,11 +48,11 @@ void PackFloatAvx2(const float*, const float*, int, int, int, float*) {
 // all 8-bit source matrix types.
 using PackImpl8bitAvx2 =
     PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
-             std::int8_t, std::int8_t, std::int32_t>;
+             std::int8_t, std::int8_t, std::int32_t, Order::kColMajor>;
 
 using PackImplFloatAvx2 =
     PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
-             float, float>;
+             float, float, Order::kColMajor>;
 
 namespace {
 

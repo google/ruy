@@ -54,7 +54,7 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
 
 template <typename Scalar>
 struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
-                Scalar, std::int8_t, std::int32_t> {
+                Scalar, std::int8_t, std::int32_t, Order::kColMajor> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -99,7 +99,7 @@ void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
 
 template <>
 struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>,
-                float, float, float> {
+                float, float, float, Order::kColMajor> {
   using Layout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   static void Run(Tuning, const Mat<float>& src_matrix,
                   PMat<float>* packed_matrix, int start_col, int end_col) {
@@ -136,7 +136,7 @@ void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
 
 template <typename Scalar>
 struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
-                Scalar, std::int8_t, std::int32_t> {
+                Scalar, std::int8_t, std::int32_t, Order::kColMajor> {
   static_assert(std::is_same<Scalar, std::int8_t>::value ||
                     std::is_same<Scalar, std::uint8_t>::value,
                 "");
@@ -184,7 +184,7 @@ void PackFloatAvx512(const float* src_ptr, const float* zerobuf, int src_stride,
 
 template <>
 struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
-                float, float, float> {
+                float, float, float, Order::kColMajor> {
   static void Run(Tuning, const Mat<float>& src_matrix,
                   PMat<float>* packed_matrix, int start_col, int end_col) {
     profiler::ScopeLabel label("Pack (AVX-512 float)");

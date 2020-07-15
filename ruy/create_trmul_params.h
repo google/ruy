@@ -37,8 +37,15 @@ namespace ruy {
 // internal implementation code is enclosed in namespace 'detail'.
 namespace detail {
 
-void CreatePackedLayout(const MatLayout& src, const KernelLayout& kernel_layout,
-                        PMatLayout* packed_layout);
+inline void CreatePackedLayout(const MatLayout& src,
+                               const KernelLayout& kernel_layout,
+                               PMatLayout* packed_layout) {
+  packed_layout->order = Order::kColMajor;
+  packed_layout->rows = round_up_pot(src.rows, kernel_layout.rows);
+  packed_layout->cols = round_up_pot(src.cols, kernel_layout.cols);
+  packed_layout->stride = packed_layout->rows;
+  packed_layout->kernel = kernel_layout;
+}
 
 template <typename Scalar, typename PackedScalar>
 void CreatePackedMatrix(Side side, const KernelLayout& kernel_layout,
@@ -232,8 +239,6 @@ void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
                              DstScalar>::Search(the_path, params);
 }
 
-bool FallBackToStandardCpp(Path path, const SidePair<EMat>& src);
-
 template <typename AccumScalar, typename DstScalar>
 void AssertThatExtraCapacityInPerChannelBuffersIsZeroInitialized(
     const MulParams<AccumScalar, DstScalar>& mul_params, int user_size,
@@ -409,15 +414,15 @@ void CreateTrMulParamsAssumingColMajorDst(
   // might be exposed publicly in Context in the future.
   const Path the_path = ctx->SelectPath(CompiledPaths);
 
-  // Maybe fall back to slow standard-c++ code (no CPU-specific optimization).
-  if (FallBackToStandardCpp(the_path, params->src)) {
-    PopulateTrMulParams<Path::kStandardCpp, LhsScalar, RhsScalar, AccumScalar,
-                        DstScalar>(params);
-  } else {
-    PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
-                                        AccumScalar, DstScalar>(the_path,
-                                                                params);
-  }
+  // If we ever need again to fall back to Path::kStandardCpp, this is a good
+  // place to do it -- just pass Path::kStandardCpp as both the template and
+  // runtime parameters in this function call.
+  // In the past we did that here (as version control history remembers).
+  // A typical reason why we might need to resurrect that is if we implement
+  // a new Path (i.e. port to a new ISA) and need to subdivide that work into
+  // a series of incremental changes.
+  PopulateTrMulParamsAllCompiledPaths<CompiledPaths, LhsScalar, RhsScalar,
+                                      AccumScalar, DstScalar>(the_path, params);
 
   // This must be done last, as it depends on the specific choice of kernel.
   // Specifically, the EnsurePerChannelBuffersLargeEnough part of this will read

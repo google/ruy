@@ -56,15 +56,15 @@ PackedScalar Pack(Scalar x) {
 }
 
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
-          typename PackedScalar, typename SumsType>
+          typename PackedScalar, typename SumsType, Order SrcOrder>
 struct PackImpl;
 
-#define RUY_INHERIT_PACK(PARENT, CHILD)                                       \
-  template <typename FixedKernelLayout, typename Scalar,                      \
-            typename PackedScalar, typename SumsType>                         \
-  struct PackImpl<CHILD, FixedKernelLayout, Scalar, PackedScalar, SumsType>   \
-      : PackImpl<PARENT, FixedKernelLayout, Scalar, PackedScalar, SumsType> { \
-  };
+#define RUY_INHERIT_PACK(PARENT, CHILD)                                     \
+  template <typename FixedKernelLayout, typename Scalar,                    \
+            typename PackedScalar, typename SumsType, Order SrcOrder>       \
+  struct PackImpl<CHILD, FixedKernelLayout, Scalar, PackedScalar, SumsType, \
+                  SrcOrder> : PackImpl<PARENT, FixedKernelLayout, Scalar,   \
+                                       PackedScalar, SumsType, SrcOrder> {};
 
 }  // namespace ruy
 
