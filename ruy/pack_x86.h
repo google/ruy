@@ -47,10 +47,10 @@ struct PackedTypeImpl<Path::kAvx512, std::uint8_t> {
 
 // Note that source and zero buffers can be uint8 type, but in the packing
 // function are reinterpreted as int8, and are XOR-ed with input_xor.
-void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
-                  const std::int8_t* zerobuf, int src_stride,
-                  int remaining_src_cols, int src_rows, std::int8_t* packed_ptr,
-                  std::int32_t* sums_ptr);
+void Pack8bitColMajorForAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
+                             const std::int8_t* zerobuf, int src_stride,
+                             int remaining_src_cols, int src_rows,
+                             std::int8_t* packed_ptr, std::int32_t* sums_ptr);
 
 template <typename Scalar>
 struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
@@ -86,16 +86,17 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
       std::int8_t* packed_ptr =
           packed_matrix->data +
           packed_matrix->layout.stride * (block_col & block_col_mask);
-      Pack8bitAvx2(reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
-                   reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
-                   remaining_src_cols, src_matrix.layout.rows, packed_ptr,
-                   sums_ptr);
+      Pack8bitColMajorForAvx2(
+          reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
+          reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
+          remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
     }
   }
 };
 
-void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
-                   int remaining_src_cols, int src_rows, float* packed_ptr);
+void PackFloatColMajorForAvx2(const float* src_ptr, const float* zerobuf,
+                              int src_stride, int remaining_src_cols,
+                              int src_rows, float* packed_ptr);
 
 template <>
 struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>,
@@ -121,18 +122,19 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kRowMajor, 1, 8>,
       float* packed_ptr =
           packed_matrix->data +
           packed_matrix->layout.stride * (block_col & block_col_mask);
-      PackFloatAvx2(src_ptr, zerobuf, src_stride, remaining_src_cols,
-                    src_matrix.layout.rows, packed_ptr);
+      PackFloatColMajorForAvx2(src_ptr, zerobuf, src_stride, remaining_src_cols,
+                               src_matrix.layout.rows, packed_ptr);
     }
   }
 };
 
 // Note that source and zero buffers can be uint8 type, but in the packing
 // function are reinterpreted as int8, and are XOR-ed with input_xor.
-void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
-                    const std::int8_t* zerobuf, int src_stride,
-                    int remaining_src_cols, int src_rows,
-                    std::int8_t* packed_ptr, std::int32_t* sums_ptr);
+void Pack8bitColMajorForAvx512(const std::int8_t* src_ptr,
+                               std::int8_t input_xor,
+                               const std::int8_t* zerobuf, int src_stride,
+                               int remaining_src_cols, int src_rows,
+                               std::int8_t* packed_ptr, std::int32_t* sums_ptr);
 
 template <typename Scalar>
 struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
@@ -171,16 +173,17 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
       std::int8_t* packed_ptr =
           packed_matrix->data +
           packed_matrix->layout.stride * (block_col & block_col_mask);
-      Pack8bitAvx512(reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
-                     reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
-                     remaining_src_cols, src_matrix.layout.rows, packed_ptr,
-                     sums_ptr);
+      Pack8bitColMajorForAvx512(
+          reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
+          reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
+          remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
     }
   }
 };
 
-void PackFloatAvx512(const float* src_ptr, const float* zerobuf, int src_stride,
-                     int remaining_src_cols, int src_rows, float* packed_ptr);
+void PackFloatColMajorForAvx512(const float* src_ptr, const float* zerobuf,
+                                int src_stride, int remaining_src_cols,
+                                int src_rows, float* packed_ptr);
 
 template <>
 struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
@@ -205,8 +208,9 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
       float* packed_ptr =
           packed_matrix->data +
           packed_matrix->layout.stride * (block_col & block_col_mask);
-      PackFloatAvx512(src_ptr, zerobuf, src_stride, remaining_src_cols,
-                      src_matrix.layout.rows, packed_ptr);
+      PackFloatColMajorForAvx512(src_ptr, zerobuf, src_stride,
+                                 remaining_src_cols, src_matrix.layout.rows,
+                                 packed_ptr);
     }
   }
 };

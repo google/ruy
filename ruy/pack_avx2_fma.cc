@@ -31,13 +31,15 @@ namespace ruy {
 
 #if !(RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM))
 
-void Pack8bitAvx2(const std::int8_t*, std::int8_t, const std::int8_t*, int, int,
-                  int, std::int8_t*, std::int32_t*) {
+void Pack8bitColMajorForAvx2(const std::int8_t*, std::int8_t,
+                             const std::int8_t*, int, int, int, std::int8_t*,
+                             std::int32_t*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void PackFloatAvx2(const float*, const float*, int, int, int, float*) {
+void PackFloatColMajorForAvx2(const float*, const float*, int, int, int,
+                              float*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
@@ -75,12 +77,11 @@ inline __m256i MaskLoadu(int available_src_rows, std::int8_t zero_point,
   return padded_data;
 }
 
-inline void Pack8bitAvx2Packer(const std::int8_t* src_ptr,
-                               std::int8_t input_xor,
-                               const std::int8_t* zerobuf, int src_stride,
-                               int remaining_src_cols, int src_rows,
-                               std::int8_t* packed_ptr, std::int32_t* sums_ptr,
-                               std::int8_t* trailing_buf) {
+inline void Pack8bitColMajorForAvx2Packer(
+    const std::int8_t* src_ptr, std::int8_t input_xor,
+    const std::int8_t* zerobuf, int src_stride, int remaining_src_cols,
+    int src_rows, std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+    std::int8_t* trailing_buf) {
   using Layout = PackImpl8bitAvx2::Layout;
   RUY_DCHECK_EQ(Layout::kCols, 8);
   RUY_DCHECK_EQ(Layout::kRows, 4);
@@ -556,10 +557,11 @@ inline __m256 Mm256UnpackhiPsx2(const __m256 a, const __m256 b) {
       _mm256_unpackhi_pd(_mm256_castps_pd(a), _mm256_castps_pd(b)));
 }
 
-inline void PackFloatAvx2Packer(const float* src_ptr, const float* zerobuf,
-                                int src_stride, int remaining_src_cols,
-                                int src_rows, float* packed_ptr,
-                                float* trailing_buf) {
+inline void PackFloatColMajorForAvx2Packer(const float* src_ptr,
+                                           const float* zerobuf, int src_stride,
+                                           int remaining_src_cols, int src_rows,
+                                           float* packed_ptr,
+                                           float* trailing_buf) {
   RUY_DCHECK_EQ(PackImplFloatAvx2::Layout::kCols, 8);
   RUY_DCHECK_EQ(PackImplFloatAvx2::Layout::kRows, 1);
 
@@ -748,10 +750,10 @@ inline void PackFloatAvx2Packer(const float* src_ptr, const float* zerobuf,
 
 }  // namespace.
 
-void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
-                  const std::int8_t* zerobuf, int src_stride,
-                  int remaining_src_cols, int src_rows, std::int8_t* packed_ptr,
-                  std::int32_t* sums_ptr) {
+void Pack8bitColMajorForAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
+                             const std::int8_t* zerobuf, int src_stride,
+                             int remaining_src_cols, int src_rows,
+                             std::int8_t* packed_ptr, std::int32_t* sums_ptr) {
   profiler::ScopeLabel label("Pack kAvx2Fma 8bit");
 
   using Layout = PackImpl8bitAvx2::Layout;
@@ -769,9 +771,9 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
   std::int8_t trailing_buf[kTrailingBufSize];
   memset(trailing_buf, 0, kTrailingBufSize * sizeof(std::int8_t));
 
-  Pack8bitAvx2Packer(src_ptr, input_xor, zerobuf, src_stride,
-                     remaining_src_cols, src_rows, packed_ptr, sums_ptr,
-                     trailing_buf);
+  Pack8bitColMajorForAvx2Packer(src_ptr, input_xor, zerobuf, src_stride,
+                                remaining_src_cols, src_rows, packed_ptr,
+                                sums_ptr, trailing_buf);
 
   constexpr int kChunkedRowMask = kNumRowChunks * Layout::kRows - 1;
   const bool trailing_data = (src_rows & kChunkedRowMask) > 0;
@@ -787,8 +789,9 @@ void Pack8bitAvx2(const std::int8_t* src_ptr, std::int8_t input_xor,
   }
 }
 
-void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
-                   int remaining_src_cols, int src_rows, float* packed_ptr) {
+void PackFloatColMajorForAvx2(const float* src_ptr, const float* zerobuf,
+                              int src_stride, int remaining_src_cols,
+                              int src_rows, float* packed_ptr) {
   profiler::ScopeLabel label("Pack kAvx2Fma float");
   static constexpr int kPackCols = 8;  // Source cols packed together.
   static constexpr int kPackRows = 8;  // Short input is padded.
@@ -796,8 +799,9 @@ void PackFloatAvx2(const float* src_ptr, const float* zerobuf, int src_stride,
   if (remaining_src_cols < 8) {
     memset(trailing_buf, 0, sizeof(trailing_buf));
   }
-  PackFloatAvx2Packer(src_ptr, zerobuf, src_stride, remaining_src_cols,
-                      src_rows, packed_ptr, trailing_buf);
+  PackFloatColMajorForAvx2Packer(src_ptr, zerobuf, src_stride,
+                                 remaining_src_cols, src_rows, packed_ptr,
+                                 trailing_buf);
 
   const int trailing_rows = src_rows & (kPackRows - 1);
   if (trailing_rows > 0) {

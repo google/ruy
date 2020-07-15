@@ -31,13 +31,15 @@ namespace ruy {
 
 #if !(RUY_PLATFORM_AVX512 && RUY_OPT(ASM))
 
-void Pack8bitAvx512(const std::int8_t*, std::int8_t, const std::int8_t*, int,
-                    int, int, std::int8_t*, std::int32_t*) {
+void Pack8bitColMajorForAvx512(const std::int8_t*, std::int8_t,
+                               const std::int8_t*, int, int, int, std::int8_t*,
+                               std::int32_t*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
 
-void PackFloatAvx512(const float*, const float*, int, int, int, float*) {
+void PackFloatColMajorForAvx512(const float*, const float*, int, int, int,
+                                float*) {
   // CPU-ID-based checks should disable the path that would reach this point.
   RUY_DCHECK(false);
 }
@@ -623,10 +625,12 @@ inline void ZeroHalfFloatAvx512(int src_rows, float* packed_ptr) {
 
 }  // namespace.
 
-void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
-                    const std::int8_t* zerobuf, int src_stride,
-                    int remaining_src_cols, int src_rows,
-                    std::int8_t* packed_ptr, std::int32_t* sums_ptr) {
+void Pack8bitColMajorForAvx512(const std::int8_t* src_ptr,
+                               std::int8_t input_xor,
+                               const std::int8_t* zerobuf, int src_stride,
+                               int remaining_src_cols, int src_rows,
+                               std::int8_t* packed_ptr,
+                               std::int32_t* sums_ptr) {
   profiler::ScopeLabel label("Pack kAvx512 8bit");
 
   using Layout = PackImpl8bitAvx512::Layout;
@@ -688,8 +692,9 @@ void Pack8bitAvx512(const std::int8_t* src_ptr, std::int8_t input_xor,
   }
 }
 
-void PackFloatAvx512(const float* src_ptr, const float* zerobuf, int src_stride,
-                     int remaining_src_cols, int src_rows, float* packed_ptr) {
+void PackFloatColMajorForAvx512(const float* src_ptr, const float* zerobuf,
+                                int src_stride, int remaining_src_cols,
+                                int src_rows, float* packed_ptr) {
   profiler::ScopeLabel label("Pack kAvx512 float");
   float trailing_buf[7 * 16];
   if (remaining_src_cols > 8) {
