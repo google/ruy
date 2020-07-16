@@ -1,7 +1,7 @@
 # Ruy is not BLAS
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx2_fma", "ruy_copts_avx512")
+load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
@@ -627,6 +627,7 @@ cc_library(
     name = "kernel_avx2_fma",
     srcs = [
         "kernel_avx2_fma.cc",
+        "kernel_x86_common.inc",
     ],
     hdrs = [
         "kernel_x86.h",
@@ -649,6 +650,7 @@ cc_library(
     name = "pack_avx2_fma",
     srcs = [
         "pack_avx2_fma.cc",
+        "pack_x86_common.inc",
     ],
     hdrs = [
         "pack_x86.h",
@@ -682,6 +684,66 @@ cc_library(
 )
 
 cc_library(
+    name = "kernel_avx",
+    srcs = [
+        "kernel_avx.cc",
+        "kernel_x86_common.inc",
+    ],
+    hdrs = [
+        "kernel_x86.h",
+    ],
+    copts = ruy_copts() + ruy_copts_avx(),
+    deps = [
+        ":check_macros",
+        ":kernel_common",
+        ":mat",
+        ":mul_params",
+        ":opt_set",
+        ":path",
+        ":platform",
+        ":tune",
+        "//ruy/profiler:instrumentation",
+    ],
+)
+
+cc_library(
+    name = "pack_avx",
+    srcs = [
+        "pack_avx.cc",
+        "pack_x86_common.inc",
+    ],
+    hdrs = [
+        "pack_x86.h",
+    ],
+    copts = ruy_copts() + ruy_copts_avx(),
+    deps = [
+        ":check_macros",
+        ":mat",
+        ":opt_set",
+        ":pack_common",
+        ":path",
+        ":platform",
+        ":tune",
+        "//ruy/profiler:instrumentation",
+    ],
+)
+
+cc_library(
+    name = "have_built_path_for_avx",
+    srcs = [
+        "have_built_path_for_avx.cc",
+    ],
+    hdrs = [
+        "have_built_path_for.h",
+    ],
+    copts = ruy_copts() + ruy_copts_avx2_fma(),
+    deps = [
+        ":opt_set",
+        ":platform",
+    ],
+)
+
+cc_library(
     name = "kernel",
     hdrs = [
         "kernel.h",
@@ -691,6 +753,7 @@ cc_library(
         ":apply_multiplier",
         ":check_macros",
         ":kernel_arm",  # fixdeps: keep
+        ":kernel_avx",  # fixdeps: keep
         ":kernel_avx2_fma",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
         ":kernel_common",
@@ -719,6 +782,7 @@ cc_library(
         ":matrix",
         ":opt_set",
         ":pack_arm",  # fixdeps: keep
+        ":pack_avx",  # fixdeps: keep
         ":pack_avx2_fma",  # fixdeps: keep
         ":pack_avx512",  # fixdeps: keep
         ":pack_common",
@@ -735,6 +799,7 @@ cc_library(
         "have_built_path_for.h",
     ],
     deps = [
+        ":have_built_path_for_avx",
         ":have_built_path_for_avx2_fma",
         ":have_built_path_for_avx512",
         ":platform",

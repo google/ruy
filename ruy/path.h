@@ -77,12 +77,15 @@ enum class Path : std::uint8_t {
 #endif  // RUY_PLATFORM_ARM
 
 #if RUY_PLATFORM_X86
+  // Optimized for AVX
+  // Compiled with -mavx
+  kAvx = 0x10,
   // Optimized for AVX2+FMA.
   // Compiled with -mavx2 -mfma.
-  kAvx2Fma = 0x10,
+  kAvx2Fma = 0x20,
   // Optimized for AVX-512.
   // Compiled with -mavx512f -mavx512vl -mavx512cd -mavx512bw -mavx512dq.
-  kAvx512 = 0x20,
+  kAvx512 = 0x40,
 #endif  // RUY_PLATFORM_X86
 };
 
@@ -145,7 +148,7 @@ constexpr Path kExtraArchPaths = Path::kNone;
 constexpr Path kDefaultArchPaths = Path::kNeon;
 constexpr Path kExtraArchPaths = Path::kNone;
 #elif RUY_PLATFORM_X86
-constexpr Path kDefaultArchPaths = Path::kAvx2Fma | Path::kAvx512;
+constexpr Path kDefaultArchPaths = Path::kAvx | Path::kAvx2Fma | Path::kAvx512;
 constexpr Path kExtraArchPaths = Path::kNone;
 #else
 constexpr Path kDefaultArchPaths = Path::kNone;

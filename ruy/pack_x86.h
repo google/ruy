@@ -34,6 +34,7 @@ namespace ruy {
 #if RUY_PLATFORM_X86
 
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx2Fma)
+RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx)
 RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx512)
 
 RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx2Fma, 8)
@@ -93,6 +94,40 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
           reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
           reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
           remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
+    }
+  }
+};
+
+void PackFloatColMajorForAvx(const float* src_ptr, const float* zerobuf,
+                             int src_stride, int remaining_src_cols,
+                             int src_rows, float* packed_ptr);
+
+template <>
+struct PackImpl<Path::kAvx, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
+                float, float, Order::kColMajor> {
+  using Layout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  static void Run(Tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
+    profiler::ScopeLabel label("Pack (AVX float)");
+
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+    const float zerobuf[Layout::kCols] = {
+        0.0f};  // Remainder default inits to 0.0f.
+    for (int block_col = start_col; block_col < end_col;
+         block_col += Layout::kCols) {
+      int src_stride = src_matrix.layout.stride;
+      const float* src_ptr = src_matrix.data.get() + src_stride * block_col;
+      int remaining_src_cols = src_matrix.layout.cols - block_col;
+
+      static constexpr int block_col_mask = ~(Layout::kCols - 1);  // High bits.
+      float* packed_ptr =
+          packed_matrix->data +
+          packed_matrix->layout.stride * (block_col & block_col_mask);
+      PackFloatColMajorForAvx(src_ptr, zerobuf, src_stride, remaining_src_cols,
+                              src_matrix.layout.rows, packed_ptr);
     }
   }
 };

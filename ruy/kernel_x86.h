@@ -31,6 +31,7 @@ namespace ruy {
 #if RUY_PLATFORM_X86
 
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kAvx2Fma)
+RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kAvx)
 RUY_INHERIT_KERNEL(Path::kAvx2Fma, Path::kAvx512)
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params);
@@ -130,6 +131,31 @@ struct Kernel<Path::kAvx2Fma, float, float, float, float> {
       KernelFloatAvx2SingleCol(params);
     } else {
       KernelFloatAvx2(params);
+    }
+  }
+};
+
+void KernelFloatAvx(const KernelParamsFloat<8, 8>& params);
+void KernelFloatAvxSingleCol(const KernelParamsFloat<8, 8>& params);
+
+template <>
+struct Kernel<Path::kAvx, float, float, float, float> {
+  static constexpr Path kPath = Path::kAvx;
+  Tuning tuning = Tuning::kAuto;
+  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
+           const MulParams<float, float>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
+    KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
+                          end_col, dst, &params);
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
+      KernelFloatAvxSingleCol(params);
+    } else {
+      KernelFloatAvx(params);
     }
   }
 };
