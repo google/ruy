@@ -1580,9 +1580,157 @@ void Pack8bitColMajorForNeonDotprodOutOfOrder(
         "v27", "v28", "v29", "v30", "v31");
 }
 
-#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
+                                    const void* src_ptr2, const void* src_ptr3,
+                                    int src_inc0, int src_inc1, int src_inc2,
+                                    int src_inc3, int src_cols,
+                                    int src_zero_point, std::int8_t* packed_ptr,
+                                    int packed_stride, std::int32_t* sums_ptr,
+                                    int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonDotprod, from row-major)");
+  asm(
+      // clang-format off
+          // Prefetch data. This was tuned on Cortex-A55-rev1 cores.
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0]]\n")
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1]]\n")
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2]]\n")
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3]]\n")
+          // Let w0 = (number of columns to compute) - 8.
+          "subs w0, %w[src_cols], 8\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], 64]\n")
+          // Let v26 duplicate the input_xor value in all lanes.
+          "dup v26.16b, %w[input_xor]\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], 64]\n")
+          // Let v27 be 1 in all lanes. Used with sdot to compute sums.
+          "movi v27.16b, 1\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], 64]\n")
+          // If there isn't a full block of 8 columns to load from, jump to the
+          // code after the loop handling leftovers.
+          "blt 2f\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], 64]\n")
+          // Main loop, each iteration handles a full block of 8 cols.
+          "1:\n"
+          // Load the 4x8 block from the source matrix, or zero if we're
+          // past the bottom of the source matrix.
+          "ld1 {v0.8b}, [%[src_ptr0]]\n"
+          "ld1 {v1.8b}, [%[src_ptr1]]\n"
+          "ld1 {v2.8b}, [%[src_ptr2]]\n"
+          "ld1 {v3.8b}, [%[src_ptr3]]\n"
+          // Load values from the sums buffer, and start the reordering
+          // of the loaded 4x8 block by interleaving 8bit values.
+          "zip1 v0.16b, v0.16b, v1.16b\n"
+          "ldr q8, [%[sums_ptr], 0]\n"
+          "zip1 v1.16b, v2.16b, v3.16b\n"
+          "ldr q9, [%[sums_ptr], 16]\n"
+          // Finish the reordering of the 4x8 block, putting it into
+          // column-major order.
+          "zip1 v2.8h, v0.8h, v1.8h\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], 128]\n")
+          "zip2 v3.8h, v0.8h, v1.8h\n"
+          // Apply input_xor, i.e. convert source values from uint8 to int8
+          // if needed.
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], 128]\n")
+          "eor v2.16b, v2.16b, v26.16b\n"
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], 128]\n")
+          "eor v3.16b, v3.16b, v26.16b\n"
+          // Update the sums.
+          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], 128]\n")
+          ".word 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".word 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
+          // Store the column-major 4x8 block to the packed matrix, and
+          // increment some source pointers.
+          "str q2, [%[packed_ptr], 0]\n"
+          "add %[src_ptr0], %[src_ptr0], %w[src_inc0], sxtw\n"
+          "str q3, [%[packed_ptr], 16]\n"
+          "add %[src_ptr1], %[src_ptr1], %w[src_inc1], sxtw\n"
+          // Store the updated sums, and increment the remaining pointers
+          // and the block_col loop index.
+          "st1 {v8.4s}, [%[sums_ptr]], 16\n"
+          "add %[packed_ptr], %[packed_ptr], %[packed_stride], lsl 3\n"
+          "st1 {v9.4s}, [%[sums_ptr]], 16\n"
+          // Advance by 8 columns and set the condition code.
+          "subs w0, w0, 8\n"
+          "add %[src_ptr2], %[src_ptr2], %w[src_inc2], sxtw\n"
+          "add %[src_ptr3], %[src_ptr3], %w[src_inc3], sxtw\n"
+          // End of the main loop.
+          "bge 1b\n"
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+          "2:\n"
+          // We add back 8 to w0 so that w0 is the number of columns remaining
+          // to handle.
+          "adds w0, w0, 8\n"
+          // Nothing left? Then jump to the end.
+          "beq 3f\n"
+          // Here w0 is between 1 and 7. We zero-initialize v0--v3 ...
+          "dup v0.8b, %w[src_zero_point]\n"
+          "dup v1.8b, %w[src_zero_point]\n"
+          "dup v2.8b, %w[src_zero_point]\n"
+          "dup v3.8b, %w[src_zero_point]\n"
+          // ... and now we fill lanes one by one with leftover columns.
+#define RUY_LOAD_ONE_COL(C)\
+  "cmp w0, " #C "\n" \
+  "beq 4f\n"                                  \
+  "ld1 { v0.b }[" #C "], [%[src_ptr0]], #1\n" \
+  "ld1 { v1.b }[" #C "], [%[src_ptr1]], #1\n" \
+  "ld1 { v2.b }[" #C "], [%[src_ptr2]], #1\n" \
+  "ld1 { v3.b }[" #C "], [%[src_ptr3]], #1\n"
+
+          RUY_LOAD_ONE_COL(0)
+          RUY_LOAD_ONE_COL(1)
+          RUY_LOAD_ONE_COL(2)
+          RUY_LOAD_ONE_COL(3)
+          RUY_LOAD_ONE_COL(4)
+          RUY_LOAD_ONE_COL(5)
+          RUY_LOAD_ONE_COL(6)
+          // Here we know that w0==7, so RUY_LOAD_ONE_COL(7) would be a no-op.
+#undef RUY_LOAD_ONE_COL
+
+          "4:\n"
+          // The leftovers source data is loaded, now we can perform the
+          // computation as usual.
+          // Load values from the sums buffer, and start the reordering
+          // of the loaded 4x8 block by interleaving 8bit values.
+          "zip1 v0.16b, v0.16b, v1.16b\n"
+          "ldr q8, [%[sums_ptr], 0]\n"
+          "zip1 v1.16b, v2.16b, v3.16b\n"
+          "ldr q9, [%[sums_ptr], 16]\n"
+          // Finish the reordering of the 4x8 block, putting it into
+          // column-major order.
+          "zip1 v2.8h, v0.8h, v1.8h\n"
+          "zip2 v3.8h, v0.8h, v1.8h\n"
+          // Apply input_xor, i.e. convert source values from uint8 to int8
+          // if needed.
+          "eor v2.16b, v2.16b, v26.16b\n"
+          "eor v3.16b, v3.16b, v26.16b\n"
+          // Update the sums.
+          ".word 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".word 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
+          // Store the column-major 4x8 block to the packed matrix, and
+          // increment some source pointers.
+          "str q2, [%[packed_ptr], 0]\n"
+          "str q3, [%[packed_ptr], 16]\n"
+          // Store the updated sums, and increment the remaining pointers
+          // and the block_col loop index.
+          "st1 {v8.4s}, [%[sums_ptr]], 16\n"
+          "st1 {v9.4s}, [%[sums_ptr]], 16\n"
+
+          // End label.
+          "3:\n"
+      // clang-format on
+      : [packed_ptr] "+r"(packed_ptr), [sums_ptr] "+r"(sums_ptr),
+        [src_ptr0] "+r"(src_ptr0), [src_ptr1] "+r"(src_ptr1),
+        [src_ptr2] "+r"(src_ptr2), [src_ptr3] "+r"(src_ptr3)
+      : [src_inc0] "r"(src_inc0), [src_inc1] "r"(src_inc1),
+        [src_inc2] "r"(src_inc2), [src_inc3] "r"(src_inc3),
+        [input_xor] "r"(input_xor), [src_zero_point] "r"(src_zero_point),
+        [packed_stride] "r"(static_cast<std::int64_t>(packed_stride)),
+        [src_cols] "r"(src_cols)
+      : "cc", "memory", "x0", "x1", "x2", "v0", "v1", "v2", "v3", "v4", "v5",
+        "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16",
+        "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26",
+        "v27", "v28", "v29", "v30", "v31");
+}
+
 void PackFloatColMajorForNeonOutOfOrder(
     const float* src_ptr0, const float* src_ptr1, const float* src_ptr2,
     const float* src_ptr3, int src_inc0, int src_inc1, int src_inc2,

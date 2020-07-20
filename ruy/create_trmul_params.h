@@ -41,6 +41,8 @@ namespace detail {
 inline void CreatePackedLayout(const MatLayout& src,
                                const KernelLayout& kernel_layout,
                                PMatLayout* packed_layout) {
+  // Packed matrices are always column-major, because in TrMul that is always
+  // the dimension of traversal of the kernel's inner loop.
   packed_layout->order = Order::kColMajor;
   packed_layout->rows = round_up_pot(src.rows, kernel_layout.rows);
   packed_layout->cols = round_up_pot(src.cols, kernel_layout.cols);

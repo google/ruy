@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef RUY_RUY_PACK_ARM_H_
 #define RUY_RUY_PACK_ARM_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <type_traits>
 
@@ -68,6 +69,13 @@ void Pack8bitColMajorForNeonDotprodInOrder(
     const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
     int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
     std::int32_t* sums_ptr, int input_xor);
+void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
+                                    const void* src_ptr2, const void* src_ptr3,
+                                    int src_inc0, int src_inc1, int src_inc2,
+                                    int src_inc3, int src_cols,
+                                    int src_zero_point, std::int8_t* packed_ptr,
+                                    int packed_stride, std::int32_t* sums_ptr,
+                                    int input_xor);
 
 #elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 
@@ -470,6 +478,85 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
 #endif  // (RUY_PLATFORM_NEON_32)
 #endif  // (RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
         // RUY_OPT(ASM)
+
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+
+template <typename Scalar>
+struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
+                Scalar, std::int8_t, std::int32_t, Order::kRowMajor> {
+  static_assert(std::is_same<Scalar, std::int8_t>::value ||
+                    std::is_same<Scalar, std::uint8_t>::value,
+                "");
+  static constexpr int kInputXor =
+      std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    RUY_DCHECK(IsRowMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ(start_col % 8, 0);
+    std::int32_t* sums = packed_matrix->sums;
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    Scalar zerobuf[8];
+    memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
+    int src_stride = src_matrix.layout.stride;
+    // As the source matrix is row-major and the destination packed matrix is
+    // column-major, there is no traversal order that will be optimal for both
+    // so we choose to favor the source matrix with a row-major traversal order.
+    // Loop over groups of 4 rows.
+    for (int block_row = 0; block_row < packed_matrix->layout.rows;
+         block_row += 4) {
+      // src_ptr[0-3] shall point to the positions in the 4 rows of the source
+      // matrix that we are loading from, and will be incremented by
+      // src_inc[0-3] after each 4x8 block is loaded.
+      // First we compute these src_ptr and src_inc values for the case where
+      // there are 4 rows left to be loaded from in the source matrix ...
+      const Scalar* src_ptr0 =
+          src_matrix.data.get() + src_stride * block_row + start_col;
+      const Scalar* src_ptr1 = src_ptr0 + src_stride;
+      const Scalar* src_ptr2 = src_ptr1 + src_stride;
+      const Scalar* src_ptr3 = src_ptr2 + src_stride;
+      std::int64_t src_inc0 = 8;
+      std::int64_t src_inc1 = 8;
+      std::int64_t src_inc2 = 8;
+      std::int64_t src_inc3 = 8;
+      // ... and now we adjust these values in case there are fewer than 4 rows
+      // left to load from in the source matrix. In that case, we set the
+      // corresponding src_ptr pointer to load from `zerobuf` and set src_inc
+      // to 0 to avoid overrunning that small buffer.
+      if (block_row >= src_matrix.layout.rows - 3) {
+        if (block_row >= src_matrix.layout.rows - 0) {
+          src_ptr0 = zerobuf;
+          src_inc0 = 0;
+        }
+        if (block_row >= src_matrix.layout.rows - 1) {
+          src_ptr1 = zerobuf;
+          src_inc1 = 0;
+        }
+        if (block_row >= src_matrix.layout.rows - 2) {
+          src_ptr2 = zerobuf;
+          src_inc2 = 0;
+        }
+        if (block_row >= src_matrix.layout.rows - 3) {
+          src_ptr3 = zerobuf;
+          src_inc3 = 0;
+        }
+      }
+      // Let src_cols be the number of source matrix columns to handle.
+      int src_cols = std::min(end_col, src_matrix.layout.cols) - start_col;
+      std::int8_t* packed_ptr = packed_matrix->data +
+                                packed_matrix->layout.stride * start_col +
+                                8 * block_row;
+      std::int32_t* sums_ptr = sums + start_col;
+      Pack8bitRowMajorForNeonDotprod(
+          src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1, src_inc2,
+          src_inc3, src_cols, src_matrix.zero_point, packed_ptr,
+          packed_matrix->layout.stride, sums_ptr, kInputXor);
+    }
+  }
+};
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
 }  // namespace ruy
 
