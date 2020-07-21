@@ -358,246 +358,33 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         const __m512i lhs_16_bit_high = _mm512_cvtepi8_epi16(
             _mm512_cvtepi32_epi16(_mm512_srli_epi32(lhs_data, 16)));
 
-        // Process column 0.
-        {
-          __m512i accum_v = accum_data_v0;
-          constexpr int index = 0;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
+        auto process_column = [=](int col, __m512i& accum) {
+          const __m512i rhs_16_bit_dup_low =
+              _mm512_set1_epi32(rhs_data[2 * col]);
           const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
+              _mm512_set1_epi32(rhs_data[2 * col + 1]);
 
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v0 = accum_v;
-        }
-        // Process column 1.
-        {
-          __m512i accum_v = accum_data_v1;
-          constexpr int index = 2;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v1 = accum_v;
-        }
-        // Process column 2.
-        {
-          __m512i accum_v = accum_data_v2;
-          constexpr int index = 4;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v2 = accum_v;
-        }
-        // Process column 3.
-        {
-          __m512i accum_v = accum_data_v3;
-          constexpr int index = 6;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v3 = accum_v;
-        }
-        // Process column 4.
-        {
-          __m512i accum_v = accum_data_v4;
-          constexpr int index = 8;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v4 = accum_v;
-        }
-        // Process column 5.
-        {
-          __m512i accum_v = accum_data_v5;
-          constexpr int index = 10;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v5 = accum_v;
-        }
-        // Process column 6.
-        {
-          __m512i accum_v = accum_data_v6;
-          constexpr int index = 12;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v6 = accum_v;
-        }
-        // Process column 7.
-        {
-          __m512i accum_v = accum_data_v7;
-          constexpr int index = 14;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v7 = accum_v;
-        }
-        // Process column 8.
-        {
-          __m512i accum_v = accum_data_v8;
-          constexpr int index = 16;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v8 = accum_v;
-        }
-        // Process column 9.
-        {
-          __m512i accum_v = accum_data_v9;
-          constexpr int index = 18;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_v9 = accum_v;
-        }
-        // Process column 10.
-        {
-          __m512i accum_v = accum_data_va;
-          constexpr int index = 20;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_va = accum_v;
-        }
-        // Process column 11.
-        {
-          __m512i accum_v = accum_data_vb;
-          constexpr int index = 22;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_vb = accum_v;
-        }
-        // Process column 12.
-        {
-          __m512i accum_v = accum_data_vc;
-          constexpr int index = 24;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_vc = accum_v;
-        }
-        // Process column 13.
-        {
-          __m512i accum_v = accum_data_vd;
-          constexpr int index = 26;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_vd = accum_v;
-        }
-        // Process column 14.
-        {
-          __m512i accum_v = accum_data_ve;
-          constexpr int index = 28;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_ve = accum_v;
-        }
-        // Process column 15.
-        {
-          __m512i accum_v = accum_data_vf;
-          constexpr int index = 30;
-
-          const __m512i rhs_16_bit_dup_low = _mm512_set1_epi32(rhs_data[index]);
-          const __m512i rhs_16_bit_dup_high =
-              _mm512_set1_epi32(rhs_data[index + 1]);
-
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_v = _mm512_add_epi32(
-              accum_v, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-          accum_data_vf = accum_v;
-        }
+          accum = _mm512_add_epi32(
+              accum, _mm512_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
+          accum = _mm512_add_epi32(
+              accum, _mm512_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
+        };
+        process_column(0, accum_data_v0);
+        process_column(1, accum_data_v1);
+        process_column(2, accum_data_v2);
+        process_column(3, accum_data_v3);
+        process_column(4, accum_data_v4);
+        process_column(5, accum_data_v5);
+        process_column(6, accum_data_v6);
+        process_column(7, accum_data_v7);
+        process_column(8, accum_data_v8);
+        process_column(9, accum_data_v9);
+        process_column(10, accum_data_va);
+        process_column(11, accum_data_vb);
+        process_column(12, accum_data_vc);
+        process_column(13, accum_data_vd);
+        process_column(14, accum_data_ve);
+        process_column(15, accum_data_vf);
 
         lhs_ptr += 16 * 4;
         rhs_ptr += 16 * 4;
@@ -658,18 +445,15 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
               &accum_data_vc, &accum_data_vd, &accum_data_ve, &accum_data_vf);
         }
 
-        // Shift and round column 0.
-        {
-          accum_data_v0 = _mm512_sllv_epi32(accum_data_v0, left_shift);
+        auto apply_multiplier = [=](__m512i& accum) {
+          accum = _mm512_sllv_epi32(accum, left_shift);
           // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v0, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v0, 1)),
-                               m_64bit_high);
+          __m512i scaled_v_low = _mm512_mul_epi32(
+              _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(accum, 0)),
+              m_64bit_low);
+          __m512i scaled_v_high = _mm512_mul_epi32(
+              _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(accum, 1)),
+              m_64bit_high);
 
           scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
           scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
@@ -678,386 +462,27 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
           scaled_v_high =
               _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
 
-          accum_data_v0 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v0 = _mm512_inserti32x8(
-              accum_data_v0, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 1.
-        {
-          accum_data_v1 = _mm512_sllv_epi32(accum_data_v1, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v1, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v1, 1)),
-                               m_64bit_high);
+          accum = _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
+          accum = _mm512_inserti32x8(accum,
+                                     _mm512_cvtepi64_epi32(scaled_v_high), 1);
+        };
+        apply_multiplier(accum_data_v0);
+        apply_multiplier(accum_data_v1);
+        apply_multiplier(accum_data_v2);
+        apply_multiplier(accum_data_v3);
+        apply_multiplier(accum_data_v4);
+        apply_multiplier(accum_data_v5);
+        apply_multiplier(accum_data_v6);
+        apply_multiplier(accum_data_v7);
+        apply_multiplier(accum_data_v8);
+        apply_multiplier(accum_data_v9);
+        apply_multiplier(accum_data_va);
+        apply_multiplier(accum_data_vb);
+        apply_multiplier(accum_data_vc);
+        apply_multiplier(accum_data_vd);
+        apply_multiplier(accum_data_ve);
+        apply_multiplier(accum_data_vf);
 
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v1 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v1 = _mm512_inserti32x8(
-              accum_data_v1, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 2.
-        {
-          accum_data_v2 = _mm512_sllv_epi32(accum_data_v2, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v2, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v2, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v2 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v2 = _mm512_inserti32x8(
-              accum_data_v2, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 3.
-        {
-          accum_data_v3 = _mm512_sllv_epi32(accum_data_v3, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v3, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v3, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v3 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v3 = _mm512_inserti32x8(
-              accum_data_v3, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 4.
-        {
-          accum_data_v4 = _mm512_sllv_epi32(accum_data_v4, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v4, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v4, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v4 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v4 = _mm512_inserti32x8(
-              accum_data_v4, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 5.
-        {
-          accum_data_v5 = _mm512_sllv_epi32(accum_data_v5, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v5, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v5, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v5 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v5 = _mm512_inserti32x8(
-              accum_data_v5, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 6.
-        {
-          accum_data_v6 = _mm512_sllv_epi32(accum_data_v6, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v6, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v6, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v6 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v6 = _mm512_inserti32x8(
-              accum_data_v6, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 7.
-        {
-          accum_data_v7 = _mm512_sllv_epi32(accum_data_v7, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v7, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v7, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v7 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v7 = _mm512_inserti32x8(
-              accum_data_v7, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 8.
-        {
-          accum_data_v8 = _mm512_sllv_epi32(accum_data_v8, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v8, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v8, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v8 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v8 = _mm512_inserti32x8(
-              accum_data_v8, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 9.
-        {
-          accum_data_v9 = _mm512_sllv_epi32(accum_data_v9, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v9, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_v9, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_v9 =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_v9 = _mm512_inserti32x8(
-              accum_data_v9, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 10.
-        {
-          accum_data_va = _mm512_sllv_epi32(accum_data_va, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_va, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_va, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_va =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_va = _mm512_inserti32x8(
-              accum_data_va, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 11.
-        {
-          accum_data_vb = _mm512_sllv_epi32(accum_data_vb, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vb, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vb, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_vb =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_vb = _mm512_inserti32x8(
-              accum_data_vb, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 12.
-        {
-          accum_data_vc = _mm512_sllv_epi32(accum_data_vc, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vc, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vc, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_vc =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_vc = _mm512_inserti32x8(
-              accum_data_vc, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 13.
-        {
-          accum_data_vd = _mm512_sllv_epi32(accum_data_vd, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vd, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vd, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_vd =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_vd = _mm512_inserti32x8(
-              accum_data_vd, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 14.
-        {
-          accum_data_ve = _mm512_sllv_epi32(accum_data_ve, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_ve, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_ve, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_ve =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_ve = _mm512_inserti32x8(
-              accum_data_ve, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
-        // Shift and round column 15.
-        {
-          accum_data_vf = _mm512_sllv_epi32(accum_data_vf, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m512i scaled_v_low =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vf, 0)),
-                               m_64bit_low);
-          __m512i scaled_v_high =
-              _mm512_mul_epi32(_mm512_cvtepi32_epi64(
-                                   _mm512_extracti32x8_epi32(accum_data_vf, 1)),
-                               m_64bit_high);
-
-          scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
-
-          accum_data_vf =
-              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
-          accum_data_vf = _mm512_inserti32x8(
-              accum_data_vf, _mm512_cvtepi64_epi32(scaled_v_high), 1);
-        }
         if (transpose_around_multiplier) {
           // See above comment: here we transpose again to undo the
           // transposition of the 16x16 block of accumulators used to implement
