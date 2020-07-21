@@ -36,6 +36,9 @@ namespace ruy {
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx2Fma)
 RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx512)
 
+RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx2Fma, 8)
+RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx512, 16)
+
 template <>
 struct PackedTypeImpl<Path::kAvx2Fma, std::uint8_t> {
   using Type = std::int8_t;

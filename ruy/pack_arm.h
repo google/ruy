@@ -36,6 +36,11 @@ namespace ruy {
 RUY_INHERIT_PACK(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_PACK(Path::kNeon, Path::kNeonDotprod)
 
+RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kNeon, 8)
+#if RUY_PLATFORM_NEON_32
+RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kNeon, 4)
+#endif
+
 template <>
 struct PackedTypeImpl<Path::kNeon, std::uint8_t> {
   using Type = std::int8_t;
@@ -556,6 +561,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
     }
   }
 };
+
 #endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
 }  // namespace ruy

@@ -100,7 +100,7 @@ namespace ruy {
 
 // General implementation of the PackImpl template, overridden by template
 // specializations for specific SIMD code paths. This general implementation
-// covers Path::kStandardCpp and its internal test-only variants.
+// is used with Path::kStandardCpp and its internal test-only variants.
 template <Path ThePath, typename FixedKernelLayout, typename Scalar,
           typename PackedScalar, typename SumsType, Order SrcOrder>
 struct PackImpl {
