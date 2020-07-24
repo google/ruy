@@ -51,6 +51,15 @@ struct PackedTypeImpl<Path::kNeonDotprod, std::uint8_t> {
 };
 #endif
 
+#if RUY_PLATFORM_NEON
+void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
+                             int src_rows, int src_cols, int block_row,
+                             int start_col, int end_col,
+                             std::int8_t* packed_ptr, int packed_stride,
+                             int packed_zero_point, std::int32_t* sums_ptr,
+                             int input_xor, int kernel_cols);
+#endif
+
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
 void Pack8bitColMajorForNeonOutOfOrder(
@@ -81,7 +90,6 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
                                     int src_zero_point, std::int8_t* packed_ptr,
                                     int packed_stride, std::int32_t* sums_ptr,
                                     int input_xor);
-
 #elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 
 struct PackParams8bit {
@@ -563,6 +571,42 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
 };
 
 #endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+
+#if RUY_PLATFORM_NEON
+
+template <typename Scalar, int KernelCols>
+struct PackImpl<Path::kNeon,
+                FixedKernelLayout<Order::kColMajor, 16, KernelCols>, Scalar,
+                std::int8_t, std::int32_t, Order::kRowMajor> {
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (KNeon, from row-major source)");
+    static constexpr int kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+    RUY_DCHECK_EQ(src_matrix.layout.order, Order::kRowMajor);
+    RUY_DCHECK_EQ((end_col - start_col) % KernelCols, 0);
+    std::int32_t* sums = packed_matrix->sums;
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    int block_row = 0;
+    for (; block_row < packed_matrix->layout.rows; block_row += 16) {
+      int src_stride = src_matrix.layout.stride;
+      int packed_stride = packed_matrix->layout.stride;
+      const Scalar* src_ptr =
+          src_matrix.data.get() + block_row * src_stride + start_col;
+      std::int8_t* packed_ptr = packed_matrix->data +
+                                start_col * packed_stride +
+                                block_row * KernelCols;
+
+      Pack8bitRowMajorForNeon(
+          reinterpret_cast<const std::uint8_t*>(src_ptr), src_stride,
+          src_matrix.layout.rows, src_matrix.layout.cols, block_row, start_col,
+          end_col, packed_ptr, packed_stride, packed_matrix->zero_point, sums,
+          kInputXor, KernelCols);
+    }
+  }
+};
+#endif
 
 }  // namespace ruy
 
