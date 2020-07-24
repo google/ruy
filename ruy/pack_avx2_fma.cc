@@ -44,6 +44,11 @@ void PackFloatColMajorForAvx2(const float*, const float*, int, int, int,
   RUY_DCHECK(false);
 }
 
+void Pack8bitRowMajorForAvx2(const std::uint8_t*, int, int, std::int8_t*, int,
+                             int, int, int, int, int, int, std::int32_t*) {
+  RUY_DCHECK(false);
+}
+
 #else  // RUY_PLATFORM_AVX2_FMA && RUY_OPT(ASM)
 
 // The first int8_t template parameter is arbitrary: this routine is common to
@@ -808,6 +813,87 @@ void PackFloatColMajorForAvx2(const float* src_ptr, const float* zerobuf,
     const int non_trailing_rows = src_rows & ~(kPackRows - 1);
     memcpy(packed_ptr + kPackCols * non_trailing_rows, trailing_buf,
            kPackCols * trailing_rows * sizeof(float));
+  }
+}
+
+void Pack8bitRowMajorForAvx2(const std::uint8_t* src_ptr, int src_stride,
+                             int src_zero_point, std::int8_t* packed_ptr,
+                             int packed_stride, int start_col, int end_col,
+                             int src_cols, int block_row, int src_rows,
+                             int input_xor, std::int32_t* sums) {
+  int col = start_col;
+  int src_end_col = std::min(end_col, src_cols);
+
+  for (; col <= src_end_col - 8; col += 8) {
+    std::int8_t* dst_ptr = packed_ptr;
+    __m128i val0, val1, val2, val3;
+    __m128i input_xor_dup = _mm_set1_epi8(input_xor);
+    // Load a 4x8 block.
+    if (block_row + 4 <= src_rows) {
+      val0 = _mm_loadu_si64(src_ptr + 0 * src_stride);
+      val1 = _mm_loadu_si64(src_ptr + 1 * src_stride);
+      val2 = _mm_loadu_si64(src_ptr + 2 * src_stride);
+      val3 = _mm_loadu_si64(src_ptr + 3 * src_stride);
+    } else {
+      val0 = _mm_set1_epi8(src_zero_point);
+      val1 = val0;
+      val2 = val0;
+      val3 = val0;
+      if (block_row + 0 < src_rows)
+        val0 = _mm_loadu_si64(src_ptr + 0 * src_stride);
+      if (block_row + 1 < src_rows)
+        val1 = _mm_loadu_si64(src_ptr + 1 * src_stride);
+      if (block_row + 2 < src_rows)
+        val2 = _mm_loadu_si64(src_ptr + 2 * src_stride);
+      if (block_row + 3 < src_rows)
+        val3 = _mm_loadu_si64(src_ptr + 3 * src_stride);
+    }
+    // Maybe xor the sign bit to convert from uint8 to int8.
+    val0 = _mm_xor_si128(val0, input_xor_dup);
+    val1 = _mm_xor_si128(val1, input_xor_dup);
+    val2 = _mm_xor_si128(val2, input_xor_dup);
+    val3 = _mm_xor_si128(val3, input_xor_dup);
+    // Update the sums.
+    __m128i val16_0 = _mm_cvtepi8_epi16(val0);
+    __m128i val16_1 = _mm_cvtepi8_epi16(val1);
+    __m128i val16_2 = _mm_cvtepi8_epi16(val2);
+    __m128i val16_3 = _mm_cvtepi8_epi16(val3);
+    __m128i new_sum16 = _mm_add_epi16(_mm_add_epi16(val16_0, val16_1),
+                                      _mm_add_epi16(val16_2, val16_3));
+    __m256i sum =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(sums + col));
+    sum = _mm256_add_epi32(sum, _mm256_cvtepi16_epi32(new_sum16));
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(sums + col), sum);
+    // Perform the transposition of 4x4 blocks
+    __m128i t2_val0 = _mm_unpacklo_epi8(val0, val1);
+    __m128i t2_val1 = _mm_unpacklo_epi8(val2, val3);
+    __m128i t4_val0 = _mm_unpacklo_epi16(t2_val0, t2_val1);
+    __m128i t4_val1 = _mm_unpackhi_epi16(t2_val0, t2_val1);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dst_ptr), t4_val0);
+    _mm_storeu_si128(reinterpret_cast<__m128i*>(dst_ptr + 16), t4_val1);
+    src_ptr += 8;
+    packed_ptr += packed_stride * 8;
+  }
+  for (; col < src_end_col; col++) {
+    std::int32_t accum = 0;
+    for (int r = 0; r < 4; r++) {
+      std::int8_t packed_val;
+      if (block_row + r < src_rows) {
+        packed_val = input_xor ^ src_ptr[r * src_stride];
+      } else {
+        packed_val = input_xor ^ src_zero_point;
+      }
+      accum += packed_val;
+      *packed_ptr++ = packed_val;
+    }
+    if (sums) {
+      sums[col] += accum;
+    }
+    src_ptr++;
+  }
+  for (; col < end_col; col++) {
+    std::memset(packed_ptr, 0, 4);
+    packed_ptr += 4;
   }
 }
 

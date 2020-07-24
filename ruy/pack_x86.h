@@ -217,6 +217,77 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kRowMajor, 1, 16>,
     }
   }
 };
+
+void Pack8bitRowMajorForAvx2(const std::uint8_t* src_ptr, int src_stride,
+                             int src_zero_point, std::int8_t* packed_ptr,
+                             int packed_stride, int start_col, int end_col,
+                             int src_cols, int block_row, int src_rows,
+                             int input_xor, std::int32_t* sums);
+
+template <typename Scalar>
+struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
+                Scalar, std::int8_t, std::int32_t, Order::kRowMajor> {
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (kAvx2Fma 8bit row-major)");
+    RUY_DCHECK_EQ(src_matrix.layout.order, Order::kRowMajor);
+    static constexpr int kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+    std::int32_t* sums = packed_matrix->sums;
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    int block_row = 0;
+    for (; block_row < packed_matrix->layout.rows; block_row += 4) {
+      int src_stride = src_matrix.layout.stride;
+      int packed_stride = packed_matrix->layout.stride;
+      const Scalar* src_ptr =
+          src_matrix.data.get() + block_row * src_stride + start_col;
+      std::int8_t* packed_ptr =
+          packed_matrix->data + start_col * packed_stride + block_row * 8;
+      Pack8bitRowMajorForAvx2(reinterpret_cast<const std::uint8_t*>(src_ptr),
+                              src_stride, src_matrix.zero_point, packed_ptr,
+                              packed_stride, start_col, end_col,
+                              src_matrix.layout.cols, block_row,
+                              src_matrix.layout.rows, kInputXor, sums);
+    }
+  }
+};
+
+void Pack8bitRowMajorForAvx512(const std::uint8_t* src_ptr, int src_stride,
+                               int src_zero_point, std::int8_t* packed_ptr,
+                               int packed_stride, int start_col, int end_col,
+                               int src_cols, int block_row, int src_rows,
+                               int input_xor, std::int32_t* sums);
+
+template <typename Scalar>
+struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
+                Scalar, std::int8_t, std::int32_t, Order::kRowMajor> {
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (kAvx512 8bit row-major)");
+    RUY_DCHECK_EQ(src_matrix.layout.order, Order::kRowMajor);
+    static constexpr int kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+    std::int32_t* sums = packed_matrix->sums;
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    int block_row = 0;
+    for (; block_row < packed_matrix->layout.rows; block_row += 4) {
+      int src_stride = src_matrix.layout.stride;
+      int packed_stride = packed_matrix->layout.stride;
+      const Scalar* src_ptr =
+          src_matrix.data.get() + block_row * src_stride + start_col;
+      std::int8_t* packed_ptr =
+          packed_matrix->data + start_col * packed_stride + block_row * 16;
+      Pack8bitRowMajorForAvx512(reinterpret_cast<const std::uint8_t*>(src_ptr),
+                                src_stride, src_matrix.zero_point, packed_ptr,
+                                packed_stride, start_col, end_col,
+                                src_matrix.layout.cols, block_row,
+                                src_matrix.layout.rows, kInputXor, sums);
+    }
+  }
+};
+
 #endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy
