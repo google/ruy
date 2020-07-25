@@ -319,39 +319,6 @@ inline float mm256_get1_ps(const __m256 a, int i) {
   return float_val;
 }
 
-inline __m256 mm256_n_loadu_ps(int i, const float* src) {
-  switch (i) {
-    case 0:
-      return _mm256_setzero_ps();
-    case 1:
-      return _mm256_setr_m128(_mm_setr_ps(src[0], .0f, .0f, .0f),
-                              _mm_setzero_ps());
-    case 2:
-      return _mm256_setr_m128(_mm_setr_ps(src[0], src[1], .0f, .0f),
-                              _mm_setzero_ps());
-    case 3:
-      return _mm256_setr_m128(_mm_setr_ps(src[0], src[1], src[2], .0f),
-                              _mm_setzero_ps());
-    case 4:
-      return _mm256_setr_m128(_mm_setr_ps(src[0], src[1], src[2], src[3]),
-                              _mm_setzero_ps());
-    case 5:
-      return _mm256_setr_ps(src[0], src[1], src[2], src[3], src[4], .0f, .0f,
-                            .0f);
-    case 6:
-      return _mm256_setr_ps(src[0], src[1], src[2], src[3], src[4], src[5], .0f,
-                            .0f);
-    case 7:
-      return _mm256_setr_ps(src[0], src[1], src[2], src[3], src[4], src[5],
-                            src[6], .0f);
-    case 8:
-      return _mm256_loadu_ps(src);
-    default:
-      RUY_DCHECK_LT(i, 9);
-      return _mm256_setzero_ps();
-  }
-}
-
 inline void mm256_n_storeu_ps(float* dst, int residual_rows, const __m256 v) {
   for (int i = 0; i < residual_rows; ++i) {
     dst[i] = intrin_utils::mm256_get1_ps(v, i);
@@ -1289,8 +1256,7 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
         }
       } else {
         const float* bias_elem_ptr = bias_ptr + row * bias_ptr_block_increment;
-        const __m256 initial_accum_data =
-            intrin_utils::mm256_n_loadu_ps(residual_rows, bias_elem_ptr);
+        const __m256 initial_accum_data = _mm256_loadu_ps(bias_elem_ptr);
 
         for (int j = 0; j < 8; ++j) {
           accum_data_v[j] = initial_accum_data;
@@ -1360,8 +1326,7 @@ void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
         }
       } else {
         const float* bias_elem_ptr = bias_ptr + row * bias_ptr_block_increment;
-        const __m256 initial_accum_data =
-            intrin_utils::mm256_n_loadu_ps(residual_rows, bias_elem_ptr);
+        const __m256 initial_accum_data = _mm256_loadu_ps(bias_elem_ptr);
 
         for (int j = 0; j < 8; ++j) {
           accum_data_v[j] = initial_accum_data;
@@ -1479,7 +1444,7 @@ void KernelFloatAvx2SingleCol(const KernelParamsFloat<8, 8>& params) {
     const float* bias_ptr = bias_col_ptr + row * bias_ptr_block_increment;
 
     // Initialize with bias.
-    accum_data_v = intrin_utils::mm256_n_loadu_ps(residual_rows, bias_ptr);
+    accum_data_v = _mm256_loadu_ps(bias_ptr);
 
     const float* lhs_ptr = lhs_col_ptr;
     const float* rhs_ptr = rhs_col_ptr;
