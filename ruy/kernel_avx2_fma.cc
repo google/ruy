@@ -589,126 +589,26 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         // Take bytes 2, 3, 6, 7, 10, 11, ... expanded to 16-bit.
         const __m256i lhs_16_bit_high = _mm256_permute2x128_si256(
             lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x31);
-        // Accumulate for column 0.
-        {
-          const std::int32_t low_rhs_value = rhs_data[0];
-          const std::int32_t high_rhs_value = rhs_data[1];
+        auto process_column = [=](int col, __m256i& accum) {
+          const std::int32_t low_rhs_value = rhs_data[col * 2];
+          const std::int32_t high_rhs_value = rhs_data[col * 2 + 1];
 
           const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
           const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
 
-          accum_data_v0 = _mm256_add_epi32(
-              accum_data_v0,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v0 = _mm256_add_epi32(
-              accum_data_v0,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 1.
-        {
-          const std::int32_t low_rhs_value = rhs_data[2];
-          const std::int32_t high_rhs_value = rhs_data[3];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v1 = _mm256_add_epi32(
-              accum_data_v1,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v1 = _mm256_add_epi32(
-              accum_data_v1,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 2.
-        {
-          const std::int32_t low_rhs_value = rhs_data[4];
-          const std::int32_t high_rhs_value = rhs_data[5];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v2 = _mm256_add_epi32(
-              accum_data_v2,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v2 = _mm256_add_epi32(
-              accum_data_v2,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 3.
-        {
-          const std::int32_t low_rhs_value = rhs_data[6];
-          const std::int32_t high_rhs_value = rhs_data[7];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v3 = _mm256_add_epi32(
-              accum_data_v3,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v3 = _mm256_add_epi32(
-              accum_data_v3,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 4.
-        {
-          const std::int32_t low_rhs_value = rhs_data[8];
-          const std::int32_t high_rhs_value = rhs_data[9];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v4 = _mm256_add_epi32(
-              accum_data_v4,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v4 = _mm256_add_epi32(
-              accum_data_v4,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 5.
-        {
-          const std::int32_t low_rhs_value = rhs_data[10];
-          const std::int32_t high_rhs_value = rhs_data[11];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v5 = _mm256_add_epi32(
-              accum_data_v5,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v5 = _mm256_add_epi32(
-              accum_data_v5,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 6.
-        {
-          const std::int32_t low_rhs_value = rhs_data[12];
-          const std::int32_t high_rhs_value = rhs_data[13];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v6 = _mm256_add_epi32(
-              accum_data_v6,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v6 = _mm256_add_epi32(
-              accum_data_v6,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
-        // Accumulate for column 7.
-        {
-          const std::int32_t low_rhs_value = rhs_data[14];
-          const std::int32_t high_rhs_value = rhs_data[15];
-
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
-          accum_data_v7 = _mm256_add_epi32(
-              accum_data_v7,
-              _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
-          accum_data_v7 = _mm256_add_epi32(
-              accum_data_v7,
-              _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
-        }
+          accum = _mm256_add_epi32(
+              accum, _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
+          accum = _mm256_add_epi32(
+              accum, _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
+        };
+        process_column(0, accum_data_v0);
+        process_column(1, accum_data_v1);
+        process_column(2, accum_data_v2);
+        process_column(3, accum_data_v3);
+        process_column(4, accum_data_v4);
+        process_column(5, accum_data_v5);
+        process_column(6, accum_data_v6);
+        process_column(7, accum_data_v7);
 
         lhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
         rhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
@@ -844,8 +744,8 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
               &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
               &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
         }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v0, left_shift);
+        auto apply_multiplier = [=](__m256i& accum) {
+          __m256i shifted_accum = _mm256_sllv_epi32(accum, left_shift);
           // Apply the fixed-point part of the multiplier.
           __m256i scaled_v_low = _mm256_mul_epi32(
               _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
@@ -866,176 +766,16 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
               _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
           results = _mm256_permutevar8x32_epi32(results, repack_perm);
 
-          accum_data_v0 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v1, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v1 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v2, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v2 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v3, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v3 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v4, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v4 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v5, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v5 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v6, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v6 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
-        {
-          __m256i shifted_accum = _mm256_sllv_epi32(accum_data_v7, left_shift);
-          // Apply the fixed-point part of the multiplier.
-          __m256i scaled_v_low = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 0)),
-              m_64bit_low);
-          __m256i scaled_v_high = _mm256_mul_epi32(
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
-              m_64bit_high);
-
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
-
-          scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
-          scaled_v_high =
-              _mm256_srlv_epi64(scaled_v_high, final_right_shift_high);
-
-          scaled_v_high = _mm256_slli_epi64(scaled_v_high, 32);
-          __m256i results =
-              _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
-          results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum_data_v7 = _mm256_sub_epi32(results, post_scaling_offset);
-        }
+          accum = _mm256_sub_epi32(results, post_scaling_offset);
+        };
+        apply_multiplier(accum_data_v0);
+        apply_multiplier(accum_data_v1);
+        apply_multiplier(accum_data_v2);
+        apply_multiplier(accum_data_v3);
+        apply_multiplier(accum_data_v4);
+        apply_multiplier(accum_data_v5);
+        apply_multiplier(accum_data_v6);
+        apply_multiplier(accum_data_v7);
         // See above comment: here we transpose again to undo the transposition
         // of the 8x8 block of accumulators used to implement the
         // channels-are-columns case.
