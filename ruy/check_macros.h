@@ -20,6 +20,7 @@ limitations under the License.
 
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <type_traits>
 
 namespace ruy {
@@ -67,52 +68,57 @@ struct ToString<T, typename std::enable_if<std::is_enum<T>::value>::type> {
   }
 };
 
-inline void Failure(const char* file, int line, const char* macro,
-                    const char* condition) {
-  fprintf(stderr, "%s:%d: %s condition not satisfied: %s\n", file, line, macro,
-          condition);
-  abort();
+inline void CheckImpl(bool condition, const char* file, int line,
+                      const char* macro, const char* condition_str) {
+  if (!condition) {
+    fprintf(stderr, "%s:%d: %s condition not satisfied: %s\n", file, line,
+            macro, condition_str);
+    abort();
+  }
 }
 
-template <typename LhsType, typename RhsType>
-inline void Failure(const char* file, int line, const char* macro,
-                    const char* lhs, const LhsType& lhs_value, const char* op,
-                    const char* rhs, const RhsType& rhs_value) {
-  char lhs_value_buf[kValueBufSize];
-  ToString<LhsType>::Run(lhs_value, lhs_value_buf);
-  char rhs_value_buf[kValueBufSize];
-  ToString<RhsType>::Run(rhs_value, rhs_value_buf);
-  fprintf(stderr,
-          "%s:%d: %s condition not satisfied:   [ %s %s %s ]   with values   [ "
-          "%s %s %s ].\n",
-          file, line, macro, lhs, op, rhs, lhs_value_buf, op, rhs_value_buf);
-  abort();
+template <template <typename T> class Comparison, typename LhsType,
+          typename RhsType>
+inline void CheckImpl(const char* file, int line, const char* macro,
+                      const char* lhs, const LhsType& lhs_value,
+                      const char* op_symbol, const char* rhs,
+                      const RhsType& rhs_value) {
+  using CommonType = typename std::common_type<LhsType, RhsType>::type;
+  if (!Comparison<CommonType>()(lhs_value, rhs_value)) {
+    char lhs_value_buf[kValueBufSize];
+    ToString<LhsType>::Run(lhs_value, lhs_value_buf);
+    char rhs_value_buf[kValueBufSize];
+    ToString<RhsType>::Run(rhs_value, rhs_value_buf);
+    fprintf(
+        stderr,
+        "%s:%d: %s condition not satisfied:   [ %s %s %s ]   with values   [ "
+        "%s %s %s ].\n",
+        file, line, macro, lhs, op_symbol, rhs, lhs_value_buf, op_symbol,
+        rhs_value_buf);
+    abort();
+  }
 }
 
-#define RUY_CHECK_IMPL(macro, condition)                                  \
-  do {                                                                    \
-    if (!(condition)) {                                                   \
-      ruy::check_macros::Failure(__FILE__, __LINE__, #macro, #condition); \
-    }                                                                     \
-  } while (false)
+#define RUY_CHECK_IMPL(macro, condition)                              \
+  ruy::check_macros::CheckImpl(condition, __FILE__, __LINE__, #macro, \
+                               #condition)
 
-#define RUY_CHECK_OP_IMPL(macro, lhs, op, rhs)                                \
-  do {                                                                        \
-    const auto& lhs_value = (lhs);                                            \
-    const auto& rhs_value = (rhs);                                            \
-    if (!(lhs_value op rhs_value)) {                                          \
-      ruy::check_macros::Failure(__FILE__, __LINE__, #macro, #lhs, lhs_value, \
-                                 #op, #rhs, rhs_value);                       \
-    }                                                                         \
-  } while (false)
+#define RUY_CHECK_OP_IMPL(macro, lhs, op_symbol, op_comparison, rhs) \
+  ruy::check_macros::CheckImpl<op_comparison>(                       \
+      __FILE__, __LINE__, #macro, #lhs, lhs, #op_symbol, #rhs, rhs)
 
 #define RUY_CHECK(condition) RUY_CHECK_IMPL(RUY_CHECK, condition)
-#define RUY_CHECK_EQ(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_EQ, x, ==, y)
-#define RUY_CHECK_NE(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_NE, x, !=, y)
-#define RUY_CHECK_GE(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_GE, x, >=, y)
-#define RUY_CHECK_GT(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_GT, x, >, y)
-#define RUY_CHECK_LE(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_LE, x, <=, y)
-#define RUY_CHECK_LT(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_LT, x, <, y)
+#define RUY_CHECK_EQ(x, y) \
+  RUY_CHECK_OP_IMPL(RUY_CHECK_EQ, x, ==, std::equal_to, y)
+#define RUY_CHECK_NE(x, y) \
+  RUY_CHECK_OP_IMPL(RUY_CHECK_NE, x, !=, std::not_equal_to, y)
+#define RUY_CHECK_GE(x, y) \
+  RUY_CHECK_OP_IMPL(RUY_CHECK_GE, x, >=, std::greater_equal, y)
+#define RUY_CHECK_GT(x, y) \
+  RUY_CHECK_OP_IMPL(RUY_CHECK_GT, x, >, std::greater, y)
+#define RUY_CHECK_LE(x, y) \
+  RUY_CHECK_OP_IMPL(RUY_CHECK_LE, x, <=, std::less_equal, y)
+#define RUY_CHECK_LT(x, y) RUY_CHECK_OP_IMPL(RUY_CHECK_LT, x, <, std::less, y)
 
 #ifdef NDEBUG
 #define RUY_DCHECK_IS_ENABLED false
