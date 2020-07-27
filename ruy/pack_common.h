@@ -18,6 +18,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 #include <type_traits>
 
