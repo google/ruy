@@ -246,11 +246,11 @@ struct RandomRangeBounds<Scalar, true> {
   static Scalar GetMinBound(RandomRange range) {
     switch (range) {
       case RandomRange::kGeneral:
-        return -1;
+        return 0;
       case RandomRange::kAvoidMinValue:
         return -1;
       case RandomRange::kOffCenterAvoidMinValue:
-        return -1;
+        return 0;
       case RandomRange::kReasonableSrcZeroPoint:
         return 0;
       case RandomRange::kReasonableDstZeroPoint:
@@ -265,11 +265,11 @@ struct RandomRangeBounds<Scalar, true> {
   static Scalar GetMaxBound(RandomRange range) {
     switch (range) {
       case RandomRange::kGeneral:
-        return 1;
+        return 2;
       case RandomRange::kAvoidMinValue:
         return 1;
       case RandomRange::kOffCenterAvoidMinValue:
-        return 1;
+        return 2;
       case RandomRange::kReasonableSrcZeroPoint:
         return 0;
       case RandomRange::kReasonableDstZeroPoint:
@@ -1443,6 +1443,51 @@ bool Agree(const TestResult<Scalar>& result1, const TestResult<Scalar>& result2,
                result2.external_path, result2.storage_matrix, depth);
 }
 
+template <typename Scalar>
+void AddAgreeingTestResults(
+    TestResult<Scalar>** result,
+    std::vector<std::vector<TestResult<Scalar>*>>& clusters, int depth) {
+  bool inserted = false;
+  for (auto cluster = clusters.begin(); cluster != clusters.end(); ++cluster) {
+    bool agreement = true;
+    // Test for agreement with every result in the cluster.
+    for (auto other_result : *cluster) {
+      agreement &= Agree(**result, *other_result, depth);
+    }
+    if (agreement) {
+      cluster->push_back(*result);
+      inserted = true;
+    }
+  }
+  if (!inserted) {
+    std::vector<TestResult<Scalar>*> new_results;
+    new_results.push_back(*result);
+    clusters.push_back(new_results);
+  }
+}
+
+template <typename Scalar>
+void PrintPathsInAgreement(
+    const std::vector<std::unique_ptr<TestResult<Scalar>>>& results,
+    int depth) {
+  // A container holding vectors of TestResults, where membership indicates
+  // that all TestResults agree with each other.
+  std::vector<std::vector<TestResult<Scalar>*>> clusters;
+  for (auto ritr = results.begin(); ritr != results.end(); ++ritr) {
+    TestResult<Scalar>* test_result = (*ritr).get();
+    AddAgreeingTestResults(&test_result, clusters, depth);
+  }
+
+  std::cerr << "Error: Not all paths agree. \n";
+  for (auto cluster : clusters) {
+    std::cerr << "These paths all agree with each other: ";
+    for (auto result : cluster) {
+      std::cerr << PathName(*result) << ", ";
+    }
+    std::cerr << "but disagree with the rest.\n";
+  }
+}
+
 struct Stats {
   double median;
   double mean;
@@ -2142,17 +2187,9 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::VerifyTestResults()
   const int depth = lhs.matrix.layout().cols();
   for (int i = 0; i < static_cast<int>(results.size()) - 1; i++) {
     if (!Agree(*results[i], *results[i + 1], depth)) {
-      std::string paths_in_agreement;
-      paths_in_agreement.append(PathName(*results[0]));
-      for (int j = 1; j <= i; j++) {
-        paths_in_agreement.append(", ");
-        paths_in_agreement.append(PathName(*results[j]));
-      }
+      PrintPathsInAgreement(results, depth);
       ErrorAnalysis error_analysis;
       AnalyzeTestError(*this, i + 1, &error_analysis);
-      std::cerr << "Error: path (" << PathName(*results[i + 1])
-                << ") disagrees with the other paths (" << paths_in_agreement
-                << "), which agree with each other." << std::endl;
       std::cerr << "Shape: rows = " << rows << ", cols = " << cols
                 << ", depth = " << depth << std::endl;
       std::cerr << "Stats of the good result matrix: "
