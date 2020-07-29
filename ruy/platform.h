@@ -139,12 +139,6 @@ limitations under the License.
 #define RUY_PLATFORM_AVX2_FMA 0
 #endif
 
-#if RUY_PLATFORM_X86_ENHANCEMENTS && RUY_PLATFORM_X86 && defined(__AVX__)
-#define RUY_PLATFORM_AVX 1
-#else
-#define RUY_PLATFORM_AVX 0
-#endif
-
 // Detect Emscripten, typically Wasm.
 #ifdef __EMSCRIPTEN__
 #define RUY_PLATFORM_EMSCRIPTEN 1
