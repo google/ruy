@@ -1,4 +1,4 @@
-/* Copyright 2019 Google LLC. All Rights Reserved.
+/* Copyright 2020 Google LLC. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,19 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef RUY_RUY_HAVE_BUILT_PATH_FOR_H_
-#define RUY_RUY_HAVE_BUILT_PATH_FOR_H_
-
-#include "ruy/platform.h"
+#include "ruy/have_built_path_for.h"
+#include "ruy/opt_set.h"
 
 namespace ruy {
 
 #if RUY_PLATFORM_X86
-bool HaveBuiltPathForAvx();
-bool HaveBuiltPathForAvx2Fma();
-bool HaveBuiltPathForAvx512();
+// IMPORTANT:
+// These patterns must match those in the pack and kernel cc files.
+#if !(RUY_PLATFORM_AVX && RUY_OPT(ASM))
+
+bool HaveBuiltPathForAvx() { return false; }
+
+#else  // RUY_PLATFORM_AVX && RUY_OPT(ASM)
+
+bool HaveBuiltPathForAvx() { return true; }
+
+#endif  // RUY_PLATFORM_AVX && RUY_OPT(ASM)
 #endif  // RUY_PLATFORM_X86
 
 }  // namespace ruy
-
-#endif  // RUY_RUY_HAVE_BUILT_PATH_FOR_H_

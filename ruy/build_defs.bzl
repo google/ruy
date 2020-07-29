@@ -63,6 +63,12 @@ def ruy_copts_avx512():
         "//conditions:default": [],
     })
 
+def ruy_copts_avx():
+    return select({
+        "//ruy:x86_64": ["-mavx"],
+        "//conditions:default": [],
+    })
+
 def ruy_copts_avx2_fma():
     return select({
         "//ruy:x86_64": ["-mavx2", "-mfma"],
