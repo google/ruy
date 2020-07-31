@@ -107,6 +107,7 @@ inline const char* PathName(Path path) {
 #elif RUY_PLATFORM_X86
     RUY_PATHNAME_CASE(kAvx2Fma)
     RUY_PATHNAME_CASE(kAvx512)
+    RUY_PATHNAME_CASE(kAvx)
 #endif
     default:
       RUY_CHECK(false);
@@ -1354,9 +1355,9 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
   const int size = matrix1.layout().rows() * matrix1.layout().cols();
   double tolerated_max_diff = 0;
   double tolerated_mean_diff = 0;
+  const float kSmallestAllowedDifference =
+      4. * std::numeric_limits<Scalar>::epsilon();
   if (std::is_floating_point<Scalar>::value) {
-    // TODO: replace hardcoded 100 by something more sensible, probably
-    // roughly sqrt(depth) based on central limit theorem.
     double max_abs_val = 0;
     for (int row = 0; row < matrix1.layout().rows(); row++) {
       for (int col = 0; col < matrix1.layout().cols(); col++) {
@@ -1370,6 +1371,18 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
     }
     tolerated_max_diff = max_abs_val * std::numeric_limits<Scalar>::epsilon() *
                          64 * std::sqrt(static_cast<float>(depth));
+    if (tolerated_max_diff < kSmallestAllowedDifference) {
+      // Clamp the tolerated max diff to be a bit above machine epsilon if the
+      // calculated value is too small.
+      tolerated_max_diff = kSmallestAllowedDifference;
+      if (external_path1 == ExternalPath::kEigen ||
+          external_path2 == ExternalPath::kEigen ||
+          external_path1 == ExternalPath::kEigenTensor ||
+          external_path2 == ExternalPath::kEigenTensor) {
+        // Make additional allowance for Eigen differences.
+        tolerated_max_diff *= 3.0f;
+      }
+    }
     tolerated_mean_diff = tolerated_max_diff / std::sqrt(size);
   } else if (std::is_same<Scalar, std::int32_t>::value) {
     // raw integer case, no rounding, so we can require exactness
