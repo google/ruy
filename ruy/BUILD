@@ -704,6 +704,27 @@ cc_library(
 )
 
 cc_library(
+    name = "pack_avx",
+    srcs = [
+        "pack_avx.cc",
+    ],
+    hdrs = [
+        "pack_x86.h",
+    ],
+    copts = ruy_copts() + ruy_copts_avx(),
+    deps = [
+        ":check_macros",
+        ":mat",
+        ":opt_set",
+        ":pack_common",
+        ":path",
+        ":platform",
+        ":tune",
+        "//ruy/profiler:instrumentation",
+    ],
+)
+
+cc_library(
     name = "have_built_path_for_avx",
     srcs = [
         "have_built_path_for_avx.cc",
@@ -757,6 +778,7 @@ cc_library(
         ":matrix",
         ":opt_set",
         ":pack_arm",  # fixdeps: keep
+        ":pack_avx",  # fixdeps: keep
         ":pack_avx2_fma",  # fixdeps: keep
         ":pack_avx512",  # fixdeps: keep
         ":pack_common",
