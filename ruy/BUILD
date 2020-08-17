@@ -1,5 +1,6 @@
 # Ruy is not BLAS
 
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
@@ -1114,7 +1115,7 @@ ruy_benchmark(
         ("i8", "i8", "i32", "i32"),
     ],
     deps = [
-        "//ruy:test_lib",
+        ":test_lib",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -1135,7 +1136,7 @@ ruy_test(
         ("i8", "u8", "i32", "i32"),
     ],
     deps = [
-        "//ruy:test_lib",
+        ":test_lib",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -1153,7 +1154,31 @@ ruy_test(
     ],
     tags = ["slow"],
     deps = [
-        "//ruy:test_lib",
+        ":test_lib",
         "@com_google_googletest//:gtest_main",
     ],
+)
+
+bzl_library(
+    name = "ruy_test_ext.oss_bzl",
+    srcs = ["ruy_test_ext.oss.bzl"],
+    visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "ruy_test_bzl",
+    srcs = ["ruy_test.bzl"],
+    visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "build_defs.oss_bzl",
+    srcs = ["build_defs.oss.bzl"],
+    visibility = ["//visibility:private"],
+)
+
+bzl_library(
+    name = "build_defs_bzl",
+    srcs = ["build_defs.bzl"],
+    visibility = ["//visibility:private"],
 )
