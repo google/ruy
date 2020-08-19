@@ -38,6 +38,7 @@ class CpuInfo final {
 
   // Common features
   const CpuCacheParams& CacheParams();
+  bool CurrentCpuIsInOrder();
 
  private:
   enum class InitStatus {

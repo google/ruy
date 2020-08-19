@@ -118,6 +118,21 @@ bool CpuInfo::AvxVnni() {
   return EnsureInitialized() && cpuinfo_has_x86_avx512vnni();
 }
 
+bool CpuInfo::CurrentCpuIsInOrder() {
+  if (!EnsureInitialized()) {
+    return false;
+  }
+
+  switch (cpuinfo_get_uarch(cpuinfo_get_current_uarch_index())->uarch) {
+    case cpuinfo_uarch_cortex_a53:
+    case cpuinfo_uarch_cortex_a55r0:
+    case cpuinfo_uarch_cortex_a55:
+      return true;
+    default:
+      return false;
+  }
+}
+
 #else  // not defined RUY_HAVE_CPUINFO
 
 CpuInfo::~CpuInfo() {}
@@ -135,6 +150,7 @@ bool CpuInfo::Avx() { return false; }
 bool CpuInfo::Avx2Fma() { return false; }
 bool CpuInfo::Avx512() { return false; }
 bool CpuInfo::AvxVnni() { return false; }
+bool CpuInfo::CurrentCpuIsInOrder() { return false; }
 
 #endif
 

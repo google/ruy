@@ -164,6 +164,8 @@ cc_library(
     ],
     copts = ruy_copts(),
     deps = [
+        ":cpu_cache_params",
+        ":cpuinfo",
         ":opt_set",
         ":platform",
         ":time",
@@ -202,6 +204,7 @@ cc_test(
     srcs = ["tune_test.cc"],
     copts = ruy_copts(),
     deps = [
+        ":cpuinfo",
         ":gtest_wrapper",
         ":tune",
     ],
@@ -221,14 +224,6 @@ cc_test(
         ":prepacked_cache",
         ":ruy",
         ":time",
-    ],
-)
-
-cc_binary(
-    name = "tune_tool",
-    srcs = ["tune_tool.cc"],
-    deps = [
-        ":tune",
     ],
 )
 

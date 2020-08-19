@@ -57,7 +57,8 @@ struct TrMulTask final : Task {
             std::atomic<int>* atomic_block_id_, int thread_id_,
             bool need_atomics_,
             SidePair<std::atomic<PackingStatus>*> packing_status_,
-            TuningResolver* tuning_resolver_, Allocator* local_allocator_)
+            TuningResolver* tuning_resolver_, Allocator* local_allocator_,
+            CpuInfo* cpuinfo_)
       : params(params_),
         block_map(block_map_),
         atomic_block_id(atomic_block_id_),
@@ -66,7 +67,8 @@ struct TrMulTask final : Task {
         packing_status(packing_status_),
         tuning_resolver(tuning_resolver_),
         local_allocator(local_allocator_),
-        local_already_packed{nullptr, nullptr} {}
+        local_already_packed{nullptr, nullptr},
+        cpuinfo(cpuinfo_) {}
 
   // Thread main function. This is one thread's share of the TrMul work.
   void Run() override {
@@ -79,7 +81,7 @@ struct TrMulTask final : Task {
       }
     }
 
-    const Tuning tuning = tuning_resolver->Resolve();
+    const Tuning tuning = tuning_resolver->Resolve(cpuinfo);
     const int num_blocks = NumBlocks(block_map);
 
     // Each thread starts by initially reserving the block whose id
@@ -227,6 +229,8 @@ struct TrMulTask final : Task {
 
   // Local indicators of packedness to avoid the overhead of atomic ops.
   SidePair<bool*> local_already_packed;
+
+  CpuInfo* cpuinfo;
 };
 
 int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
@@ -354,9 +358,9 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   for (int i = 0; i < thread_count; i++) {
     auto* allocator = ctx->GetThreadSpecificAllocator(i);
     auto* tuning_resolver = ctx->GetThreadSpecificTuningResolver(i);
-    new (tasks + i)
-        TrMulTask(params, block_map, atomic_block_id, i, need_atomics,
-                  packing_status, tuning_resolver, allocator);
+    new (tasks + i) TrMulTask(params, block_map, atomic_block_id, i,
+                              need_atomics, packing_status, tuning_resolver,
+                              allocator, ctx->mutable_cpuinfo());
   }
 
   // Do the computation.

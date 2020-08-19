@@ -196,7 +196,7 @@ Tuning Ctx::GetMainThreadTuning() {
   EnsureThreadSpecificResources(1);
   TuningResolver* tuning_resolver = GetThreadSpecificTuningResolver(0);
   tuning_resolver->SetTuning(explicit_tuning());
-  return tuning_resolver->Resolve();
+  return tuning_resolver->Resolve(mutable_cpuinfo());
 }
 
 void Ctx::ClearPrepackedCache() { mutable_impl()->prepacked_cache_ = nullptr; }

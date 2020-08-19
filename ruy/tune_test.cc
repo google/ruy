@@ -18,6 +18,7 @@ limitations under the License.
 #include <chrono>  // NOLINT(build/c++11)
 #include <thread>  // NOLINT(build/c++11)
 
+#include "ruy/cpuinfo.h"
 #include "ruy/gtest_wrapper.h"
 
 namespace ruy {
@@ -25,21 +26,22 @@ namespace {
 
 TEST(TuneTest, TuneTest) {
   TuningResolver tuning_resolver;
-  ASSERT_FALSE(tuning_resolver.Resolve() == Tuning::kAuto);
+  CpuInfo cpuinfo;
+  ASSERT_FALSE(tuning_resolver.Resolve(&cpuinfo) == Tuning::kAuto);
   // 1 second is likely higher than TuningResolver's internal cache expiry,
   // exercising the logic invalidating earlier tuning resolutions.
   std::this_thread::sleep_for(std::chrono::seconds(1));
-  ASSERT_FALSE(tuning_resolver.Resolve() == Tuning::kAuto);
+  ASSERT_FALSE(tuning_resolver.Resolve(&cpuinfo) == Tuning::kAuto);
 
   tuning_resolver.SetTuning(Tuning::kAuto);
 
 #ifdef RUY_IMPLEMENT_TUNING
   for (auto tuning : {Tuning::kOutOfOrder, Tuning::kInOrder}) {
     tuning_resolver.SetTuning(tuning);
-    ASSERT_TRUE(tuning_resolver.Resolve() == tuning);
+    ASSERT_TRUE(tuning_resolver.Resolve(&cpuinfo) == tuning);
     // See above comment about 1 second.
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    ASSERT_TRUE(tuning_resolver.Resolve() == tuning);
+    ASSERT_TRUE(tuning_resolver.Resolve(&cpuinfo) == tuning);
   }
 #endif
 }
