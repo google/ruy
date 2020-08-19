@@ -31,12 +31,13 @@ namespace ruy {
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
-void Pack8bitColMajorForNeonOutOfOrder(
-    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
-    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
-    std::int32_t* sums_ptr, int input_xor) {
-  profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
+void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
+                             const void* src_ptr2, const void* src_ptr3,
+                             int src_inc0, int src_inc1, int src_inc2,
+                             int src_inc3, int src_rows, int src_zero_point,
+                             std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+                             int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeon)");
   asm volatile(
       // clang-format off
           // v26 will be the vector to XOR input values with to perform
@@ -246,11 +247,10 @@ void CheckOffsetsInPackParams8bit(const Params&) {
   static_assert(offsetof(Params, input_xor) == RUY_OFFSET_INPUT_XOR, "");
 }
 
-// Packing code for out-of-order ARMv7 CPUs like the Krait 400 or A9.
-// No attempt made at making this code efficient on in-order cores yet.
-void Pack8bitColMajorForNeonOutOfOrder4Cols(const PackParams8bit& params) {
+// No attempt made at making this code efficient on A55-ish cores yet.
+void Pack8bitColMajorForNeon4Cols(const PackParams8bit& params) {
   CheckOffsetsInPackParams8bit(params);
-  profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
+  profiler::ScopeLabel label("Pack (kNeon)");
   const void* src_ptr0 = params.src_ptr0;
   const void* src_ptr1 = params.src_ptr1;
   const void* src_ptr2 = params.src_ptr2;
@@ -473,9 +473,9 @@ void Pack8bitColMajorForNeonOutOfOrder4Cols(const PackParams8bit& params) {
 // No attempt made at making this code efficient on in-order cores yet.
 // This version differs from the above in that we only handle two columns
 // at a time.
-void Pack8bitColMajorForNeonOutOfOrder2Cols(const PackParams8bit& params) {
+void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params) {
   CheckOffsetsInPackParams8bit(params);
-  profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
+  profiler::ScopeLabel label("Pack (kNeon)");
   const void* src_ptr0 = params.src_ptr0;
   const void* src_ptr1 = params.src_ptr1;
   const int src_inc0 = params.src_inc0;
@@ -626,12 +626,12 @@ void Pack8bitColMajorForNeonOutOfOrder2Cols(const PackParams8bit& params) {
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
-void Pack8bitColMajorForNeonInOrder(const void* src_ptr0, const void* src_ptr1,
-                                    const void* src_ptr2, const void* src_ptr3,
-                                    int src_inc0, int src_inc1, int src_inc2,
-                                    int src_inc3, int src_rows,
-                                    int src_zero_point, std::int8_t* packed_ptr,
-                                    std::int32_t* sums_ptr, int input_xor) {
+void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
+                                   const void* src_ptr2, const void* src_ptr3,
+                                   int src_inc0, int src_inc1, int src_inc2,
+                                   int src_inc3, int src_rows,
+                                   int src_zero_point, std::int8_t* packed_ptr,
+                                   std::int32_t* sums_ptr, int input_xor) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
   asm volatile(
       // clang-format off
@@ -837,7 +837,7 @@ void Pack8bitColMajorForNeonInOrder(const void* src_ptr0, const void* src_ptr1,
             "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-void Pack8bitColMajorForNeonDotprodInOrder(
+void Pack8bitColMajorForNeonDotprodA55ish(
     const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
     const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
     int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
@@ -1083,13 +1083,13 @@ void Pack8bitColMajorForNeonDotprodInOrder(
             "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-void Pack8bitColMajorForNeonDotprodOutOfOrder(
-    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
-    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
-    std::int32_t* sums_ptr, int input_xor) {
-  profiler::ScopeLabel label(
-      "Pack (kNeonDotprod, optimized for out-of-order cores)");
+void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
+                                    const void* src_ptr2, const void* src_ptr3,
+                                    int src_inc0, int src_inc1, int src_inc2,
+                                    int src_inc3, int src_rows,
+                                    int src_zero_point, std::int8_t* packed_ptr,
+                                    std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonDotprod)");
   asm volatile(
       // clang-format off
           // v26 will be the vector to XOR input values with to perform
@@ -1735,11 +1735,11 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
         "v27", "v28", "v29", "v30", "v31");
 }
 
-void PackFloatColMajorForNeonOutOfOrder(
-    const float* src_ptr0, const float* src_ptr1, const float* src_ptr2,
-    const float* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, float* packed_ptr) {
-  profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
+void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
+                              const float* src_ptr2, const float* src_ptr3,
+                              int src_inc0, int src_inc1, int src_inc2,
+                              int src_inc3, int src_rows, float* packed_ptr) {
+  profiler::ScopeLabel label("Pack (kNeon)");
   asm volatile(
       // clang-format off
           // w1 will be the number of rows already loaded.
@@ -1882,13 +1882,11 @@ void PackFloatColMajorForNeonOutOfOrder(
 #endif
 
 #if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
-void PackFloatColMajorForNeonOutOfOrder(const float* src_ptr0,
-                                        const float* src_ptr1,
-                                        const float* src_ptr2,
-                                        const float* src_ptr3, int src_inc,
-                                        int src_rows, float* packed_ptr,
-                                        int output_stride) {
-  profiler::ScopeLabel label("Pack (kNeon, optimized for out-of-order cores)");
+void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
+                              const float* src_ptr2, const float* src_ptr3,
+                              int src_inc, int src_rows, float* packed_ptr,
+                              int output_stride) {
+  profiler::ScopeLabel label("Pack (kNeon)");
   asm volatile(
       // clang-format off
           "mov r1, #0\n"
@@ -2066,12 +2064,12 @@ void PackFloatColMajorForNeonOutOfOrder(const float* src_ptr0,
 #endif  // (RUY_PLATFORM_NEON_32
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
-void PackFloatColMajorForNeonInOrder(const float* src_ptr0,
-                                     const float* src_ptr1,
-                                     const float* src_ptr2,
-                                     const float* src_ptr3, int src_inc0,
-                                     int src_inc1, int src_inc2, int src_inc3,
-                                     int src_rows, float* packed_ptr) {
+void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
+                                    const float* src_ptr1,
+                                    const float* src_ptr2,
+                                    const float* src_ptr3, int src_inc0,
+                                    int src_inc1, int src_inc2, int src_inc3,
+                                    int src_rows, float* packed_ptr) {
   profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
 
   asm volatile(
@@ -2290,7 +2288,7 @@ void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
     // it's working at, this seems like a fair compromise. If one wanted to
     // maximize performance at the cost of more code complexity/size, one could
     // have code handling 16 columns at a time (maybe limited to
-    // Tuning::kOutOfOrder), then 8, then 4 to minimize the amount of slow
+    // Tuning::kGeneric), then 8, then 4 to minimize the amount of slow
     // leftovers.
     //
     // Load 8 sums in sums0, sums1.

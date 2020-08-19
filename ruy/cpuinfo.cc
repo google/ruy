@@ -118,7 +118,7 @@ bool CpuInfo::AvxVnni() {
   return EnsureInitialized() && cpuinfo_has_x86_avx512vnni();
 }
 
-bool CpuInfo::CurrentCpuIsInOrder() {
+bool CpuInfo::CurrentCpuIsA55ish() {
   if (!EnsureInitialized()) {
     return false;
   }
@@ -150,7 +150,7 @@ bool CpuInfo::Avx() { return false; }
 bool CpuInfo::Avx2Fma() { return false; }
 bool CpuInfo::Avx512() { return false; }
 bool CpuInfo::AvxVnni() { return false; }
-bool CpuInfo::CurrentCpuIsInOrder() { return false; }
+bool CpuInfo::CurrentCpuIsA55ish() { return false; }
 
 #endif
 

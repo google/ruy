@@ -62,23 +62,25 @@ void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
-void Pack8bitColMajorForNeonOutOfOrder(
-    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
-    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
-    std::int32_t* sums_ptr, int input_xor);
-void Pack8bitColMajorForNeonInOrder(const void* src_ptr0, const void* src_ptr1,
+void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
+                             const void* src_ptr2, const void* src_ptr3,
+                             int src_inc0, int src_inc1, int src_inc2,
+                             int src_inc3, int src_rows, int src_zero_point,
+                             std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+                             int input_xor);
+void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
+                                   const void* src_ptr2, const void* src_ptr3,
+                                   int src_inc0, int src_inc1, int src_inc2,
+                                   int src_inc3, int src_rows,
+                                   int src_zero_point, std::int8_t* packed_ptr,
+                                   std::int32_t* sums_ptr, int input_xor);
+void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
                                     const void* src_ptr2, const void* src_ptr3,
                                     int src_inc0, int src_inc1, int src_inc2,
                                     int src_inc3, int src_rows,
                                     int src_zero_point, std::int8_t* packed_ptr,
                                     std::int32_t* sums_ptr, int input_xor);
-void Pack8bitColMajorForNeonDotprodOutOfOrder(
-    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
-    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
-    std::int32_t* sums_ptr, int input_xor);
-void Pack8bitColMajorForNeonDotprodInOrder(
+void Pack8bitColMajorForNeonDotprodA55ish(
     const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
     const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
     int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
@@ -130,8 +132,8 @@ inline void MakePackParams8bit(const void* src_ptr0, const void* src_ptr1,
   params->input_xor = input_xor;
 }
 
-void Pack8bitColMajorForNeonOutOfOrder4Cols(const PackParams8bit& params);
-void Pack8bitColMajorForNeonOutOfOrder2Cols(const PackParams8bit& params);
+void Pack8bitColMajorForNeon4Cols(const PackParams8bit& params);
+void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params);
 
 #endif  // (RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 
@@ -187,16 +189,16 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
           packed_matrix->data + packed_matrix->layout.stride * block_col;
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
 #if RUY_PLATFORM_NEON_64
-      if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-        Pack8bitColMajorForNeonInOrder(
+      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+        Pack8bitColMajorForNeonA55ish(
             src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
             src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
             packed_ptr, sums_ptr, kInputXor);
       } else {
-        Pack8bitColMajorForNeonOutOfOrder(
-            src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
-            src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
-            packed_ptr, sums_ptr, kInputXor);
+        Pack8bitColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                src_inc0, src_inc1, src_inc2, src_inc3,
+                                src_matrix.layout.rows, src_matrix.zero_point,
+                                packed_ptr, sums_ptr, kInputXor);
       }
 #else
       (void)tuning;
@@ -208,7 +210,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
                          packed_ptr, src_inc0, src_inc1, src_inc2, src_inc3,
                          src_matrix.layout.rows, src_matrix.zero_point,
                          kInputXor, &params);
-      Pack8bitColMajorForNeonOutOfOrder4Cols(params);
+      Pack8bitColMajorForNeon4Cols(params);
 #endif  // RUY_PLATFORM_NEON_64
     }
   }
@@ -262,7 +264,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
                          packed_ptr, src_inc0, src_inc1, -1, -1,
                          src_matrix.layout.rows, src_matrix.zero_point,
                          kInputXor, &params);
-      Pack8bitColMajorForNeonOutOfOrder2Cols(params);
+      Pack8bitColMajorForNeon2Cols(params);
     }
   }
 };
@@ -320,13 +322,13 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
           packed_matrix->layout.stride * (block_col & ~7) +
           ((block_col & 4) * 4);
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
-      if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-        Pack8bitColMajorForNeonDotprodInOrder(
+      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+        Pack8bitColMajorForNeonDotprodA55ish(
             src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
             src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
             packed_ptr, sums_ptr, kInputXor);
       } else {
-        Pack8bitColMajorForNeonDotprodOutOfOrder(
+        Pack8bitColMajorForNeonDotprod(
             src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
             src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
             packed_ptr, sums_ptr, kInputXor);
@@ -337,24 +339,22 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
 #endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
-void PackFloatColMajorForNeonOutOfOrder(
-    const float* src_ptr0, const float* src_ptr1, const float* src_ptr2,
-    const float* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
-    int src_inc3, int src_rows, float* packed_ptr);
-void PackFloatColMajorForNeonInOrder(const float* src_ptr0,
-                                     const float* src_ptr1,
-                                     const float* src_ptr2,
-                                     const float* src_ptr3, int src_inc0,
-                                     int src_inc1, int src_inc2, int src_inc3,
-                                     int src_rows, float* packed_ptr);
+void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
+                              const float* src_ptr2, const float* src_ptr3,
+                              int src_inc0, int src_inc1, int src_inc2,
+                              int src_inc3, int src_rows, float* packed_ptr);
+void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
+                                    const float* src_ptr1,
+                                    const float* src_ptr2,
+                                    const float* src_ptr3, int src_inc0,
+                                    int src_inc1, int src_inc2, int src_inc3,
+                                    int src_rows, float* packed_ptr);
 
 #elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
-void PackFloatColMajorForNeonOutOfOrder(const float* src_ptr0,
-                                        const float* src_ptr1,
-                                        const float* src_ptr2,
-                                        const float* src_ptr3, int src_inc,
-                                        int src_rows, float* packed_ptr,
-                                        int stride);
+void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
+                              const float* src_ptr2, const float* src_ptr3,
+                              int src_inc, int src_rows, float* packed_ptr,
+                              int stride);
 #endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
 
 #if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
@@ -400,14 +400,14 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                           packed_matrix->layout.stride * (block_col & ~7) +
                           ((block_col & 4));
 #if RUY_PLATFORM_NEON_64
-      if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-        PackFloatColMajorForNeonInOrder(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
-                                        src_inc0, src_inc1, src_inc2, src_inc3,
-                                        src_matrix.layout.rows, packed_ptr);
+      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+        PackFloatColMajorForNeonA55ish(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                       src_inc0, src_inc1, src_inc2, src_inc3,
+                                       src_matrix.layout.rows, packed_ptr);
       } else {
-        PackFloatColMajorForNeonOutOfOrder(
-            src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
-            src_inc2, src_inc3, src_matrix.layout.rows, packed_ptr);
+        PackFloatColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                 src_inc0, src_inc1, src_inc2, src_inc3,
+                                 src_matrix.layout.rows, packed_ptr);
       }
 #else
       (void)tuning;
@@ -424,9 +424,9 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
       src_inc += src_inc2 == 16 ? 4 : 0;
       src_inc += src_inc3 == 16 ? 8 : 0;
       const int kOutputStride = 32;
-      PackFloatColMajorForNeonOutOfOrder(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
-                                         src_inc, src_matrix.layout.rows,
-                                         packed_ptr, kOutputStride);
+      PackFloatColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc,
+                               src_matrix.layout.rows, packed_ptr,
+                               kOutputStride);
 #endif  // RUY_PLATFORM_NEON_64
     }
   }
@@ -482,9 +482,9 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
       src_inc += src_inc2 == 16 ? 4 : 0;
       src_inc += src_inc3 == 16 ? 8 : 0;
       const int kOutputStride = 16;
-      PackFloatColMajorForNeonOutOfOrder(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
-                                         src_inc, src_matrix.layout.rows,
-                                         packed_ptr, kOutputStride);
+      PackFloatColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc,
+                               src_matrix.layout.rows, packed_ptr,
+                               kOutputStride);
     }
   }
 };

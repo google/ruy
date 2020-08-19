@@ -39,16 +39,16 @@ RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
 
 #if RUY_PLATFORM_NEON_64
-void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params);
-void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeon(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params);
 #elif RUY_PLATFORM_NEON_32
-void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params);
-void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params);
+void Kernel8bitNeon(const KernelParams8bit<4, 2>& params);
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params);
 #endif
-void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params);
-void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params);
-void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params);
-void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
@@ -66,13 +66,13 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
                          end_col, dst, &params);
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
-      Kernel8bitNeonOutOfOrder1Col(params);
+      Kernel8bitNeon1Col(params);
       return;
     }
-    if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-      Kernel8bitNeonInOrder(params);
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      Kernel8bitNeonA55ish(params);
     } else {
-      Kernel8bitNeonOutOfOrder(params);
+      Kernel8bitNeon(params);
     }
   }
 };
@@ -94,10 +94,10 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
                          end_col, dst, &params);
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
-      Kernel8bitNeonOutOfOrder1Col(params);
+      Kernel8bitNeon1Col(params);
       return;
     }
-    Kernel8bitNeonOutOfOrder(params);
+    Kernel8bitNeon(params);
   }
 };
 #endif
@@ -118,20 +118,20 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t, DstSca
                          end_col, dst, &params);
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
-      Kernel8bitNeonDotprodOutOfOrder1Col(params);
-    } else if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-      Kernel8bitNeonDotprodInOrder(params);
+      Kernel8bitNeonDotprod1Col(params);
+    } else if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      Kernel8bitNeonDotprodA55ish(params);
     } else {
-      Kernel8bitNeonDotprodOutOfOrder(params);
+      Kernel8bitNeonDotprod(params);
     }
   }
 };
 #endif
 
-void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params);
-void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params);
-void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params);
-void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeon(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params);
+void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params);
+void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
 // A Float kernel for ARM64 Neon.
@@ -148,10 +148,10 @@ struct Kernel<Path::kNeon, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-      KernelFloatNeonInOrder(params);
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      KernelFloatNeonA55ish(params);
     } else {
-      KernelFloatNeonOutOfOrder(params);
+      KernelFloatNeon(params);
     }
   }
 };
@@ -174,7 +174,7 @@ struct Kernel<Path::kNeon, float, float, float, float> {
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
 
-    KernelFloat32NeonOutOfOrder(params);
+    KernelFloat32Neon(params);
   }
 };
 #endif
@@ -197,10 +197,10 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (__builtin_expect(tuning == Tuning::kInOrder, true)) {
-      KernelFloatNeonDotprodInOrder(params);
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      KernelFloatNeonDotprodA55ish(params);
     } else {
-      KernelFloatNeonOutOfOrder(params);
+      KernelFloatNeon(params);
     }
   }
 };

@@ -24,7 +24,7 @@ limitations under the License.
 // layouts compared to Path::kNeon; but within each, different tunings
 // will share that same layout.
 //
-// # Tuning is for now only based on 1 bit: OutOfOrder / InOrder
+// # Tuning is for now only based on 1 bit: Generic / A55ish
 //
 // In practice, each of our asm code paths only needs one bit information to
 // decide on tuning: whether the CPU is out-of-order or in-order.
@@ -37,7 +37,7 @@ limitations under the License.
 //
 // Because having tuned code paths is a compromise of efficiency gains
 // versus implementation effort and code size, we are happy to stop at just this
-// single bit of information, OutOfOrder/InOrder, at least in the current CPU
+// single bit of information, Generic / A55ish, at least in the current CPU
 // landscape. This could change in the future.
 #ifndef RUY_RUY_TUNE_H_
 #define RUY_RUY_TUNE_H_
@@ -54,10 +54,22 @@ enum class Tuning {
   // user-visible parts (see Context). It's meant to be resolved to an
   // actual tuning at some point by means of TuningResolver.
   kAuto,
-  // Target an out-order CPU. Example: ARM Cortex-A75.
-  kOutOfOrder,
-  // Target an in-order CPU. Example: ARM Cortex-A55.
-  kInOrder
+  // Use code not tuned for any particular CPU, typically performing well
+  // on out-of-order cores that don't require as much tuning.
+  kGeneric,
+  // Use code tuned for "Cortex-A55-ish" CPUs, by which we mean mostly:
+  // A53, A55r0 (pre-dotprod), A55r1 (with dotprod). These CPUs have in common
+  // that they are in-order CPU cores with largely similar requirements of code
+  // tuning. The most important such requirement is to use only 64-bit loads
+  // to maximize dual-issuing.
+  //
+  // A55r1 differs from A55r0 and A53 in that it dual-issues 64-bit NEON loads
+  // whereas A55r0 and A53 require using non-NEON ARM 64-bit loads together with
+  // INS instructions to insert 64bit lanes into NEON registers. However, since
+  // A55r1 supports dotprod unlike A55r0 and A53, they are not using the same
+  // kernels in practice anyway, so there was no need to distinguish them with
+  // separate Tuning values.
+  kA55ish
 };
 
 // Why a TuningResolver class?
@@ -65,7 +77,7 @@ enum class Tuning {
 // Ideally, this Library would offer a single function,
 //   Tuning GetCurrentCPUTuning();
 //
-// However, determining information about the current CPU is not necessarily,
+// However, determining information about the current CPU is not necessarily
 // cheap, so we currently cache that and only invalidate/reevaluate after
 // a fixed amount of time. This need to store state is why this library
 // has to expose a class, TuningResolver, not just a function.

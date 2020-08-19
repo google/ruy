@@ -78,10 +78,9 @@ void CheckOffsetsInKernelParamsFloat32(const Params&) {
 // Just like Float 64 version, except accumulate in to 8x4 block to only
 // use 16 128-bit NEON registers. This is a "first pass" kernel and not
 // tuned. It is meant to run on out-of-order CPUs like the Krait 400 or A9.
-void KernelFloat32NeonOutOfOrder(const KernelParamsFloat<8, 4>& params) {
+void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params) {
   CheckOffsetsInKernelParamsFloat32(params);
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+  profiler::ScopeLabel label("Kernel (kNeon)");
 
   const float* lhs_ptr = params.lhs_base_ptr;
   const float* rhs_ptr = params.rhs_base_ptr;
@@ -625,9 +624,8 @@ void CheckOffsetsInKernelParams8bit(const Params&) {
 // Fast-int8 kernel, ported from ARM 64 version.
 // Relevant target CPUs for this kernel include Krait 400 and A9,
 // since these are 32-bit, out-of-order CPUs.
-void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -1626,9 +1624,8 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 2>& params) {
 
 // Fast-int8 true "GEMV" kernel (RHS has 1 column). We assume the RHS
 // is still packed as if it has two columns
-void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 2>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon)");
 
   CheckOffsetsInKernelParams8bit(params);
 

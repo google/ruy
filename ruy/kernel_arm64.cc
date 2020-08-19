@@ -96,9 +96,8 @@ void CheckOffsetsInKernelParams8bit(const Params&) {
 //
 // Relevant target CPUs for this kernel include ARM Cortex-A73 and Cortex-A75,
 // since these are 64-bit, out-of-order and without dotprod support.
-void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon)");
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
@@ -1151,13 +1150,12 @@ void Kernel8bitNeonOutOfOrder(const KernelParams8bit<4, 4>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-// Similar to existing Kernel8bitNeonOutOfOrder but specialized for the case of
+// Similar to existing Kernel8bitNeon but specialized for the case of
 // RHS cols == 1.
 // Relevant target CPUs for this kernel include ARM Cortex-A73 and Cortex-A75,
 // since these are 64-bit, out-of-order and without dotprod support.
-void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -1820,7 +1818,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params) {
           "v13", "v14", "v15", "v16", "v17", "v18", "v19");
 }
 
-// Variant of the above Kernel8bitNeonOutOfOrder, tuned for in-order CPUs.
+// Variant of the above Kernel8bitNeon, tuned for A55-ish CPUs.
 // Specifically here, the relevant in-order CPUs are ARM Cortex-A53 and
 // the original Cortex-A55, since these are 64-bit and do not support dotprod.
 //
@@ -1829,7 +1827,7 @@ void Kernel8bitNeonOutOfOrder1Col(const KernelParams8bit<4, 4>& params) {
 // contribution of gemmlowp kernels tuned for Cortex-A53, with very helpful
 // comments. Specifically, see this comment about tuning for Cortex-A53:
 // https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4215
-void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
+void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
   profiler::ScopeLabel label("Kernel (kNeon, optimized for in-order cores)");
 
   CheckOffsetsInKernelParams8bit(params);
@@ -2984,9 +2982,8 @@ void Kernel8bitNeonInOrder(const KernelParams8bit<4, 4>& params) {
 //
 // Relevant target CPUs for this kernel include ARM Cortex-A76,
 // since these are 64-bit, out-of-order and with dotprod support.
-void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeonDotprod, optimized for out-of-order cores)");
+void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprod)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -4414,9 +4411,8 @@ void Kernel8bitNeonDotprodOutOfOrder(const KernelParams8bit<8, 8>& params) {
 // RHS cols == 1.
 // Relevant target CPUs for this kernel include ARM Cortex-A76,
 // since these are 64-bit, out-of-order and with dotprod support.
-void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params) {
-  profiler::ScopeLabel label(
-      "Kernel (kNeonDotprod, optimized for out-of-order cores)");
+void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprod)");
 
   CheckOffsetsInKernelParams8bit(params);
 
@@ -5102,7 +5098,7 @@ void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params) {
           "v13", "v14", "v15", "v16", "v17");
 }
 
-// Variant of the above Kernel8bitNeonDotprodOutOfOrder, tuned for in-order
+// Variant of the above Kernel8bitNeonDotprod, tuned for in-order
 // CPUs. Specifically here, the relevant in-order CPUs are ARM Cortex-A55r1,
 // since these are 64-bit and support dotprod.
 //
@@ -5111,7 +5107,7 @@ void Kernel8bitNeonDotprodOutOfOrder1Col(const KernelParams8bit<8, 8>& params) {
 // contribution of gemmlowp kernels tuned for Cortex-A55r1, with very helpful
 // comments. Specifically, see this comment about tuning for Cortex-A55r1:
 // https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4412
-void Kernel8bitNeonDotprodInOrder(const KernelParams8bit<8, 8>& params) {
+void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
   profiler::ScopeLabel label(
       "Kernel (kNeonDotprod, optimized for in-order cores)");
 
@@ -6454,10 +6450,9 @@ void CheckOffsetsInKernelParamsFloat(const Params&) {
 // width instead of the wider 12x8 that the register space permits and that
 // the aforementioned gemmlowp kernel uses.  Ruy likes powers of two for now
 // and we don't have evidence that going beyond 8x8 is needed.
-void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
+void KernelFloatNeon(const KernelParamsFloat<8, 8>& params) {
   CheckOffsetsInKernelParamsFloat(params);
-  profiler::ScopeLabel label(
-      "Kernel (kNeon, optimized for out-of-order cores)");
+  profiler::ScopeLabel label("Kernel (kNeon)");
 
   const float* lhs_col_ptr = params.lhs_base_ptr;
   const float* rhs_col_ptr = params.rhs_base_ptr;
@@ -7086,7 +7081,7 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-// Variant of KernelFloatNeonOutOfOrder tuned for in-order CPUs that do not
+// Variant of KernelFloatNeon tuned for in-order CPUs that do not
 // support dotprod (while dotprod by itself is not relevant to floating-point,
 // this additional bit of information that we have about the target happens to
 // be useful here).
@@ -7099,7 +7094,7 @@ void KernelFloatNeonOutOfOrder(const KernelParamsFloat<8, 8>& params) {
 // which was contributed by David Mansell with very helpful
 // comments. Specifically, see this comment about tuning for Cortex-A53:
 // https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4215
-void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
+void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params) {
   profiler::ScopeLabel label("Kernel (kNeon, optimized for in-order cores)");
 
   CheckOffsetsInKernelParamsFloat(params);
@@ -7579,7 +7574,7 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
           "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-// Variant of KernelFloatNeonInOrder tuned for in-order CPUs that do
+// Variant of KernelFloatNeonA55ish tuned for in-order CPUs that do
 // support dotprod (while dotprod by itself is not relevant to floating-point,
 // this additional bit of information that we have about the target happens to
 // be useful here).
@@ -7591,7 +7586,7 @@ void KernelFloatNeonInOrder(const KernelParamsFloat<8, 8>& params) {
 // which was contributed by David Mansell with very helpful
 // comments. Specifically, see this comment about tuning for Cortex-A55r1:
 // https://github.com/google/gemmlowp/blob/36212ad3651871bc3e9a599f1a6d5324778aea25/standalone/neon-gemm-kernel-benchmark.cc#L4412
-void KernelFloatNeonDotprodInOrder(const KernelParamsFloat<8, 8>& params) {
+void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params) {
   profiler::ScopeLabel label(
       "Kernel (kNeonDotprod, optimized for in-order cores)");
 
