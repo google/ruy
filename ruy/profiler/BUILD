@@ -3,7 +3,6 @@
 load("//ruy:build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 
 package(
-    default_compatible_with = ["//buildenv/target:non_prod"],
     licenses = ["notice"],  # Apache 2.0
 )
 
