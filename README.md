@@ -10,18 +10,13 @@ ruy supports both floating-point and 8bit-integer-quantized matrices.
 
 ## Efficiency
 
-ruy is designed to achieve maximal performance not just on very large sizes, as
+ruy is designed to achieve high performance not just on very large sizes, as
 is the focus of many established libraries, but on whatever are the actual sizes
 and shapes of matrices most critical in current TensorFlow Lite applications.
 This often means quite small sizes, e.g. 100x100 or even 50x50, and all sorts of
-rectangular shapes.
-
-ruy is currently only optimized for the ARM architectures (both 64-bit and
-32-bit code). Optimization for the Intel x86 architecture is in progress.
-
-ruy is currently optimized only for the following combination of storage orders:
-LHS = row-major, RHS = column-major, destination = column-major. All other
-combinations of storage orders fall back to slow reference code at the moment.
+rectangular shapes. It's not as fast as completely specialized code for each
+shape, but it aims to offer a good compromise of speed across all shapes and a
+small binary size.
 
 ## Documentation
 
