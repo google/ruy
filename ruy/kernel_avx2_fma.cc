@@ -60,266 +60,10 @@ static constexpr int kAvx8bitInnerSize = 4;
 namespace {
 namespace intrin_utils {
 
-// Polyfill for _mm_storeu_si16(dst, v).
-inline void mm_storeu_si16(void* dst, __m128i v) {
-#if defined __clang__
-  _mm_storeu_si16(dst, v);
-#else
-  // GCC 9 lacks support for __mm_storeu_si16.
-  *static_cast<std::int16_t*>(dst) = _mm_extract_epi16(v, 0);
-#endif
-}
-
-// Polyfill for _mm_storeu_si32(dst, v).
-inline void mm_storeu_si32(void* dst, __m128i v) {
-#if defined __clang__
-  _mm_storeu_si32(dst, v);
-#else
-  // GCC 9 lacks support for __mm_storeu_si32.
-  *static_cast<std::int32_t*>(dst) = _mm_extract_epi32(v, 0);
-#endif
-}
-
-// Polyfill for _mm_loadu_si32(src).
-inline __m128i mm_loadu_si32(const void* src) {
-#if defined __clang__
-  return _mm_loadu_si32(src);
-#else
-  // GCC 9 lacks support for _mm_loadu_si32.
-  __m128i res;
-  asm("movss %[src], %[res]"
-      : [res] "=x"(res)
-      : [src] "m"(*static_cast<const int*>(src)));
-  return res;
-#endif
-}
-
-inline void mm256_n_storeu_cvtepi32_epi8(std::uint8_t* dst, int residual_rows,
-                                         const __m256i v) {
-  // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
-  const __m256i repack_perm = _mm256_set1_epi32(0x0c080400);
-  __m256i shuffled_v;
-  if (residual_rows > 1) {
-    // This selects 0, 4, 8, 12, 0, 4, 8, 12, ..., but we only use the first 4
-    // in each 128-bit lane.
-    shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  }
-  switch (residual_rows) {
-    case 0:
-      break;
-    case 1:
-      dst[0] = _mm256_extract_epi8(v, 0);
-      break;
-    case 2:
-      mm_storeu_si16(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      break;
-    case 3: {
-      __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 0);
-      mm_storeu_si16(dst, trailing_packed);
-      dst[2] = _mm_extract_epi8(trailing_packed, 2);
-      break;
-    }
-    case 4:
-      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      break;
-    case 5:
-      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      dst[4] = _mm256_extract_epi8(shuffled_v, 16);
-      break;
-    case 6:
-      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      mm_storeu_si16(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-      break;
-    case 7: {
-      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 1);
-      mm_storeu_si16(dst + 4, trailing_packed);
-      dst[6] = _mm_extract_epi8(trailing_packed, 2);
-      break;
-    }
-    case 8:
-      mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-      break;
-    default:
-      RUY_DCHECK_LE(residual_rows, 8);
-      break;
-  }
-}
-
-inline void mm256_storeu_cvtepi32_epi8(std::uint8_t* dst, const __m256i v) {
-  // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
-  const __m256i repack_perm = _mm256_set1_epi32(0x0c080400);
-  const __m256i shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-  mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-}
-
-inline void mm256_n_storeu_cvtepi32_epi8(std::int8_t* dst, int residual_rows,
-                                         const __m256i v) {
-  intrin_utils::mm256_n_storeu_cvtepi32_epi8(
-      reinterpret_cast<std::uint8_t*>(dst), residual_rows, v);
-}
-
-inline void mm256_storeu_cvtepi32_epi8(std::int8_t* dst, const __m256i v) {
-  // Select bytes 0, 4, 8, 12 within each lane, effectively truncating.
-  const __m256i repack_perm = _mm256_set1_epi32(0x0c080400);
-  const __m256i shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  mm_storeu_si32(dst, _mm256_extracti128_si256(shuffled_v, 0));
-  mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-}
-
-inline void mm256_n_storeu_cvtepi32_epi16(std::int16_t* dst, int residual_rows,
-                                          const __m256i v) {
-  // Select bytes 0, 1, 4, 5, 8, 9, 12, 13 within each lane, effectively
-  // truncating each 16-bit integer.
-  const __m256i repack_perm = _mm256_set1_epi64x(0x0d0c090805040100);
-  __m256i shuffled_v;
-  __m128i shuffled_v_low;
-  if (residual_rows > 1) {
-    shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-    shuffled_v_low = _mm256_extracti128_si256(shuffled_v, 0);
-  } else {
-    shuffled_v_low = _mm256_extracti128_si256(v, 0);
-  }
-  switch (residual_rows) {
-    case 0:
-      break;
-    case 1:
-      mm_storeu_si16(dst, shuffled_v_low);
-      break;
-    case 2:
-      mm_storeu_si32(dst, shuffled_v_low);
-      break;
-    case 3: {
-      mm_storeu_si32(dst, shuffled_v_low);
-      dst[2] = _mm_extract_epi16(shuffled_v_low, 2);
-      break;
-    }
-    case 4:
-      _mm_storeu_si64(dst, shuffled_v_low);
-      break;
-    case 5:
-      _mm_storeu_si64(dst, shuffled_v_low);
-      dst[4] = _mm256_extract_epi16(shuffled_v, 8);
-      break;
-    case 6:
-      _mm_storeu_si64(dst, shuffled_v_low);
-      mm_storeu_si32(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-      break;
-    case 7: {
-      _mm_storeu_si64(dst, shuffled_v_low);
-      __m128i trailing_packed = _mm256_extracti128_si256(shuffled_v, 1);
-      mm_storeu_si32(dst + 4, trailing_packed);
-      dst[6] = _mm_extract_epi16(trailing_packed, 2);
-      break;
-    }
-    case 8:
-      _mm_storeu_si64(dst, _mm256_extracti128_si256(shuffled_v, 0));
-      _mm_storeu_si64(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-      break;
-    default:
-      RUY_DCHECK_LE(residual_rows, 8);
-      break;
-  }
-}
-
-inline void mm256_storeu_cvtepi32_epi16(std::int16_t* dst, const __m256i v) {
-  // Select bytes 0, 1, 4, 5, 8, 9, 12, 13 within each lane, effectively
-  // truncating each 16-bit integer.
-  const __m256i repack_perm = _mm256_set1_epi64x(0x0d0c090805040100);
-  const __m256i shuffled_v = _mm256_shuffle_epi8(v, repack_perm);
-  _mm_storeu_si64(dst, _mm256_extracti128_si256(shuffled_v, 0));
-  _mm_storeu_si64(dst + 4, _mm256_extracti128_si256(shuffled_v, 1));
-}
-
-inline void mm256_n_storeu_epi32(std::int32_t* dst, int residual_rows,
-                                 const __m256i v) {
-  const __m128i v_low = _mm256_extracti128_si256(v, 0);
-  switch (residual_rows) {
-    case 0:
-      break;
-    case 1:
-      mm_storeu_si32(dst, v_low);
-      break;
-    case 2:
-      _mm_storeu_si64(dst, v_low);
-      break;
-    case 3: {
-      __m128i trailing_packed = v_low;
-      _mm_storeu_si64(dst, trailing_packed);
-      dst[2] = _mm_extract_epi32(trailing_packed, 2);
-      break;
-    }
-    case 4:
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dst), v_low);
-      break;
-    case 5:
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dst), v_low);
-      dst[4] = _mm256_extract_epi32(v, 4);
-      break;
-    case 6:
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dst), v_low);
-      _mm_storeu_si64(dst + 4, _mm256_extracti128_si256(v, 1));
-      break;
-    case 7: {
-      _mm_storeu_si128(reinterpret_cast<__m128i*>(dst), v_low);
-      __m128i trailing_packed = _mm256_extracti128_si256(v, 1);
-      _mm_storeu_si64(dst + 4, trailing_packed);
-      dst[6] = _mm_extract_epi32(trailing_packed, 2);
-      break;
-    }
-    case 8:
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(dst), v);
-      break;
-    default:
-      RUY_DCHECK_LE(residual_rows, 8);
-      break;
-  }
-}
-
-inline void mm256_storeu_epi32(std::int32_t* dst, const __m256i v) {
-  _mm256_storeu_si256(reinterpret_cast<__m256i*>(dst), v);
-}
-
-
-// Transpose a 8x8 matrix of floats.
-void mm256_transpose8x8_ps(__m256* v0, __m256* v1, __m256* v2, __m256* v3,
-                           __m256* v4, __m256* v5, __m256* v6, __m256* v7) {
-  __m256 t2x2_0 = _mm256_unpacklo_ps(*v0, *v1);
-  __m256 t2x2_1 = _mm256_unpackhi_ps(*v0, *v1);
-  __m256 t2x2_2 = _mm256_unpacklo_ps(*v2, *v3);
-  __m256 t2x2_3 = _mm256_unpackhi_ps(*v2, *v3);
-  __m256 t2x2_4 = _mm256_unpacklo_ps(*v4, *v5);
-  __m256 t2x2_5 = _mm256_unpackhi_ps(*v4, *v5);
-  __m256 t2x2_6 = _mm256_unpacklo_ps(*v6, *v7);
-  __m256 t2x2_7 = _mm256_unpackhi_ps(*v6, *v7);
-  __m256 t4x4_0 = _mm256_shuffle_ps(t2x2_0, t2x2_2, _MM_SHUFFLE(1, 0, 1, 0));
-  __m256 t4x4_1 = _mm256_shuffle_ps(t2x2_0, t2x2_2, _MM_SHUFFLE(3, 2, 3, 2));
-  __m256 t4x4_2 = _mm256_shuffle_ps(t2x2_1, t2x2_3, _MM_SHUFFLE(1, 0, 1, 0));
-  __m256 t4x4_3 = _mm256_shuffle_ps(t2x2_1, t2x2_3, _MM_SHUFFLE(3, 2, 3, 2));
-  __m256 t4x4_4 = _mm256_shuffle_ps(t2x2_4, t2x2_6, _MM_SHUFFLE(1, 0, 1, 0));
-  __m256 t4x4_5 = _mm256_shuffle_ps(t2x2_4, t2x2_6, _MM_SHUFFLE(3, 2, 3, 2));
-  __m256 t4x4_6 = _mm256_shuffle_ps(t2x2_5, t2x2_7, _MM_SHUFFLE(1, 0, 1, 0));
-  __m256 t4x4_7 = _mm256_shuffle_ps(t2x2_5, t2x2_7, _MM_SHUFFLE(3, 2, 3, 2));
-  *v0 = _mm256_permute2f128_ps(t4x4_0, t4x4_4, 0x20);
-  *v1 = _mm256_permute2f128_ps(t4x4_1, t4x4_5, 0x20);
-  *v2 = _mm256_permute2f128_ps(t4x4_2, t4x4_6, 0x20);
-  *v3 = _mm256_permute2f128_ps(t4x4_3, t4x4_7, 0x20);
-  *v4 = _mm256_permute2f128_ps(t4x4_0, t4x4_4, 0x31);
-  *v5 = _mm256_permute2f128_ps(t4x4_1, t4x4_5, 0x31);
-  *v6 = _mm256_permute2f128_ps(t4x4_2, t4x4_6, 0x31);
-  *v7 = _mm256_permute2f128_ps(t4x4_3, t4x4_7, 0x31);
-}
-// Transpose a 8x8 matrix of int32's.
-void mm256_transpose8x8_epi32(__m256i* v0, __m256i* v1, __m256i* v2,
-                              __m256i* v3, __m256i* v4, __m256i* v5,
-                              __m256i* v6, __m256i* v7) {
-  mm256_transpose8x8_ps(
-      reinterpret_cast<__m256*>(v0), reinterpret_cast<__m256*>(v1),
-      reinterpret_cast<__m256*>(v2), reinterpret_cast<__m256*>(v3),
-      reinterpret_cast<__m256*>(v4), reinterpret_cast<__m256*>(v5),
-      reinterpret_cast<__m256*>(v6), reinterpret_cast<__m256*>(v7));
+template <>
+inline __m256i mm256_shuffle_epi8<Path::kAvx2Fma>(const __m256i& a,
+                                                  const __m256i& b) {
+  return _mm256_shuffle_epi8(a, b);
 }
 
 // Make an inline function for FMA so we can share the float kernels
@@ -330,10 +74,25 @@ inline __m256 MulAdd<Path::kAvx2Fma>(const __m256& a, const __m256& b,
   return _mm256_fmadd_ps(a, b, c);
 }
 
+template <>
+inline __m128i mm256_extracti128_si256<Path::kAvx2Fma>(const __m256i& a,
+                                                       const int imm) {
+  switch (imm) {
+    case 0:
+      return _mm256_extracti128_si256(a, 0);
+    case 1:
+      return _mm256_extracti128_si256(a, 1);
+    default:
+      RUY_DCHECK_LT(imm, 2);
+      return _mm_setzero_si128();
+  }
+}
+
 }  // namespace intrin_utils
 }  // namespace
 
-void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
+template <Path path>
+void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
   profiler::ScopeLabel label("Kernel kAvx2Fma 8-bit");
   const std::int8_t splitter_idx_data[32] = {
       0, 1, 4, 5, 8,  9,  12, 13,  //
@@ -674,7 +433,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         if (transpose_around_multiplier) {
           // Transpose the 8x8 accumulators block. Will be un-transposed below
           // after the multplier implementation.
-          intrin_utils::mm256_transpose8x8_epi32(
+          intrin_utils::mm256_transpose8x8_epi32<path>(
               &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
               &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
         }
@@ -714,7 +473,7 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
         // of the 8x8 block of accumulators used to implement the
         // channels-are-columns case.
         if (transpose_around_multiplier) {
-          intrin_utils::mm256_transpose8x8_epi32(
+          intrin_utils::mm256_transpose8x8_epi32<path>(
               &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
               &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
         }
@@ -755,29 +514,29 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
           accum_data_v6 = _mm256_max_epi32(accum_data_v6, clamp_min_v);
           accum_data_v7 = _mm256_min_epi32(accum_data_v7, clamp_max_v);
           accum_data_v7 = _mm256_max_epi32(accum_data_v7, clamp_min_v);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[0 * dst_stride],
-                                                   accum_data_v0);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[1 * dst_stride],
-                                                   accum_data_v1);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[2 * dst_stride],
-                                                   accum_data_v2);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[3 * dst_stride],
-                                                   accum_data_v3);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[4 * dst_stride],
-                                                   accum_data_v4);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[5 * dst_stride],
-                                                   accum_data_v5);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[6 * dst_stride],
-                                                   accum_data_v6);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[7 * dst_stride],
-                                                   accum_data_v7);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[0 * dst_stride], accum_data_v0);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[1 * dst_stride], accum_data_v1);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[2 * dst_stride], accum_data_v2);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[3 * dst_stride], accum_data_v3);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[4 * dst_stride], accum_data_v4);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[5 * dst_stride], accum_data_v5);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[6 * dst_stride], accum_data_v6);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[7 * dst_stride], accum_data_v7);
         } else {
           for (int j = 0; j < residual_cols; ++j) {
             __m256i result = accum_data_v[j];
             result = _mm256_min_epi32(result, clamp_max_v);
             result = _mm256_max_epi32(result, clamp_min_v);
-            intrin_utils::mm256_n_storeu_cvtepi32_epi8(tmp_ptr, residual_rows,
-                                                       result);
+            intrin_utils::mm256_n_storeu_cvtepi32_epi8<path>(
+                tmp_ptr, residual_rows, result);
             tmp_ptr += dst_stride;
           }
         }
@@ -802,28 +561,29 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
           accum_data_v6 = _mm256_max_epi32(accum_data_v6, clamp_min_v);
           accum_data_v7 = _mm256_min_epi32(accum_data_v7, clamp_max_v);
           accum_data_v7 = _mm256_max_epi32(accum_data_v7, clamp_min_v);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[0], accum_data_v0);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[dst_stride],
-                                                   accum_data_v1);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[2 * dst_stride],
-                                                   accum_data_v2);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[3 * dst_stride],
-                                                   accum_data_v3);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[4 * dst_stride],
-                                                   accum_data_v4);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[5 * dst_stride],
-                                                   accum_data_v5);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[6 * dst_stride],
-                                                   accum_data_v6);
-          intrin_utils::mm256_storeu_cvtepi32_epi8(&tmp_ptr[7 * dst_stride],
-                                                   accum_data_v7);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(&tmp_ptr[0],
+                                                         accum_data_v0);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(&tmp_ptr[dst_stride],
+                                                         accum_data_v1);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[2 * dst_stride], accum_data_v2);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[3 * dst_stride], accum_data_v3);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[4 * dst_stride], accum_data_v4);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[5 * dst_stride], accum_data_v5);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[6 * dst_stride], accum_data_v6);
+          intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
+              &tmp_ptr[7 * dst_stride], accum_data_v7);
         } else {
           for (int j = 0; j < residual_cols; ++j) {
             __m256i result = accum_data_v[j];
             result = _mm256_min_epi32(result, clamp_max_v);
             result = _mm256_max_epi32(result, clamp_min_v);
-            intrin_utils::mm256_n_storeu_cvtepi32_epi8(tmp_ptr, residual_rows,
-                                                       result);
+            intrin_utils::mm256_n_storeu_cvtepi32_epi8<path>(
+                tmp_ptr, residual_rows, result);
             tmp_ptr += dst_stride;
           }
         }
@@ -848,28 +608,29 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
           accum_data_v6 = _mm256_max_epi32(accum_data_v6, clamp_min_v);
           accum_data_v7 = _mm256_min_epi32(accum_data_v7, clamp_max_v);
           accum_data_v7 = _mm256_max_epi32(accum_data_v7, clamp_min_v);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[0], accum_data_v0);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[dst_stride],
-                                                    accum_data_v1);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[2 * dst_stride],
-                                                    accum_data_v2);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[3 * dst_stride],
-                                                    accum_data_v3);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[4 * dst_stride],
-                                                    accum_data_v4);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[5 * dst_stride],
-                                                    accum_data_v5);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[6 * dst_stride],
-                                                    accum_data_v6);
-          intrin_utils::mm256_storeu_cvtepi32_epi16(&tmp_ptr[7 * dst_stride],
-                                                    accum_data_v7);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(&tmp_ptr[0],
+                                                          accum_data_v0);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(&tmp_ptr[dst_stride],
+                                                          accum_data_v1);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[2 * dst_stride], accum_data_v2);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[3 * dst_stride], accum_data_v3);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[4 * dst_stride], accum_data_v4);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[5 * dst_stride], accum_data_v5);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[6 * dst_stride], accum_data_v6);
+          intrin_utils::mm256_storeu_cvtepi32_epi16<path>(
+              &tmp_ptr[7 * dst_stride], accum_data_v7);
         } else {
           for (int j = 0; j < residual_cols; ++j) {
             __m256i result = accum_data_v[j];
             result = _mm256_min_epi32(result, clamp_max_v);
             result = _mm256_max_epi32(result, clamp_min_v);
-            intrin_utils::mm256_n_storeu_cvtepi32_epi16(tmp_ptr, residual_rows,
-                                                        result);
+            intrin_utils::mm256_n_storeu_cvtepi32_epi16<path>(
+                tmp_ptr, residual_rows, result);
             tmp_ptr += dst_stride;
           }
         }
@@ -878,25 +639,26 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
       } else if (params.dst_type_id == DstTypeId<std::int32_t>::kValue) {
         if (store_full_block) {
           std::int32_t* tmp_ptr = static_cast<std::int32_t*>(dst_ptr);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[0], accum_data_v0);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[dst_stride], accum_data_v1);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[2 * dst_stride],
-                                           accum_data_v2);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[3 * dst_stride],
-                                           accum_data_v3);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[4 * dst_stride],
-                                           accum_data_v4);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[5 * dst_stride],
-                                           accum_data_v5);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[6 * dst_stride],
-                                           accum_data_v6);
-          intrin_utils::mm256_storeu_epi32(&tmp_ptr[7 * dst_stride],
-                                           accum_data_v7);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[0], accum_data_v0);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[dst_stride],
+                                                 accum_data_v1);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[2 * dst_stride],
+                                                 accum_data_v2);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[3 * dst_stride],
+                                                 accum_data_v3);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[4 * dst_stride],
+                                                 accum_data_v4);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[5 * dst_stride],
+                                                 accum_data_v5);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[6 * dst_stride],
+                                                 accum_data_v6);
+          intrin_utils::mm256_storeu_epi32<path>(&tmp_ptr[7 * dst_stride],
+                                                 accum_data_v7);
         } else {
           std::int32_t* dst_block_ptr = static_cast<std::int32_t*>(dst_ptr);
           for (int j = 0; j < residual_cols; ++j) {
-            intrin_utils::mm256_n_storeu_epi32(dst_block_ptr, residual_rows,
-                                               accum_data_v[j]);
+            intrin_utils::mm256_n_storeu_epi32<path>(
+                dst_block_ptr, residual_rows, accum_data_v[j]);
             dst_block_ptr += dst_stride;
           }
         }
@@ -915,7 +677,12 @@ void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
   }  // End col-block loop.
 }  // NOLINT(readability/fn_size)
 
-void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
+void Kernel8bitAvx2(const KernelParams8bit<8, 8>& params) {
+  Kernel8bitAvx2Impl<Path::kAvx2Fma>(params);
+}
+
+template <Path path>
+void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
   profiler::ScopeLabel label("Kernel kAvx2Fma 8-bit GEMV");
 
   RUY_DCHECK_EQ(params.dst_cols, 1);
@@ -1000,7 +767,7 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
     for (int d = 0; d < params.depth; d += kAvx8bitInnerSize) {
       const __m256i lhs_data =
           _mm256_load_si256(reinterpret_cast<const __m256i*>(lhs_ptr));
-      const __m128i rhs_data_8bit = intrin_utils::mm_loadu_si32(rhs_ptr);
+      const __m128i rhs_data_8bit = intrin_utils::mm_loadu_si32<path>(rhs_ptr);
 
       // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
       // For simplicity we load 4x the data that we need and process twice the
@@ -1133,10 +900,12 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
     if (params.dst_type_id == DstTypeId<std::int8_t>::kValue) {
       std::int8_t* tmp_ptr = static_cast<std::int8_t*>(dst_ptr);
       __m256i result = accum_data_v0;
+      int32_t res = _mm256_extract_epi32(result, 0);
       result = _mm256_min_epi32(result, clamp_max_v);
       result = _mm256_max_epi32(result, clamp_min_v);
-      intrin_utils::mm256_n_storeu_cvtepi32_epi8(tmp_ptr, residual_rows,
-                                                 result);
+      res = _mm256_extract_epi32(result, 0);
+      intrin_utils::mm256_n_storeu_cvtepi32_epi8<path>(tmp_ptr, residual_rows,
+                                                       result);
       dst_ptr = static_cast<void*>(static_cast<std::int8_t*>(dst_ptr) +
                                    kAvx8bitBlockSize);
     } else if (params.dst_type_id == DstTypeId<std::uint8_t>::kValue) {
@@ -1144,8 +913,8 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
       __m256i result = accum_data_v0;
       result = _mm256_min_epi32(result, clamp_max_v);
       result = _mm256_max_epi32(result, clamp_min_v);
-      intrin_utils::mm256_n_storeu_cvtepi32_epi8(tmp_ptr, residual_rows,
-                                                 result);
+      intrin_utils::mm256_n_storeu_cvtepi32_epi8<path>(tmp_ptr, residual_rows,
+                                                       result);
       dst_ptr = static_cast<void*>(static_cast<std::uint8_t*>(dst_ptr) +
                                    kAvx8bitBlockSize);
     } else if (params.dst_type_id == DstTypeId<std::int16_t>::kValue) {
@@ -1153,14 +922,14 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
       __m256i result = accum_data_v0;
       result = _mm256_min_epi32(result, clamp_max_v);
       result = _mm256_max_epi32(result, clamp_min_v);
-      intrin_utils::mm256_n_storeu_cvtepi32_epi16(tmp_ptr, residual_rows,
-                                                  result);
+      intrin_utils::mm256_n_storeu_cvtepi32_epi16<path>(tmp_ptr, residual_rows,
+                                                        result);
       dst_ptr = static_cast<void*>(static_cast<std::int16_t*>(dst_ptr) +
                                    kAvx8bitBlockSize);
     } else if (params.dst_type_id == DstTypeId<std::int32_t>::kValue) {
       std::int32_t* dst_block_ptr = static_cast<std::int32_t*>(dst_ptr);
-      intrin_utils::mm256_n_storeu_epi32(dst_block_ptr, residual_rows,
-                                         accum_data_v0);
+      intrin_utils::mm256_n_storeu_epi32<path>(dst_block_ptr, residual_rows,
+                                               accum_data_v0);
       dst_ptr = static_cast<void*>(static_cast<std::int32_t*>(dst_ptr) +
                                    kAvx8bitBlockSize);
     } else {
@@ -1174,6 +943,10 @@ void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
                                    kAvx8bitBlockSize * params.dst_stride);
   rhs_col_ptr += kAvx8bitBlockSize * params.rhs_stride;
 }  // NOLINT(readability/fn_size)
+
+void Kernel8bitAvx2SingleCol(const KernelParams8bit<8, 8>& params) {
+  Kernel8bitAvx2SingleColImpl<Path::kAvx2Fma>(params);
+}
 
 void KernelFloatAvx2(const KernelParamsFloat<8, 8>& params) {
   profiler::ScopeLabel label("Kernel kAvx2Fma float");
