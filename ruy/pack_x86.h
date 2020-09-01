@@ -33,8 +33,8 @@ namespace ruy {
 
 #if RUY_PLATFORM_X86
 
-RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx2Fma)
-RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx)
+RUY_INHERIT_PACK(Path::kStandardCpp, Path::kAvx)
+RUY_INHERIT_PACK(Path::kAvx, Path::kAvx2Fma)
 RUY_INHERIT_PACK(Path::kAvx2Fma, Path::kAvx512)
 
 RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx2Fma, 8)
