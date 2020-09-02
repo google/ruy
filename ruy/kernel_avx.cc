@@ -396,8 +396,7 @@ inline __m256i mm256_mul_epi32(const __m256i& a, const __m256i& b) {
 }
 
 // Perform the equivalent of mm256_permutevar8x32 with
-// a second argument of {0, 2, 4, 6, 1, 3, 5, 7} for the
-// 7 6 5 4 3 2 1 0
+// a second argument of {7, 5, 3, 1, 6, 4, 2, 0}
 template <Path path>
 inline __m256i PermuteEpi32EvenOdds(const __m256i& a) {
   // a_lo = 3 2 1 0

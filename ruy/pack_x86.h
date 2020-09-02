@@ -41,6 +41,11 @@ RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx2Fma, 8)
 RUY_USE_MEMCPY_ROWMAJOR_FLOAT_PACK(Path::kAvx512, 16)
 
 template <>
+struct PackedTypeImpl<Path::kAvx, std::uint8_t> {
+  using Type = std::int8_t;
+};
+
+template <>
 struct PackedTypeImpl<Path::kAvx2Fma, std::uint8_t> {
   using Type = std::int8_t;
 };
@@ -91,6 +96,53 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
           packed_matrix->data +
           packed_matrix->layout.stride * (block_col & block_col_mask);
       Pack8bitColMajorForAvx2(
+          reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
+          reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
+          remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
+    }
+  }
+};
+
+void Pack8bitColMajorForAvx(const std::int8_t* src_ptr, std::int8_t input_xor,
+                            const std::int8_t* zerobuf, int src_stride,
+                            int remaining_src_cols, int src_rows,
+                            std::int8_t* packed_ptr, std::int32_t* sums_ptr);
+
+template <typename Scalar>
+struct PackImpl<Path::kAvx, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
+                std::int8_t, std::int32_t, Order::kColMajor> {
+  static_assert(std::is_same<Scalar, std::int8_t>::value ||
+                    std::is_same<Scalar, std::uint8_t>::value,
+                "");
+  using Layout = FixedKernelLayout<Order::kColMajor, 4, 8>;
+  static constexpr std::int8_t kInputXor =
+      std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (AVX 8-bit)");
+
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+    std::int32_t* sums = packed_matrix->sums;
+    Scalar zerobuf[Layout::kCols * Layout::kRows];
+    memset(zerobuf, packed_matrix->zero_point ^ kInputXor,
+           Layout::kCols * Layout::kRows * sizeof(Scalar));
+    for (int block_col = start_col; block_col < end_col;
+         block_col += Layout::kCols) {
+      std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
+      int src_stride = src_matrix.layout.stride;
+      const Scalar* src_ptr = src_matrix.data.get() + src_stride * block_col;
+      int remaining_src_cols = src_matrix.layout.cols - block_col;
+
+      static constexpr int block_col_mask = ~(Layout::kCols - 1);  // High bits.
+      std::int8_t* packed_ptr =
+          packed_matrix->data +
+          packed_matrix->layout.stride * (block_col & block_col_mask);
+      Pack8bitColMajorForAvx(
           reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
           reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
           remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
@@ -288,6 +340,41 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
   }
 };
 
+void Pack8bitRowMajorForAvx(const std::uint8_t* src_ptr, int src_stride,
+                            int src_zero_point, std::int8_t* packed_ptr,
+                            int packed_stride, int start_col, int end_col,
+                            int src_cols, int block_row, int src_rows,
+                            int input_xor, std::int32_t* sums);
+
+template <typename Scalar>
+struct PackImpl<Path::kAvx, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
+                std::int8_t, std::int32_t, Order::kRowMajor> {
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (AVX 8bit row-major)");
+    RUY_DCHECK_EQ(src_matrix.layout.order, Order::kRowMajor);
+    static constexpr int kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+    std::int32_t* sums = packed_matrix->sums;
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    int block_row = 0;
+    for (; block_row < packed_matrix->layout.rows; block_row += 4) {
+      int src_stride = src_matrix.layout.stride;
+      int packed_stride = packed_matrix->layout.stride;
+      const Scalar* src_ptr =
+          src_matrix.data.get() + block_row * src_stride + start_col;
+      std::int8_t* packed_ptr =
+          packed_matrix->data + start_col * packed_stride + block_row * 8;
+      Pack8bitRowMajorForAvx(reinterpret_cast<const std::uint8_t*>(src_ptr),
+                             src_stride, src_matrix.zero_point, packed_ptr,
+                             packed_stride, start_col, end_col,
+                             src_matrix.layout.cols, block_row,
+                             src_matrix.layout.rows, kInputXor, sums);
+    }
+  }
+};
+
 void Pack8bitRowMajorForAvx512(const std::uint8_t* src_ptr, int src_stride,
                                int src_zero_point, std::int8_t* packed_ptr,
                                int packed_stride, int start_col, int end_col,
@@ -348,6 +435,27 @@ inline __m256 Mm256UnpackhiPsx2(const __m256 a, const __m256 b) {
 template <Path path>
 inline __m256i CompareGreaterThan(const __m256i&, const __m256i&) {
   RUY_DCHECK(false);
+}
+
+// Shared between AVX and AVX2+FMA.
+template <Path path>
+inline __m256i MaskLoadu(int available_src_rows, std::int8_t zero_point,
+                         const std::int8_t* addr) {
+  RUY_DCHECK_LT(available_src_rows, 32);
+  __m256i padded_data;
+
+  if (available_src_rows >= 16) {
+    __m128i load_hi = _mm_set1_epi8(zero_point);
+    __m128i load_lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(addr));
+    memcpy(&load_hi, addr + 16, available_src_rows - 16);
+    padded_data = _mm256_set_m128i(load_hi, load_lo);
+  } else {
+    __m128i load_hi = _mm_set1_epi8(zero_point);
+    __m128i load_lo = load_hi;
+    memcpy(&load_lo, addr, available_src_rows);
+    padded_data = _mm256_set_m128i(load_hi, load_lo);
+  }
+  return padded_data;
 }
 
 }  // namespace.

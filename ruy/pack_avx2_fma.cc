@@ -63,25 +63,6 @@ using PackImplFloatAvx2 =
 
 namespace {
 
-inline __m256i MaskLoadu(int available_src_rows, std::int8_t zero_point,
-                         const std::int8_t* addr) {
-  RUY_DCHECK_LT(available_src_rows, 32);
-  __m256i padded_data;
-
-  if (available_src_rows >= 16) {
-    __m128i load_hi = _mm_set1_epi8(zero_point);
-    __m128i load_lo = _mm_loadu_si128(reinterpret_cast<const __m128i*>(addr));
-    memcpy(&load_hi, addr + 16, available_src_rows - 16);
-    padded_data = _mm256_set_m128i(load_hi, load_lo);
-  } else {
-    __m128i load_hi = _mm_set1_epi8(zero_point);
-    __m128i load_lo = load_hi;
-    memcpy(&load_lo, addr, available_src_rows);
-    padded_data = _mm256_set_m128i(load_hi, load_lo);
-  }
-  return padded_data;
-}
-
 inline void Pack8bitColMajorForAvx2Packer(
     const std::int8_t* src_ptr, std::int8_t input_xor,
     const std::int8_t* zerobuf, int src_stride, int remaining_src_cols,
@@ -395,14 +376,14 @@ inline void Pack8bitColMajorForAvx2Packer(
       __m256i r0, r1, r2, r3, r4, r5, r6, r7;
       const __m256i input_xor_v = _mm256_set1_epi8(input_xor);
 
-      t0 = MaskLoadu(available_src_rows, zero_point, src_ptr0);
-      t4 = MaskLoadu(available_src_rows, zero_point, src_ptr4);
-      t1 = MaskLoadu(available_src_rows, zero_point, src_ptr1);
-      t5 = MaskLoadu(available_src_rows, zero_point, src_ptr5);
-      t2 = MaskLoadu(available_src_rows, zero_point, src_ptr2);
-      t6 = MaskLoadu(available_src_rows, zero_point, src_ptr6);
-      t3 = MaskLoadu(available_src_rows, zero_point, src_ptr3);
-      t7 = MaskLoadu(available_src_rows, zero_point, src_ptr7);
+      t0 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr0);
+      t4 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr4);
+      t1 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr1);
+      t5 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr5);
+      t2 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr2);
+      t6 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr6);
+      t3 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr3);
+      t7 = MaskLoadu<Path::kAvx2Fma>(available_src_rows, zero_point, src_ptr7);
 
       r0 = _mm256_unpacklo_epi32(t0, t1);
       r4 = _mm256_unpacklo_epi32(t4, t5);
