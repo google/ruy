@@ -133,7 +133,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
   // No attempt had been made so far at implementing the RUY_OPT_MAX_STREAMING
   // optimization for this kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -1194,7 +1194,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
   // No attempt had been made so far at implementing the RUY_OPT_MAX_STREAMING
   // optimization for this kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -1862,7 +1862,7 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
   //  \---------------------/  \-----------------------------------------/
   //                                  int32 accumulators 4x4 block
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -3028,7 +3028,7 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
   // unused, and v8 -- v15 are used for loading parameters used for the
   // post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -4459,7 +4459,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
   // unused, and v8 -- v15 are used for loading parameters used for the
   // post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -5151,7 +5151,7 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
   // v4 -- v7 are unused, and v8 -- v15 are used for loading parameters used for
   // the post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -6493,7 +6493,7 @@ void KernelFloatNeon(const KernelParamsFloat<8, 8>& params) {
   // unused, and v8 -- v15 are used for floading parameters used for the
   // post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -7134,7 +7134,7 @@ void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params) {
   // v4 -- v7 are unused, and v8 -- v15 are used for floading parameters used
   // for the post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 
@@ -7627,7 +7627,7 @@ void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params) {
   // v4 -- v7 are unused, and v8 -- v15 are used for floading parameters used
   // for the post-accumulation part of the kernel.
   asm volatile(
-#define RUY_MAKE_ZERO(reg) "dup " #reg ".4s, wzr\n"
+#define RUY_MAKE_ZERO(reg) "movi " #reg ".4s, #0\n"
 
         // clang-format off
 

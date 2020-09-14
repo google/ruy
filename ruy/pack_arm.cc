@@ -46,10 +46,10 @@ void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
           // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
           // v28--v32 will be used to accumulate the sums
-          "dup v28.4s, wzr\n"
-          "dup v29.4s, wzr\n"
-          "dup v30.4s, wzr\n"
-          "dup v31.4s, wzr\n"
+          "movi v28.4s, #0\n"
+          "movi v29.4s, #0\n"
+          "movi v30.4s, #0\n"
+          "movi v31.4s, #0\n"
           // Let w2 be `rows` rounded down to multiple of 16.
           "ands w2, %w[rows], #-16\n"
           // If there are no full blocks of 16 rows to process, jump to the
@@ -641,10 +641,10 @@ void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
           // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
           // v28--v32 will be used to accumulate the sums
-          "dup v28.4s, wzr\n"
-          "dup v29.4s, wzr\n"
-          "dup v30.4s, wzr\n"
-          "dup v31.4s, wzr\n"
+          "movi v28.4s, #0\n"
+          "movi v29.4s, #0\n"
+          "movi v30.4s, #0\n"
+          "movi v31.4s, #0\n"
           // Let w2 be `rows` rounded down to multiple of 16.
           "ands w2, %w[rows], #-16\n"
           // If there are no full blocks of 16 rows to process, jump to the
@@ -856,10 +856,10 @@ void Pack8bitColMajorForNeonDotprodA55ish(
           // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
           // v28--v32 will be used to accumulate the sums
-          "dup v28.4s, wzr\n"
-          "dup v29.4s, wzr\n"
-          "dup v30.4s, wzr\n"
-          "dup v31.4s, wzr\n"
+          "movi v28.4s, #0\n"
+          "movi v29.4s, #0\n"
+          "movi v30.4s, #0\n"
+          "movi v31.4s, #0\n"
 
           // Let w2 be `rows` rounded down to multiple of 16.
           "ands w2, %w[rows], #-16\n"
@@ -1102,10 +1102,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           // w1 will be the number of rows already loaded.
           "mov w1, #0\n"
           // v28--v32 will be used to accumulate the sums
-          "dup v28.4s, wzr\n"
-          "dup v29.4s, wzr\n"
-          "dup v30.4s, wzr\n"
-          "dup v31.4s, wzr\n"
+          "movi v28.4s, #0\n"
+          "movi v29.4s, #0\n"
+          "movi v30.4s, #0\n"
+          "movi v31.4s, #0\n"
 
           // 4x partially unrolled code processing blocks of 64 rows.
           // Read the original loop below first, it has more comments.
@@ -1818,10 +1818,10 @@ void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
           "beq 4f\n"
           // Zero out a 4x4 block in registers, which we'll partially overwrite
           // with any remaining rows.
-          "dup v0.16b, wzr\n"
-          "dup v1.16b, wzr\n"
-          "dup v2.16b, wzr\n"
-          "dup v3.16b, wzr\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
@@ -2161,10 +2161,10 @@ void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
 
           "ands w2, %w[rows], #3\n"
           "beq 4f\n"
-          "dup v0.16b, wzr\n"
-          "dup v1.16b, wzr\n"
-          "dup v2.16b, wzr\n"
-          "dup v3.16b, wzr\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
