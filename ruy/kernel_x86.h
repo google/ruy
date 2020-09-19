@@ -17,6 +17,7 @@ limitations under the License.
 #define RUY_RUY_KERNEL_X86_H_
 
 #include <cstdint>
+#include <cstring>
 
 #include "ruy/kernel_common.h"
 #include "ruy/mat.h"
