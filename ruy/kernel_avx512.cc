@@ -881,28 +881,33 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           rhs_ptr += 16;
 
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
@@ -911,28 +916,32 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
@@ -1010,28 +1019,33 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           lhs_ptr += 16;
           rhs_ptr += 16;
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
@@ -1040,28 +1054,32 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
@@ -1152,28 +1170,33 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           lhs_ptr += 16;
           rhs_ptr += 16;
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
@@ -1182,28 +1205,32 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            const __m512 dup_rhs_element_j0 = _mm512_set1_ps(rhs_data[0]);
+            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
+            __m512 rhs4_7 =
+                _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
+            const __m512 dup_rhs_element_j0 = _mm512_permute_ps(rhs0_3, 0);
             accum_data_v0 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j0, accum_data_v0);
-            const __m512 dup_rhs_element_j1 = _mm512_set1_ps(rhs_data[1]);
+            const __m512 dup_rhs_element_j1 = _mm512_permute_ps(rhs0_3, 0x55);
             accum_data_v1 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j1, accum_data_v1);
-            const __m512 dup_rhs_element_j2 = _mm512_set1_ps(rhs_data[2]);
+            const __m512 dup_rhs_element_j2 = _mm512_permute_ps(rhs0_3, 0xaa);
             accum_data_v2 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j2, accum_data_v2);
-            const __m512 dup_rhs_element_j3 = _mm512_set1_ps(rhs_data[3]);
+            const __m512 dup_rhs_element_j3 = _mm512_permute_ps(rhs0_3, 0xff);
             accum_data_v3 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j3, accum_data_v3);
-            const __m512 dup_rhs_element_j4 = _mm512_set1_ps(rhs_data[4]);
+            const __m512 dup_rhs_element_j4 = _mm512_permute_ps(rhs4_7, 0);
             accum_data_v4 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j4, accum_data_v4);
-            const __m512 dup_rhs_element_j5 = _mm512_set1_ps(rhs_data[5]);
+            const __m512 dup_rhs_element_j5 = _mm512_permute_ps(rhs4_7, 0x55);
             accum_data_v5 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j5, accum_data_v5);
-            const __m512 dup_rhs_element_j6 = _mm512_set1_ps(rhs_data[6]);
+            const __m512 dup_rhs_element_j6 = _mm512_permute_ps(rhs4_7, 0xaa);
             accum_data_v6 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j6, accum_data_v6);
-            const __m512 dup_rhs_element_j7 = _mm512_set1_ps(rhs_data[7]);
+            const __m512 dup_rhs_element_j7 = _mm512_permute_ps(rhs4_7, 0xff);
             accum_data_v7 =
                 _mm512_fmadd_ps(lhs_data, dup_rhs_element_j7, accum_data_v7);
           }
