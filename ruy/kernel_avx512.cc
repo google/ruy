@@ -881,7 +881,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           rhs_ptr += 16;
 
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
@@ -916,7 +917,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
@@ -1019,7 +1021,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           lhs_ptr += 16;
           rhs_ptr += 16;
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
@@ -1054,7 +1057,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
@@ -1170,7 +1174,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           lhs_ptr += 16;
           rhs_ptr += 16;
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
@@ -1205,7 +1210,8 @@ void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params) {
           const __m512 lhs_data = _mm512_loadu_ps(lhs_ptr);
           const float* rhs_data = rhs_ptr;
           {
-            __m512 rhs = _mm512_loadu_ps(rhs_data);             //  Load 0 - 15
+            // Load 8 float32 values.
+            __m512 rhs = _mm512_castps256_ps512(_mm256_loadu_ps(rhs_data));
             __m512 rhs0_3 = _mm512_shuffle_f32x4(rhs, rhs, 0);  // [0 1 2 3] X 4
             __m512 rhs4_7 =
                 _mm512_shuffle_f32x4(rhs, rhs, 0x55);  // [4 5 6 7] X 4
