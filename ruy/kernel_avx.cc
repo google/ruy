@@ -207,6 +207,12 @@ inline __m256i mm256_mullo_epi32(const __m256i& a, const __m256i& b) {
   __m128i hi = BlendM128_epi32(a_hi, b_hi, imm >> 4);  \
   ans = _mm256_set_m128i(hi, lo);
 
+#define mm256_shuffle_epi32(ans, a, a_lo, a_hi, imm)   \
+  a_lo = _mm256_extractf128_si256(a, 0);               \
+  a_hi = _mm256_extractf128_si256(a, 1);               \
+  ans = _mm256_set_m128i(_mm_shuffle_epi32(a_hi, imm), \
+                         _mm_shuffle_epi32(a_lo, imm));
+
 template <Path path>
 inline __m256i mm256_madd_epi16(const __m256i& a, const __m256i& b) {
   __m128i a_lo = _mm256_extractf128_si256(a, 0);
@@ -633,28 +639,58 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
         const __m256i lhs_16_bit_high =
             intrin_utils::mm256_permute2x128_si256<path>(
                 lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x31);
-        auto process_column = [=](int col, __m256i& accum) {
-          const std::int32_t low_rhs_value = rhs_data[col * 2];
-          const std::int32_t high_rhs_value = rhs_data[col * 2 + 1];
 
-          const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-          const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
+        __m256i rhs0 = _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(
+            rhs_data));  // Load [0 1 2 3 4 5 6 7]
+        __m256i rhs1 = _mm256_lddqu_si256(
+            reinterpret_cast<const __m256i*>(rhs_data + 8));  // Load [8 - 15]
+        __m256i rhs0_3 =
+            _mm256_permute2f128_si256(rhs0, rhs0, 0);  // [0 1 2 3 0 1 2 3]
+        __m256i rhs4_7 =
+            _mm256_permute2f128_si256(rhs0, rhs0, 0x11);  // [4 5 6 7 4 5 6 7]
+        __m256i rhs8_11 =
+            _mm256_permute2f128_si256(rhs1, rhs1, 0);  // [8 9 10 11 8 9 10 11]
+        __m256i rhs12_15 =
+            _mm256_permute2f128_si256(rhs1, rhs1, 17);  // [12 - 15, 12 - 15]
 
+        auto process_column = [=](__m256i& rhs_dup_lo, __m256i& rhs_dup_hi,
+                                  __m256i& accum) {
           accum = intrin_utils::mm256_add_epi32<path>(
-              accum, intrin_utils::mm256_madd_epi16<path>(lhs_16_bit_low,
-                                                          rhs_16_bit_dup_low));
+              accum,
+              intrin_utils::mm256_madd_epi16<path>(lhs_16_bit_low, rhs_dup_lo));
           accum = intrin_utils::mm256_add_epi32<path>(
               accum, intrin_utils::mm256_madd_epi16<path>(lhs_16_bit_high,
-                                                          rhs_16_bit_dup_high));
+                                                          rhs_dup_hi));
         };
-        process_column(0, accum_data_v0);
-        process_column(1, accum_data_v1);
-        process_column(2, accum_data_v2);
-        process_column(3, accum_data_v3);
-        process_column(4, accum_data_v4);
-        process_column(5, accum_data_v5);
-        process_column(6, accum_data_v6);
-        process_column(7, accum_data_v7);
+        __m256i tmp0, tmp1, tmp2, tmp3;
+        __m128i lo0, lo1, hi0, hi1;
+        mm256_shuffle_epi32(tmp0, rhs0_3, lo0, hi0, 0);
+        mm256_shuffle_epi32(tmp1, rhs0_3, lo1, hi1, 0x55);
+        process_column(tmp0, tmp1, accum_data_v0);
+        mm256_shuffle_epi32(tmp2, rhs0_3, lo0, hi0, 0xaa);
+        mm256_shuffle_epi32(tmp3, rhs0_3, lo1, hi1, 0xff);
+        process_column(tmp2, tmp3, accum_data_v1);
+
+        mm256_shuffle_epi32(tmp0, rhs4_7, lo0, hi0, 0);
+        mm256_shuffle_epi32(tmp1, rhs4_7, lo1, hi1, 0x55);
+        process_column(tmp0, tmp1, accum_data_v2);
+        mm256_shuffle_epi32(tmp2, rhs4_7, lo0, hi0, 0xaa);
+        mm256_shuffle_epi32(tmp3, rhs4_7, lo1, hi1, 0xff);
+        process_column(tmp2, tmp3, accum_data_v3);
+
+        mm256_shuffle_epi32(tmp0, rhs8_11, lo0, hi0, 0);
+        mm256_shuffle_epi32(tmp1, rhs8_11, lo1, hi1, 0x55);
+        process_column(tmp0, tmp1, accum_data_v4);
+        mm256_shuffle_epi32(tmp2, rhs8_11, lo0, hi0, 0xaa);
+        mm256_shuffle_epi32(tmp3, rhs8_11, lo1, hi1, 0xff);
+        process_column(tmp2, tmp3, accum_data_v5);
+
+        mm256_shuffle_epi32(tmp0, rhs12_15, lo0, hi0, 0);
+        mm256_shuffle_epi32(tmp1, rhs12_15, lo1, hi1, 0x55);
+        process_column(tmp0, tmp1, accum_data_v6);
+        mm256_shuffle_epi32(tmp2, rhs12_15, lo0, hi0, 0xaa);
+        mm256_shuffle_epi32(tmp3, rhs12_15, lo1, hi1, 0xff);
+        process_column(tmp2, tmp3, accum_data_v7);
 
         lhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
         rhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
