@@ -655,12 +655,30 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
 
         auto process_column = [=](__m256i& rhs_dup_lo, __m256i& rhs_dup_hi,
                                   __m256i& accum) {
-          accum = intrin_utils::mm256_add_epi32<path>(
-              accum,
-              intrin_utils::mm256_madd_epi16<path>(lhs_16_bit_low, rhs_dup_lo));
-          accum = intrin_utils::mm256_add_epi32<path>(
-              accum, intrin_utils::mm256_madd_epi16<path>(lhs_16_bit_high,
-                                                          rhs_dup_hi));
+          // Perform mul-adds on low and high components of accum separately.
+          __m128i accum_lo = _mm256_extractf128_si256(accum, 0);
+          __m128i accum_hi = _mm256_extractf128_si256(accum, 1);
+
+          __m128i lhs_lo_0 = _mm256_extractf128_si256(lhs_16_bit_low, 0);
+          __m128i lhs_lo_1 = _mm256_extractf128_si256(lhs_16_bit_low, 1);
+          __m128i rhs_dup_lo_0 = _mm256_extractf128_si256(rhs_dup_lo, 0);
+          __m128i rhs_dup_lo_1 = _mm256_extractf128_si256(rhs_dup_lo, 1);
+          __m128i lo_0 = _mm_madd_epi16(lhs_lo_0, rhs_dup_lo_0);
+          __m128i lo_1 = _mm_madd_epi16(lhs_lo_1, rhs_dup_lo_1);
+
+          accum_lo = _mm_add_epi32(accum_lo, lo_0);
+          accum_hi = _mm_add_epi32(accum_hi, lo_1);
+
+          __m128i lhs_hi_0 = _mm256_extractf128_si256(lhs_16_bit_high, 0);
+          __m128i lhs_hi_1 = _mm256_extractf128_si256(lhs_16_bit_high, 1);
+          __m128i rhs_dup_hi_0 = _mm256_extractf128_si256(rhs_dup_hi, 0);
+          __m128i rhs_dup_hi_1 = _mm256_extractf128_si256(rhs_dup_hi, 1);
+          __m128i hi_0 = _mm_madd_epi16(lhs_hi_0, rhs_dup_hi_0);
+          __m128i hi_1 = _mm_madd_epi16(lhs_hi_1, rhs_dup_hi_1);
+
+          accum_lo = _mm_add_epi32(accum_lo, hi_0);
+          accum_hi = _mm_add_epi32(accum_hi, hi_1);
+          accum = _mm256_set_m128i(accum_hi, accum_lo);
         };
         __m256i tmp0, tmp1, tmp2, tmp3;
         __m128i lo0, lo1, hi0, hi1;
