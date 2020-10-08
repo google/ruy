@@ -194,7 +194,9 @@ class PmuEventsPrivate {
         l2d_tlb_refill(PERF_TYPE_RAW, arm_pmuv3::L2D_TLB_REFILL),
         stall_frontend(PERF_TYPE_RAW, arm_pmuv3::STALL_FRONTEND),
         stall_backend(PERF_TYPE_RAW, arm_pmuv3::STALL_BACKEND),
-        br_mis_pred(PERF_TYPE_RAW, arm_pmuv3::BR_MIS_PRED) {}
+        br_mis_pred(PERF_TYPE_RAW, arm_pmuv3::BR_MIS_PRED),
+        l1d_cache_writeback(PERF_TYPE_RAW, arm_pmuv3::L1D_CACHE_WB),
+        l2d_cache_writeback(PERF_TYPE_RAW, arm_pmuv3::L2D_CACHE_WB) {}
 
  private:
   friend class PmuEvents;
@@ -207,6 +209,8 @@ class PmuEventsPrivate {
   PerfEvent stall_frontend;
   PerfEvent stall_backend;
   PerfEvent br_mis_pred;
+  PerfEvent l1d_cache_writeback;
+  PerfEvent l2d_cache_writeback;
 };
 
 PmuEvents::PmuEvents() : priv(new PmuEventsPrivate) {}
@@ -222,6 +226,8 @@ void PmuEvents::StartRecording() {
   priv->stall_frontend.Start();
   priv->stall_backend.Start();
   priv->br_mis_pred.Start();
+  priv->l1d_cache_writeback.Start();
+  priv->l2d_cache_writeback.Start();
 }
 
 void PmuEvents::StopRecording() {
@@ -234,6 +240,8 @@ void PmuEvents::StopRecording() {
   priv->stall_frontend.Stop();
   priv->stall_backend.Stop();
   priv->br_mis_pred.Stop();
+  priv->l1d_cache_writeback.Stop();
+  priv->l2d_cache_writeback.Stop();
 }
 
 float PmuEvents::BranchMispredictionCount() const {
@@ -276,6 +284,14 @@ float PmuEvents::L1TLBRefillCount() const {
 
 float PmuEvents::L2TLBRefillCount() const {
   return static_cast<float>(priv->l2d_tlb_refill.Count());
+}
+
+float PmuEvents::L1WritebackCount() const {
+  return static_cast<float>(priv->l1d_cache_writeback.Count());
+}
+
+float PmuEvents::L2WritebackCount() const {
+  return static_cast<float>(priv->l2d_cache_writeback.Count());
 }
 
 }  // namespace ruy

@@ -34,6 +34,8 @@ class PmuEvents {
   float BackendStallCount() const;
   float L1TLBRefillCount() const;
   float L2TLBRefillCount() const;
+  float L1WritebackCount() const;
+  float L2WritebackCount() const;
 
  private:
   PmuEventsPrivate* priv = nullptr;
