@@ -263,7 +263,7 @@ inline __m256i mm256_shuffle_epi8(const __m256i&, const __m256i&) {
 // Polyfill for _mm_storeu_si16(dst, v).
 template <Path path>
 inline void mm_storeu_si16(void* dst, __m128i v) {
-#if (defined __clang__) || (defined __MSC_VER)
+#if (defined __clang__) || (defined _MSC_VER)
   _mm_storeu_si16(dst, v);
 #else
   // GCC 9 lacks support for __mm_storeu_si16.
@@ -274,7 +274,7 @@ inline void mm_storeu_si16(void* dst, __m128i v) {
 // Polyfill for _mm_storeu_si32(dst, v).
 template <Path path>
 inline void mm_storeu_si32(void* dst, __m128i v) {
-#if (defined __clang__) || (defined __MSC_VER)
+#if (defined __clang__) || (defined _MSC_VER)
   _mm_storeu_si32(dst, v);
 #else
   // GCC 9 lacks support for __mm_storeu_si32.
@@ -285,7 +285,7 @@ inline void mm_storeu_si32(void* dst, __m128i v) {
 // Polyfill for _mm_loadu_si32(src).
 template <Path path>
 inline __m128i mm_loadu_si32(const void* src) {
-#if (defined __clang__) || (defined __MSC_VER)
+#if (defined __clang__) || (defined _MSC_VER)
   return _mm_loadu_si32(src);
 #else
   // GCC 9 lacks support for _mm_loadu_si32.
