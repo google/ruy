@@ -52,6 +52,45 @@ void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>&) {
 
 #else  // RUY_PLATFORM_AVX512 && RUY_OPT(ASM)
 
+namespace {
+namespace intrin_utils {
+
+__m256i mm256_blendv_epi64(const __m256i& a, const __m256i& b,
+                           const __m256i& mask) {
+  __m256d result =
+      _mm256_blendv_pd(_mm256_castsi256_pd(a), _mm256_castsi256_pd(b),
+                       _mm256_castsi256_pd(mask));
+  return _mm256_castpd_si256(result);
+}
+
+__m512i mm512_blendv_epi64(const __m512i& a, const __m512i& b,
+                           const __m512i& mask) {
+  __m256i a_lo = _mm512_extracti64x4_epi64(a, 0);
+  __m256i a_hi = _mm512_extracti64x4_epi64(a, 1);
+  __m256i b_lo = _mm512_extracti64x4_epi64(b, 0);
+  __m256i b_hi = _mm512_extracti64x4_epi64(b, 1);
+  __m256i mask_lo = _mm512_extracti64x4_epi64(mask, 0);
+  __m256i mask_hi = _mm512_extracti64x4_epi64(mask, 1);
+  __m256i lo = mm256_blendv_epi64(a_lo, b_lo, mask_lo);
+  __m256i hi = mm256_blendv_epi64(a_hi, b_hi, mask_hi);
+  __m512i result = _mm512_inserti64x4(_mm512_setzero_si512(), lo, 0);
+  return _mm512_inserti64x4(result, hi, 1);
+}
+
+__m512i mm512_cmpgt_epi64(const __m512i& a, const __m512i& b) {
+  __m256i a_lo = _mm512_extracti64x4_epi64(a, 0);
+  __m256i a_hi = _mm512_extracti64x4_epi64(a, 1);
+  __m256i b_lo = _mm512_extracti64x4_epi64(b, 0);
+  __m256i b_hi = _mm512_extracti64x4_epi64(b, 1);
+  __m256i lo = _mm256_cmpgt_epi64(a_lo, b_lo);
+  __m256i hi = _mm256_cmpgt_epi64(a_hi, b_hi);
+  __m512i result = _mm512_inserti64x4(_mm512_setzero_si512(), lo, 0);
+  return _mm512_inserti64x4(result, hi, 1);
+}
+
+}  // namespace intrin_utils
+}  // namespace
+
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   profiler::ScopeLabel label("Kernel kAvx512 8-bit");
 
@@ -333,8 +372,11 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         const __m512i left_shift = _mm512_max_epi32(e_vector, zero_vector);
         const __m512i neg_e_vector = _mm512_sub_epi32(zero_vector, e_vector);
         const __m512i right_shift = _mm512_max_epi32(neg_e_vector, zero_vector);
-        const __m512i final_right_shift =
-            _mm512_add_epi32(right_shift, _mm512_set1_epi32(31));
+        const __m512i final_right_shift = _mm512_set1_epi32(31);
+        const __m512i right_shift_low =
+            _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 0));
+        const __m512i right_shift_high =
+            _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 1));
         const __m512i final_right_shift_low = _mm512_cvtepi32_epi64(
             _mm512_extracti32x8_epi32(final_right_shift, 0));
         const __m512i final_right_shift_high = _mm512_cvtepi32_epi64(
@@ -342,14 +384,36 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
 
         const __m512i offset_vector =
             _mm512_slli_epi64(_mm512_set1_epi64(1), 30);
-        // Really these should be shifted by neg_e_vector, but tests pass when
-        // using right_shift.
-        const __m512i offset_vector_low = _mm512_sllv_epi64(
-            offset_vector,
-            _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 0)));
-        const __m512i offset_vector_high = _mm512_sllv_epi64(
-            offset_vector,
-            _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 1)));
+
+        auto rounding_right_shift = [=](__m512i& results,
+                                        const __m512i& exponent) {
+          // Construct the "nudge" value for each lane if the exponent is
+          // greater than 0. Otherwise, the nudge is 0.
+          const __m512i zeros = _mm512_setzero_si512();
+          const __m512i mask_rightshift_gtz =
+              intrin_utils::mm512_cmpgt_epi64(exponent, zeros);
+          const __m512i one_shift_exp_minus1 = _mm512_sllv_epi64(
+              _mm512_set1_epi64(1),
+              _mm512_sub_epi64(exponent, _mm512_set1_epi64(1)));
+          __m512i nudge = intrin_utils::mm512_blendv_epi64(
+              zeros, one_shift_exp_minus1, mask_rightshift_gtz);
+          // Calculate the shifted sum (results + nudge) >> exp.
+          const __m512i r_plus_nudge = _mm512_add_epi64(results, nudge);
+          const __m512i shifted_sum = _mm512_srav_epi64(r_plus_nudge, exponent);
+
+          // Identify overflow in each lane and create mask.
+          const __m512i one_shift_31minus_exp = _mm512_sllv_epi64(
+              _mm512_set1_epi64(1),
+              _mm512_sub_epi64(_mm512_set1_epi64(31), exponent));
+          const __m512i mask_num_plus_nudge_overflow =
+              intrin_utils::mm512_cmpgt_epi64(
+                  results,
+                  _mm512_sub_epi64(_mm512_set1_epi64(0x7fffffff), nudge));
+          // Fill results with either (results + nudge) >> exponent or
+          // 1 << (31 - exp) in the case of overflow.
+          results = intrin_utils::mm512_blendv_epi64(
+              shifted_sum, one_shift_31minus_exp, mask_num_plus_nudge_overflow);
+        };
 
         if (per_column_multiplier) {
           auto apply_multiplier = [=](__m512i& accum, int col) {
@@ -360,11 +424,12 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
             __m512i m_64bit_val = _mm512_permutexvar_epi64(
                 perm_64bit_vals, col < 8 ? m_64bit_low : m_64bit_high);
             __m512i offset_vector_val = _mm512_permutexvar_epi64(
-                perm_64bit_vals,
-                col < 8 ? offset_vector_low : offset_vector_high);
+                perm_64bit_vals, offset_vector);
             __m512i final_right_shift_val = _mm512_permutexvar_epi64(
                 perm_64bit_vals,
                 col < 8 ? final_right_shift_low : final_right_shift_high);
+            __m512i right_shift_val = _mm512_permutexvar_epi64(
+                perm_64bit_vals, col < 8 ? right_shift_low : right_shift_high);
 
             accum = _mm512_sllv_epi32(accum, left_shift_val);
             __m512i scaled_v_low = _mm512_mul_epi32(
@@ -381,6 +446,9 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
                 _mm512_srav_epi64(scaled_v_low, final_right_shift_val);
             scaled_v_high =
                 _mm512_srav_epi64(scaled_v_high, final_right_shift_val);
+
+            rounding_right_shift(scaled_v_low, right_shift_val);
+            rounding_right_shift(scaled_v_high, right_shift_val);
 
             accum = _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
             accum = _mm512_inserti32x8(accum,
@@ -413,14 +481,16 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
                 _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(accum, 1)),
                 m_64bit_high);
 
-            scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-            scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
+            scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector);
+            scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector);
 
             scaled_v_low =
                 _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
             scaled_v_high =
                 _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
 
+            rounding_right_shift(scaled_v_low, right_shift_low);
+            rounding_right_shift(scaled_v_high, right_shift_high);
             accum = _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
             accum = _mm512_inserti32x8(accum,
                                        _mm512_cvtepi64_epi32(scaled_v_high), 1);
@@ -713,22 +783,47 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
       const __m512i left_shift = _mm512_max_epi32(e_vector, zero_vector);
       const __m512i neg_e_vector = _mm512_sub_epi32(zero_vector, e_vector);
       const __m512i right_shift = _mm512_max_epi32(neg_e_vector, zero_vector);
-      const __m512i final_right_shift =
-          _mm512_add_epi32(right_shift, _mm512_set1_epi32(31));
+      const __m512i final_right_shift = _mm512_set1_epi32(31);
+      const __m512i right_shift_low =
+          _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 0));
+      const __m512i right_shift_high =
+          _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 1));
       const __m512i final_right_shift_low = _mm512_cvtepi32_epi64(
           _mm512_extracti32x8_epi32(final_right_shift, 0));
       const __m512i final_right_shift_high = _mm512_cvtepi32_epi64(
           _mm512_extracti32x8_epi32(final_right_shift, 1));
 
       const __m512i offset_vector = _mm512_slli_epi64(_mm512_set1_epi64(1), 30);
-      // Really these should be shifted by neg_e_vector, but tests pass when
-      // using right_shift.
-      const __m512i offset_vector_low = _mm512_sllv_epi64(
-          offset_vector,
-          _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 0)));
-      const __m512i offset_vector_high = _mm512_sllv_epi64(
-          offset_vector,
-          _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(right_shift, 1)));
+
+      auto rounding_right_shift = [=](__m512i& results,
+                                      const __m512i& exponent) {
+        // Construct the "nudge" value for each lane if the exponent is
+        // greater than 0. Otherwise, the nudge is 0.
+        const __m512i zeros = _mm512_setzero_si512();
+        const __m512i mask_rightshift_gtz =
+            intrin_utils::mm512_cmpgt_epi64(exponent, zeros);
+        const __m512i one_shift_exp_minus1 =
+            _mm512_sllv_epi64(_mm512_set1_epi64(1),
+                              _mm512_sub_epi64(exponent, _mm512_set1_epi64(1)));
+        __m512i nudge = intrin_utils::mm512_blendv_epi64(
+            zeros, one_shift_exp_minus1, mask_rightshift_gtz);
+        // Calculate the shifted sum (results + nudge) >> exp.
+        const __m512i r_plus_nudge = _mm512_add_epi64(results, nudge);
+        const __m512i shifted_sum = _mm512_srav_epi64(r_plus_nudge, exponent);
+
+        // Identify overflow in each lane and create mask.
+        const __m512i one_shift_31minus_exp = _mm512_sllv_epi64(
+            _mm512_set1_epi64(1),
+            _mm512_sub_epi64(_mm512_set1_epi64(31), exponent));
+        const __m512i mask_num_plus_nudge_overflow =
+            intrin_utils::mm512_cmpgt_epi64(
+                results,
+                _mm512_sub_epi64(_mm512_set1_epi64(0x7fffffff), nudge));
+        // Fill results with either (results + nudge) >> exponent or
+        // 1 << (31 - exp) in the case of overflow.
+        results = intrin_utils::mm512_blendv_epi64(
+            shifted_sum, one_shift_31minus_exp, mask_num_plus_nudge_overflow);
+      };
 
       // Shift and round column 0.
       accum_data_v0 = _mm512_sllv_epi32(accum_data_v0, left_shift);
@@ -740,11 +835,14 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
           _mm512_cvtepi32_epi64(_mm512_extracti32x8_epi32(accum_data_v0, 1)),
           m_64bit_high);
 
-      scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector_low);
-      scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector_high);
+      scaled_v_low = _mm512_add_epi64(scaled_v_low, offset_vector);
+      scaled_v_high = _mm512_add_epi64(scaled_v_high, offset_vector);
 
       scaled_v_low = _mm512_srav_epi64(scaled_v_low, final_right_shift_low);
       scaled_v_high = _mm512_srav_epi64(scaled_v_high, final_right_shift_high);
+
+      rounding_right_shift(scaled_v_low, right_shift_low);
+      rounding_right_shift(scaled_v_high, right_shift_high);
 
       accum_data_v0 =
           _mm512_castsi256_si512(_mm512_cvtepi64_epi32(scaled_v_low));
