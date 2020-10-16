@@ -1037,13 +1037,6 @@ cc_test(
     ],
 )
 
-# Usage examples.
-cc_binary(
-    name = "example",
-    srcs = ["example.cc"],
-    deps = [":ruy"],
-)
-
 # Small library to query PMU counters, for benchmark only
 cc_library(
     name = "pmu",
