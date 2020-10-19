@@ -88,6 +88,14 @@ inline __m128i mm256_extracti128_si256<Path::kAvx2Fma>(const __m256i& a,
   }
 }
 
+__m256i mm256_blendv_epi32(const __m256i& a, const __m256i& b,
+                           const __m256i& mask) {
+  __m256 result =
+      _mm256_blendv_ps(_mm256_castsi256_ps(a), _mm256_castsi256_ps(b),
+                       _mm256_castsi256_ps(mask));
+  return _mm256_castps_si256(result);
+}
+
 }  // namespace intrin_utils
 }  // namespace
 
@@ -352,43 +360,22 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
         const __m256i left_shift = _mm256_max_epi32(e_vector, zero_vector);
         const __m256i neg_e_vector = _mm256_sub_epi32(zero_vector, e_vector);
         const __m256i right_shift = _mm256_max_epi32(neg_e_vector, zero_vector);
-        const __m256i final_right_shift =
-            _mm256_add_epi32(right_shift, _mm256_set1_epi32(31));
+        const __m256i final_right_shift = _mm256_set1_epi32(31);
         const __m256i final_right_shift_low = _mm256_cvtepi32_epi64(
             _mm256_extracti128_si256(final_right_shift, 0));
         const __m256i final_right_shift_high = _mm256_cvtepi32_epi64(
             _mm256_extracti128_si256(final_right_shift, 1));
-        // Really we want 0x100000000, but use half to avoid overflowing.
-        const __m256i convert_to_signed_halved =
-            _mm256_srlv_epi32(_mm256_set1_epi32(0x80000000), right_shift);
         const __m256i convert_to_unsigned_64 =
             _mm256_set1_epi64x(0x8000000000000000);
 
-        __m256i post_scaling_offset = _mm256_add_epi32(
-            convert_to_signed_halved, convert_to_signed_halved);
-
-        const __m256i offset_vector =
-            _mm256_slli_epi64(_mm256_set1_epi64x(1), 30);
-        // Really these should be shifted by neg_e_vector, but tests pass when
-        // using right_shift.
-        const __m256i offset_vector_low = _mm256_add_epi64(
-            _mm256_sllv_epi64(offset_vector,
-                              _mm256_cvtepi32_epi64(
-                                  _mm256_extracti128_si256(right_shift, 0))),
-            convert_to_unsigned_64);
-        const __m256i offset_vector_high = _mm256_add_epi64(
-            _mm256_sllv_epi64(offset_vector,
-                              _mm256_cvtepi32_epi64(
-                                  _mm256_extracti128_si256(right_shift, 1))),
+        __m256i post_scaling_offset = _mm256_setzero_si256();
+        // A "half" added for rounding prior to truncation of 64-bit value.
+        const __m256i offset_vector = _mm256_add_epi64(
+            _mm256_slli_epi64(_mm256_set1_epi64x(1), 30),
             convert_to_unsigned_64);
 
         if (params.dst_zero_point) {
-          const __m256i dst_zero_point =
-              _mm256_set1_epi32(params.dst_zero_point);
-          // The post-scaling offset is subtracted later, so this has the effect
-          // of adding the zero point.
-          post_scaling_offset =
-              _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
+          post_scaling_offset = _mm256_set1_epi32(params.dst_zero_point);
         }
 
         const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
@@ -446,7 +433,7 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
         // __m256i results =
         //     _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
         // results = _mm256_permutevar8x32_epi32(results, repack_perm);
-        // accum_data_v[j] = _mm256_sub_epi32(results, post_scaling_offset);
+        // accum_data_v[j] = _mm256_add_epi32(results, post_scaling_offset);
 
         // This multiplier code is complex and expensive enough on x86, that
         // we prefer to implement the channels-are-columns case by transposing
@@ -464,6 +451,35 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
               &accum_data_v0, &accum_data_v1, &accum_data_v2, &accum_data_v3,
               &accum_data_v4, &accum_data_v5, &accum_data_v6, &accum_data_v7);
         }
+
+        auto rounding_right_shift = [=](__m256i& results,
+                                        const __m256i& exponent) {
+          // Construct the "nudge" value for each lane if the exponent is
+          // greater than 0. Otherwise, the nudge is 0.
+          const __m256i zeros = _mm256_setzero_si256();
+          const __m256i mask_rightshift_gtz =
+              _mm256_cmpgt_epi32(exponent, zeros);
+          const __m256i one_shift_exp_minus1 = _mm256_sllv_epi32(
+              _mm256_set1_epi32(1),
+              _mm256_sub_epi32(exponent, _mm256_set1_epi32(1)));
+          __m256i nudge = intrin_utils::mm256_blendv_epi32(
+              zeros, one_shift_exp_minus1, mask_rightshift_gtz);
+          // Calculate the shifted sum (results + nudge) >> exp.
+          const __m256i r_plus_nudge = _mm256_add_epi32(results, nudge);
+          const __m256i shifted_sum = _mm256_srav_epi32(r_plus_nudge, exponent);
+
+          // Identify overflow in each lane and create mask.
+          const __m256i one_shift_31minus_exp = _mm256_sllv_epi32(
+              _mm256_set1_epi32(1),
+              _mm256_sub_epi32(_mm256_set1_epi32(31), exponent));
+          const __m256i mask_num_plus_nudge_overflow = _mm256_cmpgt_epi32(
+              results, _mm256_sub_epi32(_mm256_set1_epi32(0x7fffffff), nudge));
+          // Fill results with either (results + nudge) >> exponent or
+          // 1 << (31 - exp) in the case of overflow.
+          results = intrin_utils::mm256_blendv_epi32(
+              shifted_sum, one_shift_31minus_exp, mask_num_plus_nudge_overflow);
+        };
+
         auto apply_multiplier = [=](__m256i& accum) {
           __m256i shifted_accum = _mm256_sllv_epi32(accum, left_shift);
           // Apply the fixed-point part of the multiplier.
@@ -474,8 +490,8 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
               _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
               m_64bit_high);
 
-          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
+          scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector);
+          scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector);
 
           scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
           scaled_v_high =
@@ -485,8 +501,9 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
           __m256i results =
               _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
           results = _mm256_permutevar8x32_epi32(results, repack_perm);
-
-          accum = _mm256_sub_epi32(results, post_scaling_offset);
+          // Now do a Rounding Right Shift.
+          rounding_right_shift(results, right_shift);
+          accum = _mm256_add_epi32(results, post_scaling_offset);
         };
         apply_multiplier(accum_data_v0);
         apply_multiplier(accum_data_v1);
@@ -856,42 +873,22 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
       const __m256i left_shift = _mm256_max_epi32(e_vector, zero_vector);
       const __m256i neg_e_vector = _mm256_sub_epi32(zero_vector, e_vector);
       const __m256i right_shift = _mm256_max_epi32(neg_e_vector, zero_vector);
-      const __m256i final_right_shift =
-          _mm256_add_epi32(right_shift, _mm256_set1_epi32(31));
+      const __m256i final_right_shift = _mm256_set1_epi32(31);
       const __m256i final_right_shift_low =
           _mm256_cvtepi32_epi64(_mm256_extracti128_si256(final_right_shift, 0));
       const __m256i final_right_shift_high =
           _mm256_cvtepi32_epi64(_mm256_extracti128_si256(final_right_shift, 1));
-      // Really we want 0x100000000, but use half to avoid overflowing.
-      const __m256i convert_to_signed_halved =
-          _mm256_srlv_epi32(_mm256_set1_epi32(0x80000000), right_shift);
       const __m256i convert_to_unsigned_64 =
           _mm256_set1_epi64x(0x8000000000000000);
 
-      __m256i post_scaling_offset =
-          _mm256_add_epi32(convert_to_signed_halved, convert_to_signed_halved);
-
-      const __m256i offset_vector =
-          _mm256_slli_epi64(_mm256_set1_epi64x(1), 30);
-      // Really these should be shifted by neg_e_vector, but tests pass when
-      // using right_shift.
-      const __m256i offset_vector_low = _mm256_add_epi64(
-          _mm256_sllv_epi64(
-              offset_vector,
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(right_shift, 0))),
-          convert_to_unsigned_64);
-      const __m256i offset_vector_high = _mm256_add_epi64(
-          _mm256_sllv_epi64(
-              offset_vector,
-              _mm256_cvtepi32_epi64(_mm256_extracti128_si256(right_shift, 1))),
+      __m256i post_scaling_offset = _mm256_setzero_si256();
+      // A "half" added for rounding prior to truncation of 64-bit value.
+      const __m256i offset_vector = _mm256_add_epi64(
+          _mm256_slli_epi64(_mm256_set1_epi64x(1), 30),
           convert_to_unsigned_64);
 
       if (params.dst_zero_point) {
-        const __m256i dst_zero_point = _mm256_set1_epi32(params.dst_zero_point);
-        // The post-scaling offset is subtracted later, so this has the effect
-        // of adding the zero point.
-        post_scaling_offset =
-            _mm256_sub_epi32(post_scaling_offset, dst_zero_point);
+        post_scaling_offset = _mm256_set1_epi32(params.dst_zero_point);
       }
 
       const __m256i repack_perm = _mm256_setr_epi32(0, 2, 4, 6, 1, 3, 5, 7);
@@ -907,8 +904,8 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
             _mm256_cvtepi32_epi64(_mm256_extracti128_si256(shifted_accum, 1)),
             m_64bit_high);
 
-        scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector_low);
-        scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector_high);
+        scaled_v_low = _mm256_add_epi64(scaled_v_low, offset_vector);
+        scaled_v_high = _mm256_add_epi64(scaled_v_high, offset_vector);
 
         scaled_v_low = _mm256_srlv_epi64(scaled_v_low, final_right_shift_low);
         scaled_v_high =
@@ -918,7 +915,33 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
         __m256i results = _mm256_blend_epi32(scaled_v_low, scaled_v_high, 0xaa);
         results = _mm256_permutevar8x32_epi32(results, repack_perm);
 
-        accum_data_v0 = _mm256_sub_epi32(results, post_scaling_offset);
+        // Now do a Rounding Right Shift.
+        // First, construct the nudge value for each lane.
+        const __m256i zeros = _mm256_setzero_si256();
+        const __m256i mask_rightshift_gtz =
+            _mm256_cmpgt_epi32(right_shift, zeros);
+        const __m256i one_shift_exp_minus1 = _mm256_sllv_epi32(
+            _mm256_set1_epi32(1),
+            _mm256_sub_epi32(right_shift, _mm256_set1_epi32(1)));
+        __m256i nudge = intrin_utils::mm256_blendv_epi32(
+            zeros, one_shift_exp_minus1, mask_rightshift_gtz);
+        // Calculate the shifted sum (results + nudge) >> exp.
+        const __m256i r_plus_nudge = _mm256_add_epi32(results, nudge);
+        const __m256i shifted_sum =
+            _mm256_srav_epi32(r_plus_nudge, right_shift);
+
+        // Identify overflow in each lane and create mask.
+        const __m256i one_shift_31minus_exp = _mm256_sllv_epi32(
+            _mm256_set1_epi32(1),
+            _mm256_sub_epi32(_mm256_set1_epi32(31), right_shift));
+        const __m256i mask_num_plus_nudge_overflow = _mm256_cmpgt_epi32(
+            results, _mm256_sub_epi32(_mm256_set1_epi32(0x7fffffff), nudge));
+        // Fill results with either (results + nudge) >> exponent or
+        // 1 << (31 - exp) in the case of overflow.
+        results = intrin_utils::mm256_blendv_epi32(
+            shifted_sum, one_shift_31minus_exp, mask_num_plus_nudge_overflow);
+
+        accum_data_v0 = _mm256_add_epi32(results, post_scaling_offset);
       }
     }
     const __m256i clamp_max_v = _mm256_set1_epi32(params.clamp_max);
