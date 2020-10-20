@@ -131,10 +131,10 @@ void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
           "beq 4f\n"
           // Zero out a 16x4 block in registers, which we'll partially overwrite
           // with any remaining rows.
-          "dup v0.16b, %w[src_zero_point]\n"
-          "dup v1.16b, %w[src_zero_point]\n"
-          "dup v2.16b, %w[src_zero_point]\n"
-          "dup v3.16b, %w[src_zero_point]\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
@@ -757,10 +757,10 @@ void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
           "beq 4f\n"
           // Zero out a 16x4 block in registers, which we'll partially overwrite
           // with any remaining rows.
-          "dup v0.16b, %w[src_zero_point]\n"
-          "dup v1.16b, %w[src_zero_point]\n"
-          "dup v2.16b, %w[src_zero_point]\n"
-          "dup v3.16b, %w[src_zero_point]\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
@@ -994,10 +994,10 @@ void Pack8bitColMajorForNeonDotprodA55ish(
           "beq 4f\n"
           // Zero out a 16x4 block in registers, which we'll partially overwrite
           // with any remaining rows.
-          "dup v0.16b, %w[src_zero_point]\n"
-          "dup v1.16b, %w[src_zero_point]\n"
-          "dup v2.16b, %w[src_zero_point]\n"
-          "dup v3.16b, %w[src_zero_point]\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
@@ -1491,10 +1491,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "beq 4f\n"
           // Zero out a 16x4 block in registers, which we'll partially overwrite
           // with any remaining rows.
-          "dup v0.16b, %w[src_zero_point]\n"
-          "dup v1.16b, %w[src_zero_point]\n"
-          "dup v2.16b, %w[src_zero_point]\n"
-          "dup v3.16b, %w[src_zero_point]\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
 #define RUY_LOAD_ONE_ROW(R)                   \
   "cmp w2, #" #R "\n"                         \
   "beq 5f\n"                                  \
@@ -1666,10 +1666,10 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           // Nothing left? Then jump to the end.
           "beq 3f\n"
           // Here w0 is between 1 and 7. We zero-initialize v0--v3 ...
-          "dup v0.8b, %w[src_zero_point]\n"
-          "dup v1.8b, %w[src_zero_point]\n"
-          "dup v2.8b, %w[src_zero_point]\n"
-          "dup v3.8b, %w[src_zero_point]\n"
+          "movi v0.8b, #0\n"
+          "movi v1.8b, #0\n"
+          "movi v2.8b, #0\n"
+          "movi v3.8b, #0\n"
           // ... and now we fill lanes one by one with leftover columns.
 #define RUY_LOAD_ONE_COL(C)\
   "cmp w0, " #C "\n" \
