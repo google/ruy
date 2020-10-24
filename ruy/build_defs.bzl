@@ -46,7 +46,11 @@ def ruy_copts_optimize():
         # optimizing for speed is the better compromise, so we override that.
         # Careful to keep debug builds debuggable, whence the select based
         # on the compilation mode.
-        "//ruy:optimized": ["-O3"],
+        "//ruy:optimized": select({
+            # -O3 is not supported by msvc
+            "@bazel_tools//src/conditions:windows_msvc": [],
+            "//conditions:default": ["-O3"],
+        }),
         "//conditions:default": [],
     })
 
