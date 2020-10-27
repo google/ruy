@@ -52,8 +52,14 @@ void ValidateZeroPoints(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
   // See b/131609283. This only affects the kNeon path but we ban this for all
   // paths in order for ruy to have the same supported parameter space
   // on all paths.
-  RUY_DCHECK(lhs_zero_point != std::numeric_limits<LhsScalar>::lowest() ||
-             rhs_zero_point != std::numeric_limits<RhsScalar>::lowest());
+  // We disable this check for now for the case of LhsScalar==RhsScalar==uint8
+  // for backwards compatability with gemmlowp. The issue is still relevant
+  // because we convert from uint8 to int8 for the backend kernels.
+  if (!std::is_same<LhsScalar, uint8_t>::value ||
+      !std::is_same<RhsScalar, uint8_t>::value) {
+    RUY_DCHECK(lhs_zero_point != std::numeric_limits<LhsScalar>::lowest() ||
+               rhs_zero_point != std::numeric_limits<RhsScalar>::lowest());
+  }
 }
 
 }  // namespace detail
