@@ -46,31 +46,34 @@ def ruy_copts_optimize():
         # optimizing for speed is the better compromise, so we override that.
         # Careful to keep debug builds debuggable, whence the select based
         # on the compilation mode.
-        "//ruy:optimized": ["-O3"],
-        "//conditions:default": [],
+        "//ruy:do_not_want_O3": [],
+        "//conditions:default": ["-O3"],
     })
 
 # Returns compiler flags to use for all ruy code.
 def ruy_copts():
     return ruy_copts_warnings() + ruy_copts_neon() + ruy_copts_optimize()
 
-def ruy_copts_avx512():
-    # In some clang-based toolchains, in the default compilation mode (not -c opt),
-    # heavy spillage in the AVX512 kernels results in stack frames > 50k. This issue does not exist
-    # in optimized builds (-c opt).
-    return select({
-        "//ruy:x86_64": ["$(STACK_FRAME_UNLIMITED)", "-mavx512f", "-mavx512vl", "-mavx512cd", "-mavx512bw", "-mavx512dq"],
-        "//conditions:default": [],
-    })
-
 def ruy_copts_avx():
     return select({
-        "//ruy:x86_64": ["-mavx"],
+        "//ruy:x86_64_and_not_msvc": ["-mavx"],
+        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX"],
         "//conditions:default": [],
     })
 
 def ruy_copts_avx2_fma():
     return select({
-        "//ruy:x86_64": ["-mavx2", "-mfma"],
+        "//ruy:x86_64_and_not_msvc": ["-mavx2", "-mfma"],
+        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX2"],
+        "//conditions:default": [],
+    })
+
+def ruy_copts_avx512():
+    # In some clang-based toolchains, in the default compilation mode (not -c opt),
+    # heavy spillage in the AVX512 kernels results in stack frames > 50k. This issue does not exist
+    # in optimized builds (-c opt).
+    return select({
+        "//ruy:x86_64_and_not_msvc": ["$(STACK_FRAME_UNLIMITED)", "-mavx512f", "-mavx512vl", "-mavx512cd", "-mavx512bw", "-mavx512dq"],
+        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX512"],
         "//conditions:default": [],
     })

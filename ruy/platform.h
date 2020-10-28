@@ -137,7 +137,7 @@ limitations under the License.
 #endif
 
 #if RUY_PLATFORM_X86_ENHANCEMENTS && RUY_PLATFORM_X86 && defined(__AVX2__) && \
-    defined(__FMA__)
+    (defined(__FMA__) || defined(_MSC_VER))
 #define RUY_PLATFORM_AVX2_FMA 1
 #else
 #define RUY_PLATFORM_AVX2_FMA 0

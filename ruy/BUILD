@@ -40,8 +40,11 @@ config_setting(
     values = {"cpu": "haswell"},
 )
 
+# MSVC toolchains define a different "cpu" value, which helps us as we need
+# to pass different flags on MSVC vs GCC-compatible toolchains to enable
+# x86 SIMD extensions.
 selects.config_setting_group(
-    name = "x86_64",
+    name = "x86_64_and_not_msvc",
     match_any = [
         ":x86_64_k8",
         ":x86_64_haswell",
@@ -68,10 +71,26 @@ config_setting(
 )
 
 config_setting(
-    name = "optimized",
+    name = "dbg_build",
     values = {
-        "compilation_mode": "opt",
+        "compilation_mode": "dbg",
     },
+)
+
+config_setting(
+    name = "fastbuild_build",
+    values = {
+        "compilation_mode": "fastbuild",
+    },
+)
+
+selects.config_setting_group(
+    name = "do_not_want_O3",
+    match_any = [
+        "@bazel_tools//src/conditions:windows_msvc",
+        ":dbg_build",
+        ":fastbuild_build",
+    ],
 )
 
 cc_library(
