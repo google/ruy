@@ -642,75 +642,42 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
             intrin_utils::mm256_permute2x128_si256<path>(
                 lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x31);
 
-        __m256i rhs0 = _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(
-            rhs_data));  // Load [0 1 2 3 4 5 6 7]
-        __m256i rhs1 = _mm256_lddqu_si256(
-            reinterpret_cast<const __m256i*>(rhs_data + 8));  // Load [8 - 15]
-        __m256i rhs0_3 =
-            _mm256_permute2f128_si256(rhs0, rhs0, 0);  // [0 1 2 3 0 1 2 3]
-        __m256i rhs4_7 =
-            _mm256_permute2f128_si256(rhs0, rhs0, 0x11);  // [4 5 6 7 4 5 6 7]
-        __m256i rhs8_11 =
-            _mm256_permute2f128_si256(rhs1, rhs1, 0);  // [8 9 10 11 8 9 10 11]
-        __m256i rhs12_15 =
-            _mm256_permute2f128_si256(rhs1, rhs1, 17);  // [12 - 15, 12 - 15]
+        auto process_column = [=](int col, __m256i& accum) {
+          const std::int32_t low_rhs_value = rhs_data[col * 2];
+          __m128i rhs_dup_lo = _mm_set1_epi32(low_rhs_value);
+          const std::int32_t high_rhs_value = rhs_data[col * 2 + 1];
+          __m128i rhs_dup_hi = _mm_set1_epi32(high_rhs_value);
 
-        auto process_column = [=](__m256i& rhs_dup_lo, __m256i& rhs_dup_hi,
-                                  __m256i& accum) {
-          // Perform mul-adds on low and high components of accum separately.
           __m128i accum_lo = _mm256_extractf128_si256(accum, 0);
-          __m128i accum_hi = _mm256_extractf128_si256(accum, 1);
-
           __m128i lhs_lo_0 = _mm256_extractf128_si256(lhs_16_bit_low, 0);
+          __m128i lo_0 = _mm_madd_epi16(lhs_lo_0, rhs_dup_lo);
+
+          __m128i accum_hi = _mm256_extractf128_si256(accum, 1);
           __m128i lhs_lo_1 = _mm256_extractf128_si256(lhs_16_bit_low, 1);
-          __m128i rhs_dup_lo_0 = _mm256_extractf128_si256(rhs_dup_lo, 0);
-          __m128i rhs_dup_lo_1 = _mm256_extractf128_si256(rhs_dup_lo, 1);
-          __m128i lo_0 = _mm_madd_epi16(lhs_lo_0, rhs_dup_lo_0);
-          __m128i lo_1 = _mm_madd_epi16(lhs_lo_1, rhs_dup_lo_1);
+          __m128i lo_1 = _mm_madd_epi16(lhs_lo_1, rhs_dup_lo);
 
           accum_lo = _mm_add_epi32(accum_lo, lo_0);
           accum_hi = _mm_add_epi32(accum_hi, lo_1);
 
           __m128i lhs_hi_0 = _mm256_extractf128_si256(lhs_16_bit_high, 0);
+          __m128i hi_0 = _mm_madd_epi16(lhs_hi_0, rhs_dup_hi);
+
           __m128i lhs_hi_1 = _mm256_extractf128_si256(lhs_16_bit_high, 1);
-          __m128i rhs_dup_hi_0 = _mm256_extractf128_si256(rhs_dup_hi, 0);
-          __m128i rhs_dup_hi_1 = _mm256_extractf128_si256(rhs_dup_hi, 1);
-          __m128i hi_0 = _mm_madd_epi16(lhs_hi_0, rhs_dup_hi_0);
-          __m128i hi_1 = _mm_madd_epi16(lhs_hi_1, rhs_dup_hi_1);
+          __m128i hi_1 = _mm_madd_epi16(lhs_hi_1, rhs_dup_hi);
 
           accum_lo = _mm_add_epi32(accum_lo, hi_0);
           accum_hi = _mm_add_epi32(accum_hi, hi_1);
           accum = _mm256_set_m128i(accum_hi, accum_lo);
+
         };
-        __m256i tmp0, tmp1, tmp2, tmp3;
-        __m128i lo0, lo1, hi0, hi1;
-        mm256_shuffle_epi32(tmp0, rhs0_3, lo0, hi0, 0);
-        mm256_shuffle_epi32(tmp1, rhs0_3, lo1, hi1, 0x55);
-        process_column(tmp0, tmp1, accum_data_v0);
-        mm256_shuffle_epi32(tmp2, rhs0_3, lo0, hi0, 0xaa);
-        mm256_shuffle_epi32(tmp3, rhs0_3, lo1, hi1, 0xff);
-        process_column(tmp2, tmp3, accum_data_v1);
-
-        mm256_shuffle_epi32(tmp0, rhs4_7, lo0, hi0, 0);
-        mm256_shuffle_epi32(tmp1, rhs4_7, lo1, hi1, 0x55);
-        process_column(tmp0, tmp1, accum_data_v2);
-        mm256_shuffle_epi32(tmp2, rhs4_7, lo0, hi0, 0xaa);
-        mm256_shuffle_epi32(tmp3, rhs4_7, lo1, hi1, 0xff);
-        process_column(tmp2, tmp3, accum_data_v3);
-
-        mm256_shuffle_epi32(tmp0, rhs8_11, lo0, hi0, 0);
-        mm256_shuffle_epi32(tmp1, rhs8_11, lo1, hi1, 0x55);
-        process_column(tmp0, tmp1, accum_data_v4);
-        mm256_shuffle_epi32(tmp2, rhs8_11, lo0, hi0, 0xaa);
-        mm256_shuffle_epi32(tmp3, rhs8_11, lo1, hi1, 0xff);
-        process_column(tmp2, tmp3, accum_data_v5);
-
-        mm256_shuffle_epi32(tmp0, rhs12_15, lo0, hi0, 0);
-        mm256_shuffle_epi32(tmp1, rhs12_15, lo1, hi1, 0x55);
-        process_column(tmp0, tmp1, accum_data_v6);
-        mm256_shuffle_epi32(tmp2, rhs12_15, lo0, hi0, 0xaa);
-        mm256_shuffle_epi32(tmp3, rhs12_15, lo1, hi1, 0xff);
-        process_column(tmp2, tmp3, accum_data_v7);
+        process_column(0, accum_data_v0);
+        process_column(1, accum_data_v1);
+        process_column(2, accum_data_v2);
+        process_column(3, accum_data_v3);
+        process_column(4, accum_data_v4);
+        process_column(5, accum_data_v5);
+        process_column(6, accum_data_v6);
+        process_column(7, accum_data_v7);
 
         lhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
         rhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
