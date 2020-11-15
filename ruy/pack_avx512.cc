@@ -687,7 +687,7 @@ void Pack8bitColMajorForAvx512(const std::int8_t* src_ptr,
   const bool trailing_data = (src_rows & kChunkedRowMask) > 0;
   // If the number of source rows is not a multiple of kChunkedRowMask, there
   // will be data in the trailing buffer,
-  if (trailing_data > 0) {
+  if (trailing_data) {
     const int non_trailing_rows = src_rows & ~kChunkedRowMask;
     // Destination "rows" are padded to next highest multiple of Layout::kRows.
     const int dst_rows = (src_rows + 3) & ~3;
