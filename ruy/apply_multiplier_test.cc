@@ -67,10 +67,7 @@ TEST(ApplyMultiplierTest, RoundingRightShift) {
   TestMultiplyByQuantizedMultiplier(1000, max_int32, -1, 500);
   TestMultiplyByQuantizedMultiplier(1000, max_int32, -2, 250);
   TestMultiplyByQuantizedMultiplier(1000, max_int32, -3, 125);
-  // This 63 value comes from rounding 62.5, which is a tie.
-  // As a positive value, it does not distinguish between 'upward'
-  // and 'away from zero' tie-breaking behavior.
-  TestMultiplyByQuantizedMultiplier(1000, max_int32, -4, 63);
+  TestMultiplyByQuantizedMultiplier(1000, max_int32, -4, 62);
   TestMultiplyByQuantizedMultiplier(1000, max_int32, -5, 31);
   TestMultiplyByQuantizedMultiplier(1000, max_int32, -6, 16);
   TestMultiplyByQuantizedMultiplier(-1000, max_int32, -1, -500);
