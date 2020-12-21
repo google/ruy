@@ -1415,10 +1415,8 @@ void Kernel8bitAvxSingleColImpl(const KernelParams8bit<8, 8>& params) {
     if (params.dst_type_id == DstTypeId<std::int8_t>::kValue) {
       std::int8_t* tmp_ptr = static_cast<std::int8_t*>(dst_ptr);
       __m256i result = accum_data_v0;
-      int32_t res = _mm256_extract_epi32(result, 0);
       result = intrin_utils::mm256_min_epi32<path>(result, clamp_max_v);
       result = intrin_utils::mm256_max_epi32<path>(result, clamp_min_v);
-      res = _mm256_extract_epi32(result, 0);
       intrin_utils::mm256_n_storeu_cvtepi32_epi8<path>(tmp_ptr, residual_rows,
                                                        result);
       dst_ptr = static_cast<void*>(static_cast<std::int8_t*>(dst_ptr) +

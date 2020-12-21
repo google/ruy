@@ -435,6 +435,7 @@ inline __m256 Mm256UnpackhiPsx2(const __m256 a, const __m256 b) {
 template <Path path>
 inline __m256i CompareGreaterThan(const __m256i&, const __m256i&) {
   RUY_DCHECK(false);
+  return _mm256_set1_epi32(0);
 }
 
 // Shared between AVX and AVX2+FMA.

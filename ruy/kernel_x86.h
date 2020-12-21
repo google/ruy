@@ -251,6 +251,7 @@ inline __m256 MulAdd(const __m256&, const __m256&, const __m256&) {
   // Specializations added for AVX and AVX2FMA paths in their respective kernel
   // files.
   RUY_DCHECK(false);
+  return _mm256_set1_ps(0);
 }
 
 template <Path path>
@@ -258,6 +259,7 @@ inline __m256i mm256_shuffle_epi8(const __m256i&, const __m256i&) {
   // Specializations added for AVX and AVX2FMA paths in their respective kernel
   // files.
   RUY_DCHECK(false);
+  return _mm256_set1_epi32(0);
 }
 
 // Polyfill for _mm_storeu_si16(dst, v).
@@ -300,6 +302,7 @@ inline __m128i mm_loadu_si32(const void* src) {
 template <Path path>
 inline __m128i mm256_extracti128_si256(const __m256i&, const int) {
   RUY_DCHECK(false);
+  return _mm_setzero_si128();
 }
 
 template <Path path>
