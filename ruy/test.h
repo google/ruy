@@ -1380,7 +1380,7 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
           external_path1 == ExternalPath::kEigenTensor ||
           external_path2 == ExternalPath::kEigenTensor) {
         // Make additional allowance for Eigen differences.
-        tolerated_max_diff *= 3.0f;
+        tolerated_max_diff *= 10.0f;
       }
     }
     tolerated_mean_diff = tolerated_max_diff / std::sqrt(size);
