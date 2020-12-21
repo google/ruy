@@ -126,7 +126,7 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   std::cout << "RHS:\n" << rhs;
   std::cout << "Result:\n" << dst << "\n";
 }
-void ExampleMulInt8PerChannelGetRawAccumulators(ruy::Context *context) {
+void ExampleMulInt8GetRawAccumulators(ruy::Context *context) {
   const std::int8_t lhs_data[] = {1, 2, 3, 4};
   const std::int8_t rhs_data[] = {1, 2, 3, 4};
   std::int32_t dst_data[4];
@@ -145,8 +145,7 @@ void ExampleMulInt8PerChannelGetRawAccumulators(ruy::Context *context) {
   ruy::MulParams<std::int32_t, std::int32_t> mul_params;
   ruy::Mul(lhs, rhs, mul_params, context, &dst);
 
-  std::cout << "Example Mul, int8 quantized with per-channel multipliers, "
-               "returning raw int32 accumulators:\n";
+  std::cout << "Example Mul, returning raw int32 accumulators:\n";
   std::cout << "LHS:\n" << lhs;
   std::cout << "RHS:\n" << rhs;
   std::cout << "Result:\n" << dst << "\n";
@@ -158,5 +157,5 @@ int main() {
   ExampleMulFloatWithBiasAddAndClamp(&context);
   ExampleMulUint8AsymmetricQuantized(&context);
   ExampleMulInt8PerChannelQuantized(&context);
-  ExampleMulInt8PerChannelGetRawAccumulators(&context);
+  ExampleMulInt8GetRawAccumulators(&context);
 }
