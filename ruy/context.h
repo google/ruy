@@ -20,8 +20,6 @@ limitations under the License.
 
 #include <cstdint>
 
-#include "ruy/performance_advisory.h"
-
 namespace ruy {
 
 class Ctx;
