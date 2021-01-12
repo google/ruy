@@ -16,10 +16,10 @@
 
 include(CMakeParseArguments)
 
-# cc_binary()
+# ruy_cc_binary()
 #
 # CMake function to imitate Bazel's cc_binary rule.
-function(cc_binary)
+function(ruy_cc_binary)
   cmake_parse_arguments(
     _RULE
     "TESTONLY"

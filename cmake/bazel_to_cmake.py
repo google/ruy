@@ -27,6 +27,8 @@ its existence as of early 2021, are
      about the config_setting names, not their actual implementation, as well
      as all the variants from the Bazel 'selects' library.
   2. Support for load(), loading macros from Starlark files.
+  3. Generates the entire project, including the project-root CMakeLists.txt.
+     The only non-generated files are cmake/*.cmake.
 """
 
 import re
@@ -35,6 +37,7 @@ import os.path
 import pickle
 import sys
 import datetime
+import itertools
 
 # Ruy's dependencies.
 external_targets = ['gtest', 'gtest_main', 'cpuinfo']
@@ -58,45 +61,7 @@ def preprocess_input_text(text):
     return result
 
 
-def package(**kwargs):
-    pass
-
-
-def exports_files(*args):
-    pass
-
-
-def load(filename, *args):
-    if filename.startswith('@'):
-        return
-    elif filename.startswith(':'):
-        filename = os.path.join(bazel_package_dir, filename[1:])
-    elif filename.startswith('//'):
-        split = filename[2:].split(':')
-        filename = os.path.join(bazel_workspace_dir, split[0], split[1])
-
-    src_file_content = open(filename).read()
-    processed_file_content = preprocess_input_text(src_file_content)
-    exec(processed_file_content, globals(), globals())
-
-
-def config_setting(**kwargs):
-    pass
-
-
-def filegroup(**kwargs):
-    pass
-
-
-def config_setting_group(**kwargs):
-    pass
-
-
-def bzl_library(**kwargs):
-    pass
-
-
-def append_cmake_list(list_name, values, indent):
+def set_cmake_list(list_name, values, indent):
     semicolon_separated = ";".join(values)
     print(f'{indent}set({list_name} "{semicolon_separated}")')
 
@@ -135,36 +100,13 @@ def generate_cmake_select(select_name, dict):
 
         if condition:
             print(f'{new_if_branch_keyword}({condition})')
-            if dict[key]:
-                append_cmake_list(select_name, dict[key], '  ')
-            else:
-                print(f'  # nothing goes into {select_name}')
+            set_cmake_list(select_name, dict[key], '  ')
         new_if_branch_keyword = 'elseif'
 
     print('else()')
-    append_cmake_list(select_name, default_value, '  ')
+    set_cmake_list(select_name, default_value, '  ')
 
     print('endif()\n')
-
-
-select_index = 0
-select_cache = {}
-
-
-def select(dict):
-    global select_index
-    global select_cache
-    global package_prefix
-    key = pickle.dumps(dict)
-    if key in select_cache:
-        select_name = select_cache[key]
-    else:
-        select_name = f'RUY_SELECT_{package_prefix}_{select_index}'
-        select_index = select_index + 1
-        select_cache[key] = select_name
-        generate_cmake_select(select_name, dict)
-
-    return [f'${{{select_name}}}']
 
 
 def get_cmake_local_target_name(name):
@@ -186,6 +128,76 @@ def get_cmake_dep_target_name(name):
         return name
     global package_prefix
     return f'{package_prefix}_{name}'
+
+
+#
+# Functions implementing BUILD functions
+#
+
+
+def package(**kwargs):
+    pass
+
+
+def exports_files(*args):
+    pass
+
+
+def load(filename, *args):
+    if filename.startswith('@'):
+        return
+    elif filename.startswith(':'):
+        filename = os.path.join(bazel_package_dir, filename[1:])
+    elif filename.startswith('//'):
+        split = filename[2:].split(':')
+        filename = os.path.join(bazel_workspace_dir, split[0], split[1])
+
+    src_file_content = open(filename).read()
+    processed_file_content = preprocess_input_text(src_file_content)
+    exec(processed_file_content, globals(), globals())
+
+
+def config_setting(**kwargs):
+    # Nothing to do since our implementation of select() is based on parsing
+    # the names of config_settings, not looking deep into their actual
+    # implementation.
+    pass
+
+
+def filegroup(**kwargs):
+    pass
+
+
+def config_setting_group(**kwargs):
+    # See config_setting.
+    pass
+
+
+def bzl_library(**kwargs):
+    pass
+
+
+select_index = 0
+select_cache = {}
+
+
+def select(dict):
+    global select_index
+    global select_cache
+    global package_prefix
+    key = pickle.dumps(dict)
+    if key in select_cache:
+        select_name = select_cache[key]
+    else:
+        description = '_'.join({*itertools.chain.from_iterable(dict.values())})
+        select_name = f'{package_prefix}_{select_index}_{description}'
+        select_name = select_name.replace('c++', 'cxx')
+        select_name = re.sub(r'[^a-zA-Z0-9]+', '_', select_name)
+        select_index = select_index + 1
+        select_cache[key] = select_name
+        generate_cmake_select(select_name, dict)
+
+    return [f'${{{select_name}}}']
 
 
 def generic_rule(rule_name, **kwargs):
@@ -220,15 +232,20 @@ def generic_rule(rule_name, **kwargs):
 
 
 def cc_library(**kwargs):
-    generic_rule('cc_library', **kwargs)
+    generic_rule('ruy_cc_library', **kwargs)
 
 
 def cc_test(**kwargs):
-    generic_rule('cc_test', **kwargs)
+    generic_rule('ruy_cc_test', **kwargs)
 
 
 def cc_binary(**kwargs):
-    generic_rule('cc_binary', **kwargs)
+    generic_rule('ruy_cc_binary', **kwargs)
+
+
+#
+# Program entry point.
+#
 
 
 if len(sys.argv) != 3:
@@ -258,11 +275,9 @@ print("""# Copyright %d Google LLC
 
 src_build_file = os.path.join(bazel_package_dir, "BUILD")
 
-print("""# Do not edit! This file was auto-generated by this program:
-#   %s
-# To regenerate CMakeLists.txt for all subdirectories, just run:
+print("""# Do not edit! To regenerate, run:
 #   cmake/bazel_to_cmake.sh
-""" % ' '.join([os.path.relpath(p, bazel_workspace_dir) for p in sys.argv]))
+""")
 
 if bazel_workspace_dir == bazel_package_dir:
     print("""
@@ -277,11 +292,14 @@ if (RUY_ENABLE_TESTS)
   enable_testing()
 endif()
 
-include(cmake/add_all_subdirs.cmake)
-include(cmake/cc_library.cmake)
-include(cmake/cc_binary.cmake)
-include(cmake/cc_test.cmake)
+include(cmake/ruy_add_all_subdirs.cmake)
+include(cmake/ruy_cc_library.cmake)
+include(cmake/ruy_cc_binary.cmake)
+include(cmake/ruy_cc_test.cmake)
 
+# Disabling cpuinfo's tests and benchmarks to prevent a copy of its
+# googletest dependency getting downloaded into a 'deps' directory in the
+# source tree!
 set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
@@ -294,7 +312,4 @@ src_build_content = open(src_build_file).read()
 processed_build_content = preprocess_input_text(src_build_content)
 exec(processed_build_content)
 
-print("""
-
-add_all_subdirs()
-""")
+print("ruy_add_all_subdirs()")

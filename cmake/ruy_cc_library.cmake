@@ -16,10 +16,10 @@
 
 include(CMakeParseArguments)
 
-# cc_library()
+# ruy_cc_library()
 #
 # CMake function to imitate Bazel's cc_library rule.
-function(cc_library)
+function(ruy_cc_library)
   cmake_parse_arguments(
     _RULE
     "PUBLIC;TESTONLY"
@@ -41,9 +41,25 @@ function(cc_library)
     set(_RULE_IS_INTERFACE 0)
   endif()
 
-  if(NOT _RULE_IS_INTERFACE)
+  if(_RULE_IS_INTERFACE)
+    # Generating a header-only library.
+    add_library(${_NAME} INTERFACE)
+    target_include_directories(${_NAME}
+      INTERFACE
+        "${PROJECT_SOURCE_DIR}"
+    )
+    target_link_libraries(${_NAME}
+      INTERFACE
+        ${_RULE_DEPS}
+        ${_RULE_LINKOPTS}
+    )
+    target_compile_definitions(${_NAME}
+      INTERFACE
+        ${_RULE_DEFINES}
+    )
+  else()
+    # Generating a static binary library.
     add_library(${_NAME} STATIC "")
-
     target_sources(${_NAME}
       PRIVATE
         ${_RULE_SRCS}
@@ -57,37 +73,15 @@ function(cc_library)
       PRIVATE
         ${_RULE_COPTS}
     )
-
     target_link_libraries(${_NAME}
       PUBLIC
         ${_RULE_DEPS}
       PRIVATE
         ${_RULE_LINKOPTS}
     )
-
     target_compile_definitions(${_NAME}
       PUBLIC
         ${_RULE_DEFINES}
-    )
-  else()
-    # Generating header-only library.
-    add_library(${_NAME} INTERFACE)
-    target_include_directories(${_NAME}
-      INTERFACE
-        "${PROJECT_SOURCE_DIR}"
-    )
-    target_compile_options(${_NAME}
-      INTERFACE
-        ${_RULE_COPTS}
-    )
-    target_link_libraries(${_NAME}
-      INTERFACE
-        ${_RULE_DEPS}
-        ${_RULE_LINKOPTS}
-    )
-    target_compile_definitions(${_NAME}
-      INTERFACE
-        ${_RULE_DEFINES}
-    )
+    )    
   endif()
 endfunction()

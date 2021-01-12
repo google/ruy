@@ -16,10 +16,10 @@
 
 include(CMakeParseArguments)
 
-# cc_test()
+# ruy_cc_test()
 # 
 # CMake function to imitate Bazel's cc_test rule.
-function(cc_test)
+function(ruy_cc_test)
   cmake_parse_arguments(
     _RULE
     ""
@@ -59,10 +59,10 @@ function(cc_test)
   if(ANDROID)
     add_test(
       NAME
-        ${_NAME}_on_android_device
+        ${_NAME}
       COMMAND
         "${CMAKE_SOURCE_DIR}/cmake/run_android_test.sh"
-        "${CMAKE_CURRENT_BINARY_DIR}/${_NAME}"
+        "$<TARGET_FILE:${_NAME}>"
     )
   else()
     add_test(
@@ -71,5 +71,8 @@ function(cc_test)
         COMMAND
           "$<TARGET_FILE:${_NAME}>"
         )
+  endif()
+  if (_RULE_TAGS)
+    set_property(TEST ${_NAME} PROPERTY LABELS ${_RULE_TAGS})
   endif()
 endfunction()

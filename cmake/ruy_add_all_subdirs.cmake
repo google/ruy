@@ -20,7 +20,7 @@
 # a CMakeLists.txt file
 #
 # Takes no arguments.
-function(add_all_subdirs)
+function(ruy_add_all_subdirs)
   FILE(GLOB _CHILDREN RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/*)
   SET(_DIRLIST "")
   foreach(_CHILD ${_CHILDREN})
