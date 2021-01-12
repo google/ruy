@@ -19,8 +19,8 @@ to let the python interpreter do the bulk of the work, exploiting the fact that
 both Bazel's BUILD syntax and Starlark (".bzl") languages are more or less
 subsets of Python.
 
-The main feature that this converter supports and that others don't, justifying
-its existence as of early 2021, are
+The main features that this converter supports and that others don't, justifying
+its existence as of early 2021, are:
   1. Ad-hoc support for select(), generating CMake if()...elseif()... chains
      parsing the condition keys (e.g. anything ending in ":windows" is interpreted as the condition "the target platform
      is Windows"). This allows to just ignore config_setting, as we only care
