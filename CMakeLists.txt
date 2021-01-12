@@ -40,8 +40,10 @@ include(cmake/ruy_cc_test.cmake)
 set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
+add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
+
 include_directories("third_party/cpuinfo")
 include_directories("third_party/googletest/googletest")
-    
 
 ruy_add_all_subdirs()

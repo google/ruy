@@ -191,7 +191,10 @@ def select(dict):
     if key in select_cache:
         select_name = select_cache[key]
     else:
-        description = '_'.join({*itertools.chain.from_iterable(dict.values())})
+        unique_values = list(
+            {*itertools.chain.from_iterable(dict.values())})
+        unique_values.sort()  # sorting ensures determinism, no spurious diffs
+        description = '_'.join(unique_values)
         select_name = f'{package_prefix}_{select_index}_{description}'
         select_name = select_name.replace('c++', 'cxx')
         select_name = re.sub(r'[^a-zA-Z0-9]+', '_', select_name)
@@ -307,9 +310,11 @@ include(cmake/ruy_cc_test.cmake)
 set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
+add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
+add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
+
 include_directories("third_party/cpuinfo")
 include_directories("third_party/googletest/googletest")
-    
 """)
 
 src_build_content = open(src_build_file).read()
