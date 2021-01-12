@@ -15,6 +15,7 @@
 # Forked from IREE's iree_cc_library.cmake.
 
 include(CMakeParseArguments)
+include(cmake/ruy_include_directories.cmake)
 
 # ruy_cc_library()
 #
@@ -65,26 +66,7 @@ function(ruy_cc_library)
         ${_RULE_SRCS}
         ${_RULE_HDRS}
     )
-    target_include_directories(${_NAME}
-      PUBLIC
-        "${PROJECT_SOURCE_DIR}"
-    )
-    # Handling of ruy's dependencies. We can handle it locally here, adding only
-    # PRIVATE include directories, because ruy's #includes of dependencies are
-    # concentrated in implementation files of cc_library rules.
-    if (cpuinfo IN_LIST _RULE_DEPS)
-      target_include_directories(${_NAME}
-        PRIVATE
-          "${PROJECT_SOURCE_DIR}/third_party/cpuinfo"
-      )
-    endif()
-    if ((gtest IN_LIST _RULE_DEPS) OR
-        (gtest_main IN_LIST _RULE_DEPS))
-      target_include_directories(${_NAME}
-        PRIVATE
-          "${PROJECT_SOURCE_DIR}/third_party/googletest/googletest"
-      )
-    endif()
+    ruy_include_directories(${_NAME} "${_RULE_DEPS}")
     target_compile_options(${_NAME}
       PRIVATE
         ${_RULE_COPTS}

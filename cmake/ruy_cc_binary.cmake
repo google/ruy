@@ -15,6 +15,7 @@
 # Forked from IREE's iree_cc_binary.cmake.
 
 include(CMakeParseArguments)
+include(cmake/ruy_include_directories.cmake)
 
 # ruy_cc_binary()
 #
@@ -40,10 +41,7 @@ function(ruy_cc_binary)
       ${_RULE_SRCS}
   )
   set_target_properties(${_NAME} PROPERTIES OUTPUT_NAME "${_RULE_NAME}")
-  target_include_directories(${_NAME}
-    PUBLIC
-      "${PROJECT_SOURCE_DIR}"
-  )
+  ruy_include_directories(${_NAME} "${_RULE_DEPS}")
   target_compile_options(${_NAME}
     PRIVATE
       ${_RULE_COPTS}
