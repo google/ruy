@@ -85,11 +85,10 @@ def generate_cmake_select(select_name, dict):
         elif re.search(r':arm32_assuming_neon$', key):
             condition = 'CMAKE_SYSTEM_PROCESSOR STREQUAL arm'
         elif re.search(r':do_not_want_O3$', key):
-            # This config setting is a work-around for certain Bazel toolchains.
-            # Unconditionally returning TRUE here means we will never explicitly
-            # set -O3 in CMake, we will rely on CMake's defaults for the given
-            # CMake build type.
-            condition = 'TRUE'
+            # Ruy is a specialist library: we always want code to be compiled
+            # with -O3 unless the build type is Debug or the compiler does not
+            # support that flag syntax.
+            condition = '(CMAKE_BUILD_TYPE STREQUAL Debug) OR MSVC'
         elif re.search(r':x86_64_and_not_msvc$', key):
             condition = '(CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC'
         elif re.search(r':windows_msvc$', key):

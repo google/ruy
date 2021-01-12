@@ -27,7 +27,7 @@ else()
   set(ruy_1_mfpu_neon "")
 endif()
 
-if(TRUE)
+if((CMAKE_BUILD_TYPE STREQUAL Debug) OR MSVC)
   set(ruy_2_O3 "")
 else()
   set(ruy_2_O3 "-O3")
