@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Forked from IREE's iree_add_all_subidrs.cmake.
+# Forked from IREE's iree_add_all_subdirs.cmake.
 
 # add_all_subidrs
 #

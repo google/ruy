@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Do not edit! To regenerate, run:
-#   cmake/bazel_to_cmake.sh
-
-
 cmake_policy(SET CMP0012 NEW)
 cmake_policy(SET CMP0048 NEW)
 project(ruy CXX)

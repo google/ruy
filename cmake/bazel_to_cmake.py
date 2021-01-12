@@ -22,13 +22,12 @@ subsets of Python.
 The main features that this converter supports and that others don't, justifying
 its existence as of early 2021, are:
   1. Ad-hoc support for select(), generating CMake if()...elseif()... chains
-     parsing the condition keys (e.g. anything ending in ":windows" is interpreted as the condition "the target platform
-     is Windows"). This allows to just ignore config_setting, as we only care
-     about the config_setting names, not their actual implementation, as well
-     as all the variants from the Bazel 'selects' library.
+     parsing the condition keys (e.g. anything ending in ":windows" is
+     interpreted as the condition "the target platform is Windows"). This allows
+     to just ignore config_setting, as we only care about the config_setting
+     names, not their actual implementation, as well as all the variants from
+     the Bazel 'selects' library.
   2. Support for load(), loading macros from Starlark files.
-  3. Generates the entire project, including the project-root CMakeLists.txt.
-     The only non-generated files are cmake/*.cmake.
 """
 
 import re
@@ -265,57 +264,12 @@ bazel_package_relative_dir = os.path.relpath(
     bazel_package_dir, bazel_workspace_dir)
 package_prefix = bazel_package_relative_dir.replace(os.path.sep, '_')
 
-print("""# Copyright %d Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-""" % datetime.datetime.now().year)
-
-src_build_file = os.path.join(bazel_package_dir, "BUILD")
-
-print("""# Do not edit! To regenerate, run:
+print("""# This file is generated (whence no license header). Do not edit!
+# To regenerate, run:
 #   cmake/bazel_to_cmake.sh
 """)
 
-if bazel_workspace_dir == bazel_package_dir:
-    print("""
-cmake_policy(SET CMP0012 NEW)
-cmake_policy(SET CMP0048 NEW)
-project(ruy CXX)
-cmake_minimum_required(VERSION 3.13)  # Copied from IREE
-set(CMAKE_CXX_STANDARD 14)
-
-option(RUY_ENABLE_TESTS "Enable ruy's tests" ON)
-if (RUY_ENABLE_TESTS)
-  enable_testing()
-endif()
-
-option(RUY_PROFILER "Enable ruy's built-in profiler (harms performance)" OFF)
-
-include(cmake/ruy_add_all_subdirs.cmake)
-include(cmake/ruy_cc_library.cmake)
-include(cmake/ruy_cc_binary.cmake)
-include(cmake/ruy_cc_test.cmake)
-
-# Disabling cpuinfo's tests and benchmarks to prevent a copy of its
-# googletest dependency getting downloaded into a 'deps' directory in the
-# source tree!
-set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
-set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
-add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
-""")
-
+src_build_file = os.path.join(bazel_package_dir, "BUILD")
 src_build_content = open(src_build_file).read()
 processed_build_content = preprocess_input_text(src_build_content)
 exec(processed_build_content)
