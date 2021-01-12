@@ -16,9 +16,9 @@
 #   cmake/bazel_to_cmake.sh
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  set(ruy_0_Wundef_Wall_Wcxx14_compat_Wextra "")
+  set(ruy_0_Wcxx14_compat_Wundef_Wall_Wextra "")
 else()
-  set(ruy_0_Wundef_Wall_Wcxx14_compat_Wextra "-Wall;-Wextra;-Wc++14-compat;-Wundef")
+  set(ruy_0_Wcxx14_compat_Wundef_Wall_Wextra "-Wall;-Wextra;-Wc++14-compat;-Wundef")
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm)
@@ -39,7 +39,7 @@ ruy_cc_library(
   HDRS
     platform.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -60,7 +60,7 @@ ruy_cc_library(
   HDRS
     check_macros.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -71,7 +71,7 @@ ruy_cc_test(
   SRCS
     check_macros_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -85,7 +85,7 @@ ruy_cc_library(
   HDRS
     opt_set.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -96,7 +96,7 @@ ruy_cc_library(
   HDRS
     time.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -115,7 +115,7 @@ ruy_cc_library(
   HDRS
     wait.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   LINKOPTS
@@ -130,7 +130,7 @@ ruy_cc_test(
   SRCS
     wait_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   LINKOPTS
@@ -147,7 +147,7 @@ ruy_cc_library(
   HDRS
     size_util.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -160,7 +160,7 @@ ruy_cc_test(
   SRCS
     size_util_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -176,7 +176,7 @@ ruy_cc_library(
   HDRS
     tune.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -195,7 +195,7 @@ ruy_cc_library(
   HDRS
     system_aligned_alloc.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -208,7 +208,7 @@ ruy_cc_library(
   HDRS
     prepacked_cache.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -223,7 +223,7 @@ ruy_cc_test(
   SRCS
     tune_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -238,7 +238,7 @@ ruy_cc_test(
   SRCS
     prepacked_cache_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -261,7 +261,7 @@ ruy_cc_library(
   HDRS
     allocator.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -276,7 +276,7 @@ ruy_cc_test(
   SRCS
     allocator_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -290,7 +290,7 @@ ruy_cc_library(
   HDRS
     side_pair.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -305,7 +305,7 @@ ruy_cc_library(
   HDRS
     block_map.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -323,7 +323,7 @@ ruy_cc_test(
   SRCS
     block_map_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -343,7 +343,7 @@ ruy_cc_library(
   HDRS
     blocking_counter.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   LINKOPTS
@@ -362,7 +362,7 @@ ruy_cc_library(
   HDRS
     thread_pool.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   LINKOPTS
@@ -381,7 +381,7 @@ ruy_cc_library(
   HDRS
     cpu_cache_params.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
 )
@@ -420,7 +420,7 @@ ruy_cc_library(
   HDRS
     cpuinfo.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_4_Wno_undef}
@@ -438,7 +438,7 @@ ruy_cc_library(
   HDRS
     path.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -453,7 +453,7 @@ ruy_cc_library(
   HDRS
     performance_advisory.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -465,7 +465,7 @@ ruy_cc_library(
   HDRS
     matrix.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -479,7 +479,7 @@ ruy_cc_test(
   SRCS
     matrix_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -493,7 +493,7 @@ ruy_cc_library(
   HDRS
     mul_params.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -508,7 +508,7 @@ ruy_cc_test(
   SRCS
     mul_params_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -522,7 +522,7 @@ ruy_cc_library(
   HDRS
     mat.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -537,7 +537,7 @@ ruy_cc_library(
   HDRS
     asm_helpers.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -552,7 +552,7 @@ ruy_cc_library(
   HDRS
     apply_multiplier.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -566,7 +566,7 @@ ruy_cc_test(
   SRCS
     apply_multiplier_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -581,7 +581,7 @@ ruy_cc_library(
   HDRS
     kernel_common.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -605,7 +605,7 @@ ruy_cc_library(
   HDRS
     pack_common.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -628,7 +628,7 @@ ruy_cc_library(
   HDRS
     kernel_arm.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -654,7 +654,7 @@ ruy_cc_library(
   HDRS
     pack_arm.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -670,11 +670,11 @@ ruy_cc_library(
 )
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
-  set(ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
+  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
 elseif(MSVC)
-  set(ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512 "/arch:AVX512")
+  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 "/arch:AVX512")
 else()
-  set(ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512 "")
+  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 "")
 endif()
 
 ruy_cc_library(
@@ -685,10 +685,10 @@ ruy_cc_library(
   HDRS
     kernel_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512}
+    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
   DEPS
     ruy_check_macros
     ruy_kernel_common
@@ -709,10 +709,10 @@ ruy_cc_library(
   HDRS
     pack_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512}
+    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
   DEPS
     ruy_check_macros
     ruy_mat
@@ -732,10 +732,10 @@ ruy_cc_library(
   HDRS
     have_built_path_for.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512vl_mavx512bw_mavx512dq_mavx512f_arch_AVX512}
+    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
   DEPS
     ruy_opt_set
     ruy_platform
@@ -757,7 +757,7 @@ ruy_cc_library(
   HDRS
     kernel_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_8_arch_AVX2_mfma_mavx2}
@@ -781,7 +781,7 @@ ruy_cc_library(
   HDRS
     pack_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_8_arch_AVX2_mfma_mavx2}
@@ -804,7 +804,7 @@ ruy_cc_library(
   HDRS
     have_built_path_for.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_8_arch_AVX2_mfma_mavx2}
@@ -829,7 +829,7 @@ ruy_cc_library(
   HDRS
     kernel_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_9_arch_AVX_mavx}
@@ -853,7 +853,7 @@ ruy_cc_library(
   HDRS
     pack_x86.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_9_arch_AVX_mavx}
@@ -876,7 +876,7 @@ ruy_cc_library(
   HDRS
     have_built_path_for.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     ${ruy_9_arch_AVX_mavx}
@@ -891,7 +891,7 @@ ruy_cc_library(
   HDRS
     kernel.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -920,7 +920,7 @@ ruy_cc_library(
   HDRS
     pack.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -959,7 +959,7 @@ ruy_cc_library(
   HDRS
     context.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -982,7 +982,7 @@ ruy_cc_test(
   SRCS
     context_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1011,7 +1011,7 @@ ruy_cc_library(
     ctx.h
     ctx_impl.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1035,7 +1035,7 @@ ruy_cc_library(
   HDRS
     context_get_ctx.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1049,7 +1049,7 @@ ruy_cc_test(
   SRCS
     ctx_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1065,7 +1065,7 @@ ruy_cc_library(
   HDRS
     trmul_params.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1084,7 +1084,7 @@ ruy_cc_library(
   HDRS
     trmul.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1114,7 +1114,7 @@ ruy_cc_library(
   HDRS
     prepare_packed_matrices.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1132,7 +1132,7 @@ ruy_cc_library(
   HDRS
     create_trmul_params.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1156,7 +1156,7 @@ ruy_cc_library(
   HDRS
     validate.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1174,7 +1174,7 @@ ruy_cc_library(
   HDRS
     frontend.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1196,7 +1196,7 @@ ruy_cc_library(
   HDRS
     ruy.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -1216,7 +1216,7 @@ ruy_cc_test(
   SRCS
     perchannel_buffers_reallocation_test.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1238,7 +1238,7 @@ ruy_cc_library(
   HDRS
     pmu.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
@@ -1251,7 +1251,7 @@ ruy_cc_library(
   HDRS
     reference_mul.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   PUBLIC
@@ -1274,7 +1274,7 @@ ruy_cc_library(
   HDRS
     test.h
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEFINES
@@ -1305,7 +1305,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=f32
@@ -1326,7 +1326,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1347,7 +1347,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1368,7 +1368,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1389,7 +1389,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1410,7 +1410,7 @@ ruy_cc_binary(
   SRCS
     benchmark.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1430,7 +1430,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=f32
@@ -1449,7 +1449,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=f64
@@ -1468,7 +1468,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=f32
@@ -1487,7 +1487,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1506,7 +1506,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1525,7 +1525,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1544,7 +1544,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1563,7 +1563,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1582,7 +1582,7 @@ ruy_cc_test(
   SRCS
     test_fast.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1601,7 +1601,7 @@ ruy_cc_test(
   SRCS
     test_slow.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=f32
@@ -1621,7 +1621,7 @@ ruy_cc_test(
   SRCS
     test_slow.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1641,7 +1641,7 @@ ruy_cc_test(
   SRCS
     test_slow.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8
@@ -1661,7 +1661,7 @@ ruy_cc_test(
   SRCS
     test_slow.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=u8
@@ -1681,7 +1681,7 @@ ruy_cc_test(
   SRCS
     test_slow.cc
   COPTS
-    ${ruy_0_Wundef_Wall_Wcxx14_compat_Wextra}
+    ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
     -DRUY_TEST_LHSSCALAR=i8

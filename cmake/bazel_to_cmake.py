@@ -73,6 +73,7 @@ def generate_cmake_select(select_name, dict):
         condition = ''
         if key == '//conditions:default':
             default_value = dict[key]
+            continue
         elif re.search(r':windows$', key):
             condition = 'CMAKE_SYSTEM_NAME STREQUAL Windows'
         elif re.search(r':ppc$', key):
@@ -98,9 +99,8 @@ def generate_cmake_select(select_name, dict):
         else:
             raise ValueError(f'Unhandled key in select: {key}')
 
-        if condition:
-            print(f'{new_if_branch_keyword}({condition})')
-            set_cmake_list(select_name, dict[key], '  ')
+        print(f'{new_if_branch_keyword}({condition})')
+        set_cmake_list(select_name, dict[key], '  ')
         new_if_branch_keyword = 'elseif'
 
     print('else()')
