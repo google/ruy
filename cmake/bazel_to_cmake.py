@@ -312,9 +312,6 @@ set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
 set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
 add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
-
-include_directories("third_party/cpuinfo")
-include_directories("third_party/googletest/googletest")
 """)
 
 src_build_content = open(src_build_file).read()

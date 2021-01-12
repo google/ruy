@@ -69,6 +69,22 @@ function(ruy_cc_library)
       PUBLIC
         "${PROJECT_SOURCE_DIR}"
     )
+    # Handling of ruy's dependencies. We can handle it locally here, adding only
+    # PRIVATE include directories, because ruy's #includes of dependencies are
+    # concentrated in implementation files of cc_library rules.
+    if (cpuinfo IN_LIST _RULE_DEPS)
+      target_include_directories(${_NAME}
+        PRIVATE
+          "${PROJECT_SOURCE_DIR}/third_party/cpuinfo"
+      )
+    endif()
+    if ((gtest IN_LIST _RULE_DEPS) OR
+        (gtest_main IN_LIST _RULE_DEPS))
+      target_include_directories(${_NAME}
+        PRIVATE
+          "${PROJECT_SOURCE_DIR}/third_party/googletest/googletest"
+      )
+    endif()
     target_compile_options(${_NAME}
       PRIVATE
         ${_RULE_COPTS}
