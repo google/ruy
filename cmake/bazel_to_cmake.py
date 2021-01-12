@@ -294,6 +294,8 @@ if (RUY_ENABLE_TESTS)
   enable_testing()
 endif()
 
+option(RUY_PROFILER "Enable ruy's built-in profiler (harms performance)" OFF)
+
 include(cmake/ruy_add_all_subdirs.cmake)
 include(cmake/ruy_cc_library.cmake)
 include(cmake/ruy_cc_binary.cmake)
