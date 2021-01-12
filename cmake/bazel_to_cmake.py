@@ -117,6 +117,10 @@ def get_cmake_local_target_name(name):
 def get_cmake_dep_target_name(name):
     if name in external_targets:
         return name
+    if name.startswith('$'):
+        # Happens for deps that are the result of expanding a select() that we
+        # have compiled to expanding a variable.
+        return name
     if name.startswith('//'):
         after_last_slash = name.split('/')[-1]
         if not ':' in after_last_slash:
@@ -124,8 +128,6 @@ def get_cmake_dep_target_name(name):
         return name[2:].replace('/', '_').replace(':', '_')
     if name.startswith(':'):
         name = name[1:]
-    if name.startswith('$'):
-        return name
     global package_prefix
     return f'{package_prefix}_{name}'
 

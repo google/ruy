@@ -670,11 +670,11 @@ ruy_cc_library(
 )
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
-  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
+  set(ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
 elseif(MSVC)
-  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 "/arch:AVX512")
+  set(ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw "/arch:AVX512")
 else()
-  set(ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512 "")
+  set(ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw "")
 endif()
 
 ruy_cc_library(
@@ -688,7 +688,7 @@ ruy_cc_library(
     ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
+    ${ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw}
   DEPS
     ruy_check_macros
     ruy_kernel_common
@@ -712,7 +712,7 @@ ruy_cc_library(
     ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
+    ${ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw}
   DEPS
     ruy_check_macros
     ruy_mat
@@ -735,7 +735,7 @@ ruy_cc_library(
     ${ruy_0_Wcxx14_compat_Wundef_Wall_Wextra}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512cd_mavx512bw_mavx512vl_mavx512f_mavx512dq_arch_AVX512}
+    ${ruy_7_mavx512f_mavx512cd_mavx512dq_mavx512vl_arch_AVX512_mavx512bw}
   DEPS
     ruy_opt_set
     ruy_platform
