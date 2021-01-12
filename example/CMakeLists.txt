@@ -17,11 +17,11 @@
 
 ruy_cc_binary(
   NAME
-    example_example
+    ruy_example_example
   SRCS
     example.cc
   DEPS
-    ruy_ruy
+    ruy
 )
 
 ruy_add_all_subdirs()

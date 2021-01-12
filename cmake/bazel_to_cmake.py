@@ -109,9 +109,12 @@ def generate_cmake_select(select_name, dict):
     print('endif()\n')
 
 
+def trim_multiple_ruy_prefixes(name):
+    return re.sub(r'(ruy_)+ruy', 'ruy', name)
+
 def get_cmake_local_target_name(name):
     global package_prefix
-    return f'{package_prefix}_{name}'
+    return trim_multiple_ruy_prefixes(f'ruy_{package_prefix}_{name}')
 
 
 def get_cmake_dep_target_name(name):
@@ -125,11 +128,11 @@ def get_cmake_dep_target_name(name):
         after_last_slash = name.split('/')[-1]
         if not ':' in after_last_slash:
             name = f'{name}:{after_last_slash}'
-        return name[2:].replace('/', '_').replace(':', '_')
+        raw=name[2:].replace('/', '_').replace(':', '_')
+        return trim_multiple_ruy_prefixes(raw)
     if name.startswith(':'):
         name = name[1:]
-    global package_prefix
-    return f'{package_prefix}_{name}'
+    return get_cmake_local_target_name(name)
 
 
 #
