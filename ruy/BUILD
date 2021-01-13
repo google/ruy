@@ -829,7 +829,6 @@ cc_library(
         ":allocator",
         ":check_macros",
         ":ctx",
-        ":have_built_path_for",
         ":path",
         ":performance_advisory",
         ":platform",
