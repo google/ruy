@@ -209,20 +209,25 @@ def select(dict):
 def generic_rule(rule_name, **kwargs):
     print(f'{rule_name}(')
     for key in kwargs.keys():
-        if type(kwargs[key]) is bool:
-            if kwargs[key]:
+        values = kwargs[key]
+        if type(values) is bool:
+            if values:
                 print(f'  {key.upper()}')
                 continue
             else:
                 raise ValueError(
                     'How do we specify FALSE boolean args in CMake?')
         if key == 'visibility':
-            if kwargs[key] == ['//visibility:public']:
+            if values == ['//visibility:public']:
                 print(f'  PUBLIC')
             continue
+        if key == 'tags':
+            values = list(filter(lambda x : not x.startswith('req_dep'), values))
+        if not values:
+            continue
         print(f'  {key.upper()}')
-        if type(kwargs[key]) is list:
-            for value in kwargs[key]:
+        if type(values) is list:
+            for value in values:
                 if key == 'deps':
                     target_name = get_cmake_dep_target_name(value)
                     print(f'    {target_name}')
@@ -230,10 +235,10 @@ def generic_rule(rule_name, **kwargs):
                     print(f'    {value}')
         else:
             if key == 'name':
-                target_name = get_cmake_local_target_name(kwargs[key])
+                target_name = get_cmake_local_target_name(values)
                 print(f'    {target_name}')
             else:
-                print(f'    {kwargs[key]}')
+                print(f'    {values}')
     print(')\n')
 
 

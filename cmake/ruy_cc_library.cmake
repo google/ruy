@@ -80,6 +80,6 @@ function(ruy_cc_library)
     target_compile_definitions(${_NAME}
       PUBLIC
         ${_RULE_DEFINES}
-    )    
+    )
   endif()
 endfunction()

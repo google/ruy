@@ -1264,7 +1264,6 @@ ruy_cc_library(
     ${ruy_0_Wall_Wcxx14_compat_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-  DEFINES
   LINKOPTS
     ${ruy_10_lm}
   DEPS
@@ -1302,8 +1301,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_binary(
@@ -1323,8 +1320,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_binary(
@@ -1344,8 +1339,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_binary(
@@ -1365,8 +1358,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_binary(
@@ -1386,8 +1377,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_binary(
@@ -1407,8 +1396,6 @@ ruy_cc_binary(
   DEPS
     ruy_test_lib
     ruy_profiler_instrumentation
-  TAGS
-    req_dep=//third_party/gemmlowp:profiler
 )
 
 ruy_cc_test(
@@ -1427,7 +1414,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1446,7 +1432,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1465,7 +1450,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1484,7 +1468,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1503,7 +1486,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1522,7 +1504,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1541,7 +1522,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1560,7 +1540,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
@@ -1579,7 +1558,6 @@ ruy_cc_test(
   DEPS
     ruy_test_lib
     gtest_main
-  TAGS
 )
 
 ruy_cc_test(
