@@ -20,6 +20,6 @@ small binary size.
 
 ## Documentation
 
-Some documentation will eventually be available in the doc/ directory, see
-[doc/README.md](doc/README.md).
+Some documentation will eventually be available in the g3doc/ directory, see
+[g3doc/README.md](g3doc/README.md).
 
