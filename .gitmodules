@@ -1,0 +1,6 @@
+[submodule "googletest"]
+	path = googletest
+	url = https://github.com/google/googletest
+[submodule "cpuinfo"]
+	path = cpuinfo
+	url = https://github.com/pytorch/cpuinfo
