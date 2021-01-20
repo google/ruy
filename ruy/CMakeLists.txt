@@ -22,6 +22,23 @@ endif()
 
 ruy_cc_library(
   NAME
+    ruy_trace
+  HDRS
+    trace.h
+  COPTS
+    ${ruy_0_Wall_Wcxx14_compat_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+  DEPS
+    ruy_mat
+    ruy_matrix
+    ruy_path
+    ruy_platform
+    ruy_side_pair
+)
+
+ruy_cc_library(
+  NAME
     ruy_platform
   HDRS
     platform.h
@@ -301,6 +318,7 @@ ruy_cc_library(
     ruy_opt_set
     ruy_side_pair
     ruy_size_util
+    ruy_trace
     ruy_profiler_instrumentation
 )
 
@@ -359,6 +377,7 @@ ruy_cc_library(
     ruy_blocking_counter
     ruy_check_macros
     ruy_time
+    ruy_trace
     ruy_wait
 )
 
@@ -897,6 +916,7 @@ ruy_cc_library(
     ruy_platform
     ruy_side_pair
     ruy_size_util
+    ruy_trace
     ruy_tune
     ruy_profiler_instrumentation
 )
@@ -922,6 +942,7 @@ ruy_cc_library(
     ruy_pack_common
     ruy_path
     ruy_platform
+    ruy_trace
     ruy_tune
     ruy_profiler_instrumentation
 )
@@ -1010,6 +1031,7 @@ ruy_cc_library(
     ruy_platform
     ruy_prepacked_cache
     ruy_thread_pool
+    ruy_trace
     ruy_tune
 )
 
@@ -1087,6 +1109,7 @@ ruy_cc_library(
     ruy_side_pair
     ruy_size_util
     ruy_thread_pool
+    ruy_trace
     ruy_trmul_params
     ruy_tune
     ruy_profiler_instrumentation
@@ -1109,6 +1132,7 @@ ruy_cc_library(
     ruy_matrix
     ruy_prepacked_cache
     ruy_side_pair
+    ruy_trace
     ruy_trmul_params
 )
 
@@ -1133,6 +1157,7 @@ ruy_cc_library(
     ruy_performance_advisory
     ruy_platform
     ruy_side_pair
+    ruy_trace
     ruy_trmul_params
 )
 
@@ -1170,6 +1195,7 @@ ruy_cc_library(
     ruy_mat
     ruy_mul_params
     ruy_prepare_packed_matrices
+    ruy_trace
     ruy_trmul
     ruy_trmul_params
     ruy_validate
@@ -1180,6 +1206,10 @@ ruy_cc_library(
   NAME
     ruy
   HDRS
+    context.h
+    matrix.h
+    mul_params.h
+    path.h
     ruy.h
   COPTS
     ${ruy_0_Wall_Wcxx14_compat_Wextra_Wundef}
@@ -1187,6 +1217,7 @@ ruy_cc_library(
     ${ruy_2_O3}
   PUBLIC
   DEPS
+    ruy_check_macros
     ruy_context
     ruy_context_get_ctx
     ruy_frontend
@@ -1194,6 +1225,9 @@ ruy_cc_library(
     ruy_matrix
     ruy_mul_params
     ruy_path
+    ruy_platform
+    ruy_size_util
+    ruy_trace
 )
 
 ruy_cc_test(

@@ -11,4 +11,13 @@ ruy_cc_binary(
     ruy
 )
 
+ruy_cc_binary(
+  NAME
+    ruy_example_parametrized_example
+  SRCS
+    parametrized_example.cc
+  DEPS
+    ruy
+)
+
 ruy_add_all_subdirs()
