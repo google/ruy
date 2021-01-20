@@ -20,7 +20,7 @@ function(ruy_include_directories NAME DEPS)
   if (cpuinfo IN_LIST DEPS)
     target_include_directories(${NAME}
       PRIVATE
-        "${PROJECT_SOURCE_DIR}/third_party/cpuinfo"
+        "${PROJECT_SOURCE_DIR}/third_party/cpuinfo/include"
     )
   endif()
   if ((gtest IN_LIST DEPS) OR

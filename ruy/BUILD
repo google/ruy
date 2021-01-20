@@ -404,7 +404,7 @@ cc_library(
         ":ppc": [],
         ":s390x": [],
         ":fuchsia": [],
-        "//conditions:default": ["@cpuinfo//:cpuinfo_with_unstripped_include_path"],
+        "//conditions:default": ["@cpuinfo"],
     }),
 )
 

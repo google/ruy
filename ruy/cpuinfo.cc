@@ -9,7 +9,7 @@
 #include "ruy/platform.h"
 
 #ifdef RUY_HAVE_CPUINFO
-#include "include/cpuinfo.h"
+#include <cpuinfo.h>
 #endif
 
 namespace ruy {

@@ -30,13 +30,18 @@ include(cmake/ruy_cc_library.cmake)
 include(cmake/ruy_cc_binary.cmake)
 include(cmake/ruy_cc_test.cmake)
 
-# Disabling cpuinfo's tests and benchmarks to prevent a copy of its
-# googletest dependency getting downloaded into a 'deps' directory in the
-# source tree!
-set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
-set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
-add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
-add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
+if (NOT TARGET cpuinfo)
+  # Disabling cpuinfo's tests and benchmarks to prevent a copy of its
+  # googletest dependency getting downloaded into a 'deps' directory in the
+  # source tree!
+  set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+  set(CPUINFO_BUILD_UNIT_TESTS OFF CACHE BOOL "" FORCE)
+  set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "" FORCE)
+  add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
+endif()
+
+if (NOT TARGET gtest)
+  add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
+endif()
 
 ruy_add_all_subdirs()
