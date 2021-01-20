@@ -87,6 +87,7 @@ limitations under the License.
 #include "ruy/pack_common.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
+#include "ruy/trace.h"
 
 // IWYU pragma: begin_exports
 #if RUY_PLATFORM_NEON
@@ -135,9 +136,11 @@ template <Path ThePath, typename FixedKernelLayout, typename Scalar,
           typename PackedScalar>
 void RunPack(Tuning tuning, const EMat& src_matrix, PEMat* packed_matrix,
              int start_col, int end_col) {
+  RUY_TRACE_SCOPE;
   using SumsType = typename PMat<PackedScalar>::SumsType;
   Mat<Scalar> src = UneraseType<Scalar>(src_matrix);
   PMat<PackedScalar> packed = UneraseType<PackedScalar>(*packed_matrix);
+  RUY_TRACE_INFO(RUN_PACK);
   if (src.layout.order == Order::kColMajor) {
     PackImpl<ThePath, FixedKernelLayout, Scalar, PackedScalar, SumsType,
              Order::kColMajor>::Run(tuning, src, &packed, start_col, end_col);

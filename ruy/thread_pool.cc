@@ -21,10 +21,11 @@ limitations under the License.
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
-#include <mutex>               // NOLINT(build/c++11)
-#include <thread>              // NOLINT(build/c++11)
+#include <mutex>   // NOLINT(build/c++11)
+#include <thread>  // NOLINT(build/c++11)
 
 #include "ruy/check_macros.h"
+#include "ruy/trace.h"
 #include "ruy/wait.h"
 
 namespace ruy {
@@ -109,23 +110,28 @@ class Thread {
  private:
   // Thread entry point.
   void ThreadFuncImpl() {
+    RUY_TRACE_SCOPE_NAME("Ruy worker thread function");
     ChangeState(State::Ready);
 
     // Thread main loop
     while (true) {
+      RUY_TRACE_SCOPE_NAME("Ruy worker thread loop iteration");
       // In the 'Ready' state, we have nothing to do but to wait until
       // we switch to another state.
       const auto& condition = [this]() {
         return state_.load(std::memory_order_acquire) != State::Ready;
       };
+      RUY_TRACE_INFO(THREAD_FUNC_IMPL_WAITING);
       Wait(condition, spin_duration_, &state_cond_, &state_mutex_);
 
       // Act on new state.
       switch (state_.load(std::memory_order_acquire)) {
-        case State::HasWork:
+        case State::HasWork: {
+          RUY_TRACE_SCOPE_NAME("Worker thread task");
           // Got work to do! So do it, and then revert to 'Ready' state.
           ChangeState(State::Ready);
           break;
+        }
         case State::ExitAsSoonAsPossible:
           return;
         default:
@@ -159,6 +165,7 @@ class Thread {
 };
 
 void ThreadPool::ExecuteImpl(int task_count, int stride, Task* tasks) {
+  RUY_TRACE_SCOPE_NAME("ThreadPool::Execute");
   RUY_DCHECK_GE(task_count, 1);
 
   // Case of 1 thread: just run the single task on the current thread.
@@ -171,13 +178,16 @@ void ThreadPool::ExecuteImpl(int task_count, int stride, Task* tasks) {
   CreateThreads(task_count - 1);
   counter_to_decrement_when_ready_.Reset(task_count - 1);
   for (int i = 1; i < task_count; i++) {
+    RUY_TRACE_INFO(THREADPOOL_EXECUTE_STARTING_TASK);
     auto task_address = reinterpret_cast<std::uintptr_t>(tasks) + i * stride;
     threads_[i - 1]->StartWork(reinterpret_cast<Task*>(task_address));
   }
 
+  RUY_TRACE_INFO(THREADPOOL_EXECUTE_STARTING_TASK_ZERO_ON_CUR_THREAD);
   // Execute task #0 immediately on the current thread.
   (tasks + 0)->Run();
 
+  RUY_TRACE_INFO(THREADPOOL_EXECUTE_WAITING_FOR_THREADS);
   // Wait for the threads submitted above to finish.
   counter_to_decrement_when_ready_.Wait(spin_duration_);
 }

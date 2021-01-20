@@ -103,11 +103,15 @@ struct BlockMap {
   SidePair<int> large_blocks;
 };
 
-// Returns the traversal order to be used for the given matrix multiplication
-// parameters.
-BlockMapTraversalOrder GetTraversalOrder(
-    int rows, int cols, int depth, int lhs_scalar_size, int rhs_scalar_size,
-    const CpuCacheParams& cpu_cache_params);
+// This function produces a coarse estimate of whether linear traversal will
+// be used for this matmul. It offers a one-way guarantee: if this function
+// returns true then linear traversal will be used.
+//
+// The purpose of this function is to allow TrMul to make a cheap, early
+// decision to enter a "simple loop" code path for simple cases.
+bool IsObviouslyLinearTraversal(int rows, int cols, int depth,
+                                int lhs_scalar_size, int rhs_scalar_size,
+                                const CpuCacheParams& cpu_cache_params);
 
 // Create a BlockMap suitable for tiling the destination matrix in a
 // matrix multiplication with the given parameters.

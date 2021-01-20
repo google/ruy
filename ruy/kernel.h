@@ -19,6 +19,7 @@ limitations under the License.
 #include "ruy/kernel_common.h"
 #include "ruy/mul_params.h"
 #include "ruy/platform.h"
+#include "ruy/trace.h"
 
 // IWYU pragma: begin_exports
 #if RUY_PLATFORM_NEON
@@ -58,9 +59,11 @@ class RunKernel final {
   static void Run(Tuning tuning, const SidePair<PEMat>& src,
                   const void* mul_params, const SidePair<int>& start,
                   const SidePair<int>& end, EMat* dst) {
+    RUY_TRACE_SCOPE_NAME("RunKernel");
     const auto& unerased_lhs = UneraseType<LhsScalar>(src[Side::kLhs]);
     const auto& unerased_rhs = UneraseType<RhsScalar>(src[Side::kRhs]);
     auto unerased_dst = UneraseType<DstScalar>(*dst);
+    RUY_TRACE_INFO(RUN_KERNEL);
     RunTyped(tuning, unerased_lhs, unerased_rhs,
              *static_cast<const MulParamsType*>(mul_params), start, end,
              &unerased_dst);

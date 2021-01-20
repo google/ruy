@@ -94,6 +94,19 @@ selects.config_setting_group(
 )
 
 cc_library(
+    name = "trace",
+    hdrs = ["trace.h"],
+    copts = ruy_copts(),
+    deps = [
+        ":mat",
+        ":matrix",
+        ":path",
+        ":platform",
+        ":side_pair",
+    ],
+)
+
+cc_library(
     name = "platform",
     hdrs = ["platform.h"],
     copts = ruy_copts(),
@@ -294,6 +307,7 @@ cc_library(
         ":opt_set",
         ":side_pair",
         ":size_util",
+        ":trace",
         "//ruy/profiler:instrumentation",
     ],
 )
@@ -344,6 +358,7 @@ cc_library(
         ":blocking_counter",
         ":check_macros",
         ":time",
+        ":trace",
         ":wait",
     ],
 )
@@ -776,6 +791,7 @@ cc_library(
         ":platform",
         ":side_pair",
         ":size_util",
+        ":trace",
         ":tune",
         "//ruy/profiler:instrumentation",
     ],
@@ -799,6 +815,7 @@ cc_library(
         ":pack_common",
         ":path",
         ":platform",
+        ":trace",
         ":tune",
         "//ruy/profiler:instrumentation",
     ],
@@ -882,6 +899,7 @@ cc_library(
         ":platform",
         ":prepacked_cache",
         ":thread_pool",
+        ":trace",
         ":tune",
     ],
 )
@@ -945,6 +963,7 @@ cc_library(
         ":side_pair",
         ":size_util",
         ":thread_pool",
+        ":trace",
         ":trmul_params",
         ":tune",
         "//ruy/profiler:instrumentation",
@@ -962,6 +981,7 @@ cc_library(
         ":matrix",
         ":prepacked_cache",
         ":side_pair",
+        ":trace",
         ":trmul_params",
     ],
 )
@@ -982,6 +1002,7 @@ cc_library(
         ":performance_advisory",
         ":platform",
         ":side_pair",
+        ":trace",
         ":trmul_params",
     ],
 )
@@ -1014,6 +1035,7 @@ cc_library(
         ":mat",
         ":mul_params",
         ":prepare_packed_matrices",
+        ":trace",
         ":trmul",
         ":trmul_params",
         ":validate",
@@ -1025,11 +1047,16 @@ cc_library(
 cc_library(
     name = "ruy",
     hdrs = [
+        "context.h",
+        "matrix.h",
+        "mul_params.h",
+        "path.h",
         "ruy.h",
     ],
     copts = ruy_copts(),
     visibility = ["//visibility:public"],
     deps = [
+        ":check_macros",
         ":context",
         ":context_get_ctx",
         ":frontend",
@@ -1037,6 +1064,9 @@ cc_library(
         ":matrix",
         ":mul_params",
         ":path",
+        ":platform",
+        ":size_util",
+        ":trace",
     ],
 )
 

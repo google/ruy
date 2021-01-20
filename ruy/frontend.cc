@@ -23,6 +23,7 @@ limitations under the License.
 namespace ruy {
 
 void MulFrontEndFromTrMulParams(Ctx* ctx, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   // Handle Matrix::cache_policy, possibly retrieving existing packed matrices
   // or packing and caching now.
   PreparePackedMatrices(ctx, params);

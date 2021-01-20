@@ -20,6 +20,7 @@ limitations under the License.
 #include "ruy/matrix.h"
 #include "ruy/prepacked_cache.h"
 #include "ruy/side_pair.h"
+#include "ruy/trace.h"
 #include "ruy/trmul_params.h"
 
 namespace ruy {
@@ -66,18 +67,21 @@ bool ShouldCache(const TrMulParams& params, Side side) {
 }  // namespace
 
 void PreparePackedMatrices(Ctx* ctx, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   for (Side side : {Side::kLhs, Side::kRhs}) {
     PEMat& packed_matrix = params->packed_matrix[side];
     if (ShouldCache(*params, side)) {
       // Use a cached packed matrix (possibly packing and caching now).
       auto* cache = ctx->GetPrepackedCache();
       auto action = cache->Get(params->src[side].data, &packed_matrix);
+      RUY_TRACE_INFO(PREPARE_PACKED_MATRICES_SHOULD_CACHE);
       if (action == PrepackedCache::Action::kInsertedNewEntry) {
         params->RunPack(side, ctx->GetMainThreadTuning(), 0,
                         packed_matrix.layout.cols);
       }
       params->is_prepacked[side] = true;
     } else {
+      RUY_TRACE_INFO(PREPARE_PACKED_MATRICES_NO_CACHE);
       // Do not use a cached packed matrix. Only need to allocate buffers now.
       Allocator* allocator = ctx->GetMainAllocator();
       packed_matrix.data = allocator->AllocateBytesAvoidingAliasingWith(

@@ -79,6 +79,17 @@ class Context final {
   // pre-packed matrix data. This function clears that cache.
   void ClearPrepackedCache();
 
+  // Override auto-detection of supported code paths.
+  //
+  // Passing `paths == Path::kNone` means reverting to the default behavior.
+  // This will trigger auto-detection on the next use.
+  //
+  // Other values will override auto-detection with the explicitly provided set
+  // of paths.
+  //
+  // Paths in kNonArchPaths are always implicitly supported.
+  void set_runtime_enabled_paths(Path paths);
+
  private:
   CtxImpl* const impl_;
 

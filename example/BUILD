@@ -8,3 +8,9 @@ cc_binary(
     srcs = ["example.cc"],
     deps = ["//ruy"],
 )
+
+cc_binary(
+    name = "parametrized_example",
+    srcs = ["parametrized_example.cc"],
+    deps = ["//ruy"],
+)

@@ -28,6 +28,7 @@ limitations under the License.
 #include "ruy/opt_set.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/size_util.h"
+#include "ruy/trace.h"
 
 namespace ruy {
 
@@ -126,13 +127,18 @@ void GetBlockByIndex(const BlockMap& block_map, int index,
   }
 }
 
+namespace {
+
 BlockMapTraversalOrder GetTraversalOrder(
-    int rows, int cols, int depth, int lhs_scalar_size, int rhs_scalar_size,
-    const CpuCacheParams& cpu_cache_params) {
+    int rows_after_rectangularness_division,
+    int cols_after_rectangularness_division, int depth, int lhs_scalar_size,
+    int rhs_scalar_size, const CpuCacheParams& cpu_cache_params) {
   static constexpr bool kAnyFractal =
       RUY_OPT(FRACTAL_Z) | RUY_OPT(FRACTAL_U) | RUY_OPT(FRACTAL_HILBERT);
   const int working_set_size =
-      (lhs_scalar_size * rows + rhs_scalar_size * cols) * depth;
+      (lhs_scalar_size * rows_after_rectangularness_division +
+       rhs_scalar_size * cols_after_rectangularness_division) *
+      depth;
   if (kAnyFractal && (working_set_size > cpu_cache_params.local_cache_size)) {
     if (RUY_OPT(FRACTAL_HILBERT) &&
         (working_set_size > cpu_cache_params.last_level_cache_size)) {
@@ -146,8 +152,6 @@ BlockMapTraversalOrder GetTraversalOrder(
     return BlockMapTraversalOrder::kLinear;
   }
 }
-
-namespace {
 
 int floor_log2_quotient(int num, int denom) {
   if (num <= denom) {
@@ -313,37 +317,38 @@ int GetKernelAmortizationScore(int block_size_log2, int rows, int cols,
 
 }  // namespace
 
+bool IsObviouslyLinearTraversal(int rows, int cols, int depth,
+                                int lhs_scalar_size, int rhs_scalar_size,
+                                const CpuCacheParams& cpu_cache_params) {
+  if (rows == 1 || cols == 1) {
+    return true;
+  }
+  // Normally, GetTraversalOrder wants the dimensions (rows x cols) divided
+  // by the rectangularness factors, since any non-linear traversal order will
+  // be local to each subdivision. In the present function, we don't know the
+  // rectangularness factors yet, and we can't just call GetRectangularness
+  // as that requires knowing the kernel block layout. Since we just want
+  // a coarse estimate with only the guarantee that if we return `true` then
+  // linear traversal will be used, it is OK here to over-estimate `rows` and
+  // `cols`, by omitting to divide them by the rectangularness factors.ß
+  return GetTraversalOrder(rows, cols, depth, lhs_scalar_size, rhs_scalar_size,
+                           cpu_cache_params) == BlockMapTraversalOrder::kLinear;
+}
+
 void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
                   int kernel_cols, int lhs_scalar_size, int rhs_scalar_size,
                   int tentative_thread_count,
                   const CpuCacheParams& cpu_cache_params, BlockMap* block_map) {
+  RUY_TRACE_SCOPE;
   profiler::ScopeLabel label("MakeBlockMap");
-
-#ifdef RUY_MAKEBLOCKMAP_DEBUG
-#if RUY_MAKEBLOCKMAP_DEBUG >= 2
-  static constexpr bool debug_everytime = true;
-#else
-  static constexpr bool debug_everytime = false;
-#endif
-  static bool firsttime = true;
-  if (firsttime || debug_everytime) {
-    fprintf(stderr,
-            "MakeBlockMap(rows=%d, cols=%d, depth=%d, kernel_rows=%d, "
-            "kernel_cols=%d, lhs_scalar_size=%d, rhs_scalar_size=%d, "
-            "tentative_thread_count=%d)\n",
-            rows, cols, depth, kernel_rows, kernel_cols, lhs_scalar_size,
-            rhs_scalar_size, tentative_thread_count);
-  }
-#endif
 
   RUY_DCHECK_GE(rows, kernel_rows);
   RUY_DCHECK_GE(cols, kernel_cols);
   RUY_DCHECK_EQ(rows % kernel_rows, 0);
   RUY_DCHECK_EQ(cols % kernel_cols, 0);
 
-  block_map->traversal_order = GetTraversalOrder(
-      rows, cols, depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
-
+  // Estimate the 'rectangularness', the first level of subdivision bringing
+  // the shape to within 2x of a square shape.
   int rows_rectangularness_log2 = 0;
   int cols_rectangularness_log2 = 0;
   GetRectangularness(rows, cols, kernel_rows, kernel_cols,
@@ -358,6 +363,18 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
 
   RUY_DCHECK_GE(size_log2, kernel_size_log2);
 
+  // Heuristic selecting the power-of-two grid subdivision insider of each
+  // square-ish region (past the above subdivision by 'rectangularness').
+  // Note that it is the number of subdivisions, not the resulting block size,
+  // that will be a power of two. But inside of that heuristic, it simplifies
+  // code to talk in terms of 'block_size_log2', as if it were the block size
+  // that were a power of two. This 'block_size_log2' is to be interpreted as
+  // "log2 rounded below", e.g. when block_size_log2=8 we might have a block
+  // size in [256, 511]. When the shape is non-square, rows!=cols, this
+  // refers to the smaller of the two, so the other might be as large as
+  // 1021 (can't be 1022 because following the above 'rectangularness'
+  // subdivision, the aspect ratio is already < 2).
+
   // We are going to try candidate values for block_size_log2 ranging from
   // kernel_size_log2 to (kernel_size_log2 + kMaxKernelsPerBlockLog2).
   // For each of them we will compute a 'score' by adding individual scores
@@ -368,12 +385,16 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
   // kNeonDotprod, 8bit quantized path. Don't read too much into it, go ahead
   // and tune this as needed to achieve good performance elsewhere. Use
   // the unit test, block_map_test, to encode values that should be preserved
-  // on specific architectures. Use RUY_MAKEBLOCKMAP_DEBUG to help tuning this.
+  // on specific architectures. Use RUY_TRACE to debug the current heuristics
+  // and RUY_MAKEBLOCKMAP_EXPLICIT_BLOCK_SIZE_LOG2 to test the impact of a
+  // different block_size_log2 choice, to empirically find the optimal value
+  // before getting to updating the heuristic so that it produces that value.
   static constexpr int kMaxKernelsPerBlockLog2 = 6;
   const int max_block_size_log2 =
       std::min(size_log2, kernel_size_log2 + kMaxKernelsPerBlockLog2);
   int best_score = std::numeric_limits<int>::min();
   int best_score_block_size_log2 = -1;
+  RUY_TRACE_INFO(MAKE_BLOCK_MAP_START);
   for (int block_size_log2 = kernel_size_log2;
        block_size_log2 <= max_block_size_log2; block_size_log2++) {
     const int multithreading_score = GetMultithreadingScore(
@@ -385,58 +406,47 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
         block_size_log2, rows, cols, kernel_rows_log2, kernel_cols_log2);
     const int score =
         multithreading_score + cache_locality_score + kernel_amortization_score;
-#ifdef RUY_MAKEBLOCKMAP_DEBUG
-    if (firsttime || debug_everytime) {
-      fprintf(stderr,
-              "block_size_log2=%d: score=%d multithreading_score=%d "
-              "cache_locality_score=%d kernel_amortization_score=%d\n",
-              block_size_log2, score, multithreading_score,
-              cache_locality_score, kernel_amortization_score);
-    }
-#endif
     if (score >= best_score) {
       best_score = score;
       best_score_block_size_log2 = block_size_log2;
     }
+    RUY_TRACE_INFO(MAKE_BLOCK_MAP_EACH_TENTATIVE_BLOCK_SIZE);
   }
 
-#ifdef RUY_MAKEBLOCKMAP_DEBUG
-  if (firsttime || debug_everytime) {
-    fprintf(stderr, "best_score_block_size_log2=%d\n",
-            best_score_block_size_log2);
-  }
-
-  static const char* explicit_block_size_log2_env =
-      getenv("RUY_MAKEBLOCKMAP_EXPLICIT_BLOCK_SIZE_LOG2");
-  if (explicit_block_size_log2_env) {
-    best_score_block_size_log2 = std::stoi(explicit_block_size_log2_env);
-    if (firsttime || debug_everytime) {
-      fprintf(stderr, "Overridden best_score_block_size_log2=%d\n",
-              best_score_block_size_log2);
-    }
-  }
-  firsttime = false;
+#ifdef RUY_MAKEBLOCKMAP_EXPLICIT_BLOCK_SIZE_LOG2
+  // Useful for tuning.
+  best_score_block_size_log2 = RUY_MAKEBLOCKMAP_EXPLICIT_BLOCK_SIZE_LOG2;
 #endif
 
+  // As explained in the above comment, phrasing the above code in terms of
+  // block_size_log2 was only convenience inside of that heuristic. Now we
+  // revert to talking in terms of grid subdivision. That is what will actually
+  // be powers of two.
   int num_blocks_base_log2 = size_log2 - best_score_block_size_log2;
   RUY_DCHECK_GE(num_blocks_base_log2, 0);
-
   const int num_blocks_of_rows_log2 =
       num_blocks_base_log2 + rows_rectangularness_log2;
   const int num_blocks_of_cols_log2 =
       num_blocks_base_log2 + cols_rectangularness_log2;
 
-  const int smallr =
+  // Now that we know the grid subdivision, we can pinpoint the exact block
+  // sizes. They can't be powers of two in general; they can't even be all
+  // equal in general; so the following few parameters will govern how blocks
+  // of slightly different shapes are put together in the block map.
+  const int small_block_rows =
       round_down_pot(rows >> num_blocks_of_rows_log2, kernel_rows);
-  const int smallc =
+  const int small_block_cols =
       round_down_pot(cols >> num_blocks_of_cols_log2, kernel_cols);
-  const int missr =
-      round_up_pot(rows - (smallr << num_blocks_of_rows_log2), kernel_rows) >>
+  const int rows_of_large_blocks =
+      round_up_pot(rows - (small_block_rows << num_blocks_of_rows_log2),
+                   kernel_rows) >>
       pot_log2(kernel_rows);
-  const int missc =
-      round_up_pot(cols - (smallc << num_blocks_of_cols_log2), kernel_cols) >>
+  const int cols_of_large_blocks =
+      round_up_pot(cols - (small_block_cols << num_blocks_of_cols_log2),
+                   kernel_cols) >>
       pot_log2(kernel_cols);
 
+  // We have everything! Write out to the destination block_map.
   block_map->dims[Side::kLhs] = rows;
   block_map->dims[Side::kRhs] = cols;
   block_map->kernel_dims[Side::kLhs] = kernel_rows;
@@ -444,13 +454,19 @@ void MakeBlockMap(int rows, int cols, int depth, int kernel_rows,
   block_map->num_blocks_base_log2 = num_blocks_base_log2;
   block_map->rectangularness_log2[Side::kLhs] = rows_rectangularness_log2;
   block_map->rectangularness_log2[Side::kRhs] = cols_rectangularness_log2;
-  block_map->small_block_dims[Side::kLhs] = smallr;
-  block_map->small_block_dims[Side::kRhs] = smallc;
-  block_map->large_blocks[Side::kLhs] = missr;
-  block_map->large_blocks[Side::kRhs] = missc;
+  block_map->small_block_dims[Side::kLhs] = small_block_rows;
+  block_map->small_block_dims[Side::kRhs] = small_block_cols;
+  block_map->large_blocks[Side::kLhs] = rows_of_large_blocks;
+  block_map->large_blocks[Side::kRhs] = cols_of_large_blocks;
+  // See the comment on GetTraversalOrder for why we are dividing `rows` and
+  // `cols` by the rectangularness subdivision parameters here.
+  block_map->traversal_order = GetTraversalOrder(
+      rows >> rows_rectangularness_log2, cols >> cols_rectangularness_log2,
+      depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
   // Done last: NumBlocks needs some of the block_map fields to be already set.
   block_map->thread_count =
       std::min(tentative_thread_count, NumBlocks(*block_map));
+  RUY_TRACE_INFO(MAKE_BLOCK_MAP_END);
 }
 
 void GetBlockMatrixCoords(Side side, const BlockMap& block_map, int block,

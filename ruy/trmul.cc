@@ -38,6 +38,7 @@ limitations under the License.
 #include "ruy/side_pair.h"
 #include "ruy/size_util.h"
 #include "ruy/thread_pool.h"
+#include "ruy/trace.h"
 #include "ruy/tune.h"
 
 namespace ruy {
@@ -72,6 +73,8 @@ class TrMulTask final : public Task {
 
   // Thread main function. This is one thread's share of the TrMul work.
   void Run() override {
+    RUY_TRACE_SCOPE_NAME("TrMulTask::Run");
+    RUY_TRACE_SET_THEAD_ID(thread_id_);
     // Allocate and initialize `local_packed`.
     for (Side side : {Side::kLhs, Side::kRhs}) {
       if (!params_->is_prepacked[side]) {
@@ -89,6 +92,7 @@ class TrMulTask final : public Task {
     int block_id = thread_id_;
     // Loop until all blocks have been computed.
     while (block_id < num_blocks) {
+      RUY_TRACE_SCOPE_NAME("Main loop iteration");
       // Reserve the next block to handle, hiding the latency of this atomic op.
       const int next_block_id =
           atomic_block_id_->fetch_add(1, std::memory_order_relaxed);
@@ -98,6 +102,7 @@ class TrMulTask final : public Task {
       // Get coordinates of the current block to handle, in matrix space.
       SidePair<int> start, end;
       GetBlockMatrixCoords(block_map_, block, &start, &end);
+      RUY_TRACE_INFO(TRMUL_TASK_MAIN_LOOP_GOT_BLOCK_COORDS);
       // Maybe pack the current LHS/RHS block, if not already packed.
       EnsurePacked(block, start, end, tuning);
       // Actually do matrix multiplication work
@@ -163,11 +168,15 @@ class TrMulTask final : public Task {
           // In this branch, the status was kNotStarted and we just atomically
           // changed it to kInProgress as we are about to handle the packing
           // ourselves.
+          RUY_TRACE_INFO(TRYPACK_PACKING);
           params_->RunPack(side, tuning, start, end);
           status.store(PackingStatus::kFinished, std::memory_order_release);
         } else if (exchanged_status == PackingStatus::kInProgress) {
           // Another thread is currently packing this block.
+          RUY_TRACE_INFO(TRYPACK_ANOTHER_THREAD_PACKING);
           return false;
+        } else {
+          RUY_TRACE_INFO(TRYPACK_PACKED_BY_ANOTHER_THREAD);
         }
         RUY_DCHECK(status.load(std::memory_order_acquire) ==
                    PackingStatus::kFinished);
@@ -177,6 +186,8 @@ class TrMulTask final : public Task {
         params_->RunPack(side, tuning, start, end);
       }
       local_already_packed_[side][block] = true;
+    } else {
+      RUY_TRACE_INFO(TRYPACK_PREVIOUSLY_PACKED);
     }
     return true;
   }
@@ -202,6 +213,7 @@ class TrMulTask final : public Task {
         break;
       }
 #if RUY_OPT(PACK_AHEAD)
+      RUY_TRACE_INFO(ENSURE_PACKED_ENTER_RUN_AHEAD);
       const Side runahead_side = next_runahead_side;
       const int runahead_block = next_runahead_block[runahead_side];
       next_runahead_side = OtherSide(next_runahead_side);
@@ -216,6 +228,7 @@ class TrMulTask final : public Task {
       next_runahead_block[runahead_side] = runahead_block + 1;
 #endif
     }
+    RUY_TRACE_INFO(ENSURE_PACKED_END);
   }
 
   TrMulParams* params_;
@@ -233,32 +246,36 @@ class TrMulTask final : public Task {
   CpuInfo* cpuinfo_;
 };
 
-int GetThreadCount(Ctx* ctx, int rows, int cols, int depth) {
+int GetTentativeThreadCount(Ctx* ctx, int rows, int cols, int depth) {
 #if RUY_PLATFORM_EMSCRIPTEN
   // b/139927184, std::thread constructor raises exception
   return 1;
 #endif
+  RUY_TRACE_SCOPE;
   // Empirically determined rule for reasonable number of
   // threads to use. This is proportional to the number of arithmetic ops
   // in this Mul (product of the 3 sizes).
   static constexpr int kDivisorLog2 = 15;
   const int guess_log2 = std::max(
       0, ceil_log2(rows) + ceil_log2(cols) + ceil_log2(depth) - kDivisorLog2);
-  return std::min(1 << guess_log2, ctx->max_num_threads());
+  int tentative_thread_count =
+      std::min(1 << guess_log2, ctx->max_num_threads());
+  RUY_TRACE_INFO(GET_TENTATIVE_THREAD_COUNT);
+  return tentative_thread_count;
 }
 
-bool UseSimpleLoop(int tentative_thread_count, int rows, int cols, int depth,
-                   int lhs_scalar_size, int rhs_scalar_size,
-                   const CpuCacheParams& cpu_cache_params) {
+bool GetUseSimpleLoop(int tentative_thread_count, int rows, int cols, int depth,
+                      int lhs_scalar_size, int rhs_scalar_size,
+                      const CpuCacheParams& cpu_cache_params) {
+  RUY_TRACE_SCOPE;
   if (tentative_thread_count == 1) {
-    const BlockMapTraversalOrder traversal_order = GetTraversalOrder(
-        rows, cols, depth, lhs_scalar_size, rhs_scalar_size, cpu_cache_params);
-    // If we are in the GEMV case or the block_map would be using linear
-    // traversal anyway, use the simple loop.
-    if ((cols == 1) || traversal_order == BlockMapTraversalOrder::kLinear) {
+    if (IsObviouslyLinearTraversal(rows, cols, depth, lhs_scalar_size,
+                                   rhs_scalar_size, cpu_cache_params)) {
+      RUY_TRACE_INFO(GET_USE_SIMPLE_LOOP_RETURNS_TRUE);
       return true;
     }
   }
+  RUY_TRACE_INFO(GET_USE_SIMPLE_LOOP_RETURNS_FALSE);
   return false;
 }
 
@@ -271,6 +288,7 @@ bool UseSimpleLoop(int tentative_thread_count, int rows, int cols, int depth,
 // thread, the code that is potentially running on worker threads is in
 // TrMulTask::Run().
 void TrMul(Ctx* ctx, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   profiler::ScopeLabel label(
       "TrMul (Path=0x%x, max_num_threads=%d, is_prepacked=(%d,%d))",
       static_cast<int>(params->path), ctx->max_num_threads(),
@@ -285,17 +303,20 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   const int cols = rhs.layout.cols;
   const int depth = lhs.layout.rows;
 
-  const int tentative_thread_count = GetThreadCount(ctx, rows, cols, depth);
+  const int tentative_thread_count =
+      GetTentativeThreadCount(ctx, rows, cols, depth);
   const auto& cpu_cache_params = ctx->mutable_cpuinfo()->CacheParams();
 
   // Case of running this TrMul as a simple loop.
   // This is a good place to start reading this function: all the rest
   // of this function is just an optimized, but functionally equivalent,
   // version of that.
-  if (UseSimpleLoop(tentative_thread_count, rows, cols, depth,
-                    lhs.data_type.size, rhs.data_type.size, cpu_cache_params)) {
+  if (GetUseSimpleLoop(tentative_thread_count, rows, cols, depth,
+                       lhs.data_type.size, rhs.data_type.size,
+                       cpu_cache_params)) {
     profiler::ScopeLabel label_simple("TrMulImpl, simple loop");
     Tuning tuning = ctx->GetMainThreadTuning();
+    RUY_TRACE_INFO(TRMUL_SIMPLE_LOOP);
 
     const SidePair<int> origin{0, 0};
     const SidePair<int> rounded_dims{packed_lhs.layout.cols,
@@ -310,6 +331,7 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   }
 
   profiler::ScopeLabel label_general("TrMulImpl, general case");
+  RUY_TRACE_INFO(TRMUL_GENERAL_CASE);
   Allocator* main_allocator = ctx->GetMainAllocator();
 
   // Initialize block map.

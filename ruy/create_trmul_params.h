@@ -30,6 +30,7 @@ limitations under the License.
 #include "ruy/pack.h"
 #include "ruy/path.h"
 #include "ruy/performance_advisory.h"
+#include "ruy/trace.h"
 #include "ruy/trmul_params.h"
 
 namespace ruy {
@@ -119,6 +120,7 @@ void CheckKernelPath(Path expected_path) {
 template <Path ThePath, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
 void PopulateTrMulParams(TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   using PackedLhsScalar = PackedType<ThePath, LhsScalar>;
   using PackedRhsScalar = PackedType<ThePath, RhsScalar>;
   using Kernel =
@@ -138,6 +140,7 @@ void PopulateTrMulParams(TrMulParams* params) {
       &RunPack<ThePath, RhsKernelLayout, RhsScalar, PackedRhsScalar>;
   params->run_kernel = &RunKernel<Kernel>::Run;
   CheckKernelPath<Kernel>(ThePath);
+  RUY_TRACE_INFO(POPULATE_TRMUL_PARAMS);
 }
 
 // PopulateTrMulParamsAllCompiledPaths calls into one of multiple
@@ -237,6 +240,7 @@ struct PathSearchCountdown<CompiledPaths, -1, LhsScalar, RhsScalar, AccumScalar,
 template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
           typename AccumScalar, typename DstScalar>
 void PopulateTrMulParamsAllCompiledPaths(Path the_path, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   return PathSearchCountdown<CompiledPaths, 8 * sizeof(Path) - 1, LhsScalar,
                              RhsScalar, AccumScalar,
                              DstScalar>::Search(the_path, params);
@@ -403,6 +407,7 @@ void CreateTrMulParamsAssumingColMajorDst(
     const Mat<DstScalar>& dst,
     const MulParams<AccumScalar, DstScalar>& mul_params,
     ChannelDimension channel_dimension, Ctx* ctx, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   RUY_DCHECK(IsColMajor(dst.layout));
 
   // Fill in the fields we already know.
@@ -416,6 +421,8 @@ void CreateTrMulParamsAssumingColMajorDst(
   // but could be invalidated by a call to Ctx::SetRuntimeEnabledPaths(), which
   // might be exposed publicly in Context in the future.
   const Path the_path = ctx->SelectPath(CompiledPaths);
+
+  RUY_TRACE_INFO(CREATE_TRMUL_PARAMS_ASSUMING_COLMAJOR_DST);
 
   // If we ever need again to fall back to Path::kStandardCpp, this is a good
   // place to do it -- just pass Path::kStandardCpp as both the template and
@@ -459,11 +466,13 @@ void CreateTrMulParams(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                        const Mat<DstScalar>& dst,
                        const MulParams<AccumScalar, DstScalar>& mul_params,
                        Ctx* ctx, TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   ChannelDimension channel_dimension = mul_params.channel_dimension();
   if (IsColMajor(dst.layout)) {
     detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
         lhs, rhs, dst, mul_params, channel_dimension, ctx, params);
   } else {
+    RUY_TRACE_INFO(CREATE_TRMUL_PARAMS_TRANSPOSING);
     detail::CreateTrMulParamsAssumingColMajorDst<CompiledPaths>(
         rhs, lhs, Transpose(dst), mul_params, Transpose(channel_dimension), ctx,
         params);

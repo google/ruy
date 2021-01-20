@@ -25,6 +25,7 @@ limitations under the License.
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
 #include "ruy/path.h"
+#include "ruy/trace.h"
 
 namespace ruy {
 
@@ -37,6 +38,8 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
          const MulParams<AccumScalar, DstScalar>& mul_params, Context* context,
          Matrix<DstScalar>* dst) {
+  RUY_TRACE_SCOPE;
+  RUY_TRACE_INFO(MUL);
   Mat<LhsScalar> internal_lhs = ToInternal(lhs);
   Mat<RhsScalar> internal_rhs = ToInternal(rhs);
   Mat<DstScalar> internal_dst = ToInternal(*dst);

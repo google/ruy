@@ -27,6 +27,7 @@ limitations under the License.
 #include "ruy/performance_advisory.h"
 #include "ruy/platform.h"
 #include "ruy/prepacked_cache.h"
+#include "ruy/trace.h"
 
 namespace ruy {
 
@@ -57,7 +58,14 @@ bool Ctx::performance_advisory(PerformanceAdvisory advisory) const {
 }
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {
-  mutable_impl()->runtime_enabled_paths_ = paths | kNonArchPaths;
+  if (paths == Path::kNone) {
+    // Revert to default behavior using runtime detection.
+    mutable_impl()->runtime_enabled_paths_ = Path::kNone;
+  } else {
+    // Explicitly set enabled paths. Ensure that non-arch are always enabled
+    // (needed for fallbacks).
+    mutable_impl()->runtime_enabled_paths_ = paths | kNonArchPaths;
+  }
 }
 
 CpuInfo* Ctx::mutable_cpuinfo() { return &mutable_impl()->cpuinfo_; }
@@ -133,6 +141,7 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
 }  // namespace
 
 Path Ctx::GetRuntimeEnabledPaths() {
+  RUY_TRACE_SCOPE;
   // Just a shorthand alias. Using a pointer to make it clear we're mutating
   // this value in-place.
   Path* paths = &mutable_impl()->runtime_enabled_paths_;
@@ -140,16 +149,19 @@ Path Ctx::GetRuntimeEnabledPaths() {
   // The value Path::kNone indicates the initial state before detection has been
   // performed.
   if (*paths != Path::kNone) {
+    RUY_TRACE_INFO(GET_RUNTIME_ENABLED_PATHS_USING_SET_VALUE);
     return *paths;
   }
   // User may have set path explicitly in env var.
   Path paths_bitfield = static_cast<Path>(GetHexIntEnvVarOrZero("RUY_PATHS"));
   if (paths_bitfield != Path::kNone) {
     *paths = paths_bitfield;
+    RUY_TRACE_INFO(GET_RUNTIME_ENABLED_PATHS_USING_ENV_VAR);
     return *paths;
   }
   // Finally, use runtime detection.
   *paths = DetectRuntimeSupportedPaths(kAllPaths, mutable_cpuinfo());
+  RUY_TRACE_INFO(GET_RUNTIME_ENABLED_PATHS_USING_DETECTION);
   return *paths;
 }
 

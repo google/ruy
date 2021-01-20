@@ -30,6 +30,7 @@ limitations under the License.
 #include "ruy/create_trmul_params.h"
 #include "ruy/ctx.h"
 #include "ruy/profiler/instrumentation.h"
+#include "ruy/trace.h"
 #include "ruy/trmul_params.h"
 #include "ruy/validate.h"
 
@@ -48,6 +49,7 @@ void MulFrontEndUpToCreateTrMulParams(
     const Mat<DstScalar>& dst,
     const MulParams<AccumScalar, DstScalar>& mul_params, Ctx* ctx,
     TrMulParams* params) {
+  RUY_TRACE_SCOPE;
   static_assert(CompiledPaths != Path::kNone, "Must compile at least one Path");
   static_assert(
       (CompiledPaths & ~kAllPathsIncludingInternalVariants) == Path::kNone,
@@ -80,6 +82,7 @@ template <Path CompiledPaths, typename LhsScalar, typename RhsScalar,
 void MulFrontEnd(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
                  const MulParams<AccumScalar, DstScalar>& mul_params, Ctx* ctx,
                  Mat<DstScalar>* dst) {
+  RUY_TRACE_SCOPE;
   profiler::ScopeLabel mul_label("Mul");
   profiler::ScopeLabel shape_specific_label("matmul shape: %dx%dx%d",
                                             lhs.layout.rows, lhs.layout.cols,
