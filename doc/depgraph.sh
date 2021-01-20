@@ -25,6 +25,8 @@ drop=(
     ':have_built_path_for'
     ':pack_common'
     ':kernel_common'
+    ':trace'
+    ':validate'
     'profiler:instrumentation'
     '\bclog\b'
     '\bcpuinfo_impl\b'
@@ -49,7 +51,6 @@ frontend=(
     ':frontend'
     ':prepare_packed_matrices'
     ':create_trmul_params'
-    ':validate'
 )
 
 middleend=(
@@ -60,7 +61,6 @@ middleend=(
     ':cpuinfo'
     ':cpu_cache_params'
     ':allocator'
-    ':thread_pool'
     ':prepacked_cache'
 )
 
@@ -69,9 +69,14 @@ backend=(
     ':pack.*'
 )
 
+threadpool=(
+    ':thread_pool'
+)
+
 frontend_lines=()
 middleend_lines=()
 backend_lines=()
+threadpool_lines=()
 misc_lines=()
 arrow_lines=()
 
@@ -108,6 +113,15 @@ while IFS= read -r line; do
         done
     fi
     if [ $handled = false ]; then
+        for f in "${threadpool[@]}"; do
+            if [[ "${line}" =~ ${f} ]]; then
+                threadpool_lines+=("${line}")
+                handled=true
+                break
+            fi
+        done
+    fi
+    if [ $handled = false ]; then
         if [[ "${line}" =~ ^[[:space:]]+\" ]]; then
             misc_lines+=("${line}")
         fi
@@ -119,13 +133,16 @@ echo "digraph ruy {"
 echo "  splines = true"
 echo "  node [shape=box]"
 for f in "${frontend_lines[@]}"; do
-  echo "  $f [style=filled, color=lightblue];"
+  echo "  $f [style=filled, color=\"#B2EBF2\"];"
 done
 for m in "${middleend_lines[@]}"; do
-  echo "  $m [style=filled, color=lightgreen];"
+  echo "  $m [style=filled, color=\"#C8E6C9\"];"
 done
 for b in "${backend_lines[@]}"; do
-  echo "  $b [style=filled, color=indianred1];"
+  echo "  $b [style=filled, color=\"#FFCDD2\"];"
+done
+for b in "${threadpool_lines[@]}"; do
+  echo "  $b [style=filled, color=\"#FFF9C4\"];"
 done
 for m in "${misc_lines[@]}"; do
   echo "$m"
@@ -133,20 +150,4 @@ done
 for a in "${arrow_lines[@]}"; do
   echo "$a"
 done
-echo "  \":create_trmul_params\" -> \":trmul\" [style=invis]"
-echo "  subgraph cluster_legend_margin {"
-echo "    style=invis"
-echo "    margin=80"
-echo "    subgraph cluster_legend {"
-echo "      style=\"\""
-echo "      label=\"Legend\""
-echo "      fontsize=20"
-echo "      margin=20"
-echo "      labelloc=t"
-echo "      frontend [label=\"Front-end\", style=filled, color=lightblue]"
-echo "      middleend [label=\"Middle-end\", style=filled, color=lightgreen]"
-echo "      backend [label=\"Back-end\", style=filled, color=indianred1]"
-echo "      frontend -> middleend -> backend [style=invis]"
-echo "    }"
-echo "  }"
 echo "}"
