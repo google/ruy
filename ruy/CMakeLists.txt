@@ -954,7 +954,6 @@ ruy_cc_library(
     ruy_allocator
     ruy_check_macros
     ruy_ctx
-    ruy_have_built_path_for
     ruy_path
     ruy_performance_advisory
     ruy_platform

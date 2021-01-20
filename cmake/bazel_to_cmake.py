@@ -184,24 +184,22 @@ select_index = 0
 select_cache = {}
 
 
-def select(dict):
+def select(select_dict):
     global select_index
     global select_cache
     global package_prefix
-    key = pickle.dumps(dict)
+    key = pickle.dumps(sorted(select_dict.items()))
     if key in select_cache:
         select_name = select_cache[key]
     else:
-        unique_values = list(
-            {*itertools.chain.from_iterable(dict.values())})
-        unique_values.sort()  # sorting ensures determinism, no spurious diffs
+        unique_values = sorted(set(itertools.chain.from_iterable(select_dict.values()))) # sorting ensures determinism, no spurious diffs
         description = '_'.join(unique_values)
         select_name = f'{package_prefix}_{select_index}_{description}'
         select_name = select_name.replace('c++', 'cxx')
         select_name = re.sub(r'[^a-zA-Z0-9]+', '_', select_name)
         select_index = select_index + 1
         select_cache[key] = select_name
-        generate_cmake_select(select_name, dict)
+        generate_cmake_select(select_name, select_dict)
 
     return [f'${{{select_name}}}']
 
@@ -216,7 +214,7 @@ def generic_rule(rule_name, **kwargs):
                 continue
             else:
                 raise ValueError(
-                    'How do we specify FALSE boolean args in CMake?')
+                    'Cannot specify FALSE boolean args in CMake')
         if key == 'visibility':
             if values == ['//visibility:public']:
                 print(f'  PUBLIC')
@@ -257,26 +255,25 @@ def cc_binary(**kwargs):
 #
 # Program entry point.
 #
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print("Usage: bazel_to_cmake.py bazel_workspace_dir bazel_package_dir")
+        sys.exit(1)
 
+    bazel_workspace_dir = sys.argv[1]
+    bazel_package_dir = sys.argv[2]
+    bazel_package_relative_dir = os.path.relpath(
+        bazel_package_dir, bazel_workspace_dir)
+    package_prefix = bazel_package_relative_dir.replace(os.path.sep, '_')
 
-if len(sys.argv) != 3:
-    print("Usage: bazel_to_cmake.py bazel_workspace_dir bazel_package_dir")
-    sys.exit(1)
-
-bazel_workspace_dir = sys.argv[1]
-bazel_package_dir = sys.argv[2]
-bazel_package_relative_dir = os.path.relpath(
-    bazel_package_dir, bazel_workspace_dir)
-package_prefix = bazel_package_relative_dir.replace(os.path.sep, '_')
-
-print("""# This file is generated (whence no license header). Do not edit!
+    print("""# This file is generated (whence no license header). Do not edit!
 # To regenerate, run:
 #   cmake/bazel_to_cmake.sh
 """)
 
-src_build_file = os.path.join(bazel_package_dir, "BUILD")
-src_build_content = open(src_build_file).read()
-processed_build_content = preprocess_input_text(src_build_content)
-exec(processed_build_content)
+    src_build_file = os.path.join(bazel_package_dir, "BUILD")
+    src_build_content = open(src_build_file).read()
+    processed_build_content = preprocess_input_text(src_build_content)
+    exec(processed_build_content)
 
-print("ruy_add_all_subdirs()")
+    print("ruy_add_all_subdirs()")
