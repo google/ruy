@@ -50,6 +50,17 @@ struct MulParamsStorage;
 // AccumScalar: Accumulator type. The type of accumulators used to compute the
 // dot-products before being ultimately casted to the destination type.
 // DstScalar: The destination scalar type.
+//
+// Constraints on these template parameters:
+// * If DstScalar is floating-point then AccumScalar must also be.
+// * If DstScalar is integral then AccumScalar must be std::int32_t. Moreover
+//   in that integral case, there is a mode switch:
+//   - If DstScalar is std::int32_t then the multiplier_* fields are all
+//     disabled, and ruy::Mul will just return raw (unscaled) accumulators.
+//   - If DstScalar is not std::int32_t then the multiplier_* fields are
+//     enabled, and ruy::Mul will use them to scale internal std::int32_t
+//     accumulators before casting them to the DstScalar type. The default
+//     values are such that the effective multiplier is 1 (no scaling).
 template <typename tAccumScalar, typename tDstScalar>
 class MulParams final {
  public:
@@ -59,9 +70,14 @@ class MulParams final {
   // The bias vector data, if not null.
   const AccumScalar* bias() const { return storage_.bias; }
   void set_bias(const AccumScalar* ptr) { storage_.bias = ptr; }
-  // Only for non-floating-point cases. The fixed-point part (i.e. the mantissa)
-  // of the multiplier by which accumulators are multiplied before being casted
-  // to the destination type.
+  // Only for non-floating-point cases. The fixed-point part  of the multiplier
+  // by which accumulators are multiplied before being casted to the destination
+  // type. This is a fixed-point quantity with 0 integer bits. Since
+  // (as explained in the class comment) AccumScalar must be std::int32_t,
+  // that means that the fixed-point format is Q0.31. For example,
+  // a multiplier_fixedpoint value of 2^30 has the effect of multiplying
+  // by one half (1/2). More generally, the effect is to multiply by
+  // (multiplier_fixedpoint / (2^31)).
   AccumScalar multiplier_fixedpoint() const {
     return storage_.perchannel ? 0 : storage_.multiplier_fixedpoint;
   }
