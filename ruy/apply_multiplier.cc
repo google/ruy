@@ -24,6 +24,10 @@ namespace ruy {
 namespace detail {
 namespace {
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Warning: this code is not meant to be bit-exact-normative.
+// Please refer to the class comment of ruy::MulParams, in mul_params.h.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Copied from gemmlowp/fixedpoint.
 // Similar to the ARM64 instruction, SQRDMULH. The name of this function
 // is copied from the name of that instruction.
@@ -43,6 +47,10 @@ std::int32_t SaturatingRoundingDoublingHighMul(std::int32_t a, std::int32_t b) {
   return overflow ? std::numeric_limits<std::int32_t>::max() : ab_x2_high32;
 }
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Warning: this code is not meant to be bit-exact-normative.
+// Please refer to the class comment of ruy::MulParams, in mul_params.h.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Returns numerator/2^exponent, rounding to nearest, breaking ties
 // upwards. That particular tie-breaking behavior is not important in practice.
 // It happens to be cheap to implement in hardware and therefore, commonplace.
@@ -71,6 +79,10 @@ std::int32_t RoundingRightShift(std::int32_t numerator, int exponent) {
 
 }  // namespace
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Warning: this code is not meant to be bit-exact-normative.
+// Please refer to the class comment of ruy::MulParams, in mul_params.h.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Copied from TF Lite code.
 std::int32_t MultiplyByQuantizedMultiplier(std::int32_t x,
                                            std::int32_t quantized_multiplier,
