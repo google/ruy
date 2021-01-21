@@ -83,9 +83,10 @@ class MulParams final {
   // `multiplier_exponent` are disabled and `multiplier_fixedpoint_perchannel`
   // and `multiplier_exponent_perchannel` are used instead.
   //
-  // This must point to a buffer of as many values as there are rows in the
-  // destination matrix. Each row of the destination matrix will use the
-  // corresponding buffer element instead of multiplier_fixedpoint.
+  // This must point to a buffer of as many values as there are rows or columns
+  // in the destination matrix, whichever is the channels dimension. Each
+  // channel of the destination matrix will use the corresponding buffer element
+  // instead of multiplier_fixedpoint.
   const AccumScalar* multiplier_fixedpoint_perchannel() const {
     return storage_.perchannel ? storage_.multiplier_fixedpoint_perchannel
                                : nullptr;
@@ -155,16 +156,6 @@ class MulParams final {
   detail::MulParamsStorage<AccumScalar, DstScalar> storage_;
 
   void set_perchannel(bool perchannel) {
-    if (storage_.perchannel == perchannel) {
-      return;
-    }
-    if (perchannel) {
-      RUY_DCHECK_EQ(storage_.multiplier_fixedpoint, 0);
-      RUY_DCHECK_EQ(storage_.multiplier_exponent, 0);
-    } else {
-      RUY_DCHECK_EQ(storage_.multiplier_fixedpoint_perchannel, nullptr);
-      RUY_DCHECK_EQ(storage_.multiplier_exponent_perchannel, nullptr);
-    }
     storage_.perchannel = perchannel;
   }
 };
@@ -204,12 +195,18 @@ struct MulParamsStorage<std::int32_t, DstScalar> final {
 
   const AccumScalar* bias = nullptr;
   union {
-    const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
-    AccumScalar multiplier_fixedpoint;
+    const AccumScalar* multiplier_fixedpoint_perchannel;
+    // Let the default multiplier be effecively a multiplication by 1, so that
+    // the matmul behaves as a (saturating) plain integer matmul. Unfortunately
+    // 1 is not exactly representable in fixedpoint with 0 integer bits, so
+    // we represent 1/2 in the present fixedpoint multiplier, which we
+    // compensate for below by a default exponent of +1.
+    AccumScalar multiplier_fixedpoint = 1 << 30;
   };
   union {
-    const int* multiplier_exponent_perchannel = nullptr;
-    int multiplier_exponent;
+    const int* multiplier_exponent_perchannel;
+    // See the above comment about the default value of multiplier_fixedpoint.
+    int multiplier_exponent = 1;
   };
   DstScalar clamp_min = std::numeric_limits<DstScalar>::lowest();
   DstScalar clamp_max = std::numeric_limits<DstScalar>::max();

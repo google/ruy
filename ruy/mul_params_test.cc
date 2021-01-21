@@ -31,8 +31,8 @@ TEST(MulParamsTest, SpecClassSanity) {
 
   MulParamsType mul_params;
   EXPECT_EQ(mul_params.bias(), nullptr);
-  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 0);
-  EXPECT_EQ(mul_params.multiplier_exponent(), 0);
+  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 1 << 30);
+  EXPECT_EQ(mul_params.multiplier_exponent(), 1);
   EXPECT_EQ(mul_params.multiplier_fixedpoint_perchannel(), nullptr);
   EXPECT_EQ(mul_params.multiplier_exponent_perchannel(), nullptr);
   EXPECT_EQ(mul_params.clamp_min(), -128);
