@@ -109,7 +109,7 @@ class MulParams final {
   // The bias vector data, if not null.
   const AccumScalar* bias() const { return storage_.bias; }
   void set_bias(const AccumScalar* ptr) { storage_.bias = ptr; }
-  // Only for non-floating-point cases. The fixed-point part  of the multiplier
+  // Only for non-floating-point cases. The fixed-point part of the multiplier
   // by which accumulators are multiplied before being casted to the destination
   // type. This is a fixed-point quantity with 0 integer bits. Since
   // (as explained in the class comment) AccumScalar must be std::int32_t,
