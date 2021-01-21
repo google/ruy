@@ -14,6 +14,10 @@ limitations under the License.
 ==============================================================================*/
 
 // Provides a reference (portable, non-optimized) ApplyMultiplier function.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// Warning: this code is not meant to be bit-exact-normative.
+// Please refer to the class comment of ruy::MulParams, in mul_params.h.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 #ifndef RUY_RUY_APPLY_MULTIPLIER_H_
 #define RUY_RUY_APPLY_MULTIPLIER_H_
