@@ -46,7 +46,12 @@ if (NOT TARGET cpuinfo)
   add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
 endif()
 
-if (NOT RUY_MINIMAL_BUILD AND NOT TARGET gtest)
+# googletest is only needed for tests. Projects embedding ruy as a subdirectory
+# and not needing to build ruy tests may proceed without a local checkout of
+# third_party/googletest.
+if (NOT RUY_MINIMAL_BUILD
+    AND NOT TARGET gtest
+    AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest/CMakeLists.txt")
   add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
 endif()
 
