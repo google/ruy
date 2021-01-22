@@ -19,13 +19,13 @@ cmake_minimum_required(VERSION 3.13)  # Copied from IREE
 set(CMAKE_CXX_STANDARD 14)
 
 if (PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
-  set(RUY_ENABLE_TESTS_DEFAULT_VALUE ON)
+  set(RUY_MINIMAL_BUILD_DEFAULT_VALUE OFF)
 else()
-  set(RUY_ENABLE_TESTS_DEFAULT_VALUE OFF)
+  set(RUY_MINIMAL_BUILD_DEFAULT_VALUE ON)
 endif()
 
-option(RUY_ENABLE_TESTS "Enable ruy's tests" ${RUY_ENABLE_TESTS_DEFAULT_VALUE})
-if (RUY_ENABLE_TESTS)
+option(RUY_MINIMAL_BUILD "Disable ruy's tests, examples, etc. Build only ruy public libraries." ${RUY_MINIMAL_BUILD_DEFAULT_VALUE})
+if (NOT RUY_MINIMAL_BUILD)
   enable_testing()
 endif()
 
@@ -46,8 +46,12 @@ if (NOT TARGET cpuinfo)
   add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
 endif()
 
-if (NOT TARGET gtest)
+if (NOT RUY_MINIMAL_BUILD AND NOT TARGET gtest)
   add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
 endif()
 
-ruy_add_all_subdirs()
+add_subdirectory("ruy")
+
+if (NOT RUY_MINIMAL_BUILD)
+  add_subdirectory("example")
+endif()

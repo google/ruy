@@ -29,7 +29,7 @@ function(ruy_cc_test)
     ${ARGN}
   )
 
-  if(NOT RUY_ENABLE_TESTS)
+  if(RUY_MINIMAL_BUILD)
     return()
   endif()
 
