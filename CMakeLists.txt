@@ -18,7 +18,13 @@ project(ruy CXX)
 cmake_minimum_required(VERSION 3.13)  # Copied from IREE
 set(CMAKE_CXX_STANDARD 14)
 
-option(RUY_ENABLE_TESTS "Enable ruy's tests" ON)
+if (PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
+  set(RUY_ENABLE_TESTS_DEFAULT_VALUE ON)
+else()
+  set(RUY_ENABLE_TESTS_DEFAULT_VALUE OFF)
+endif()
+
+option(RUY_ENABLE_TESTS "Enable ruy's tests" ${RUY_ENABLE_TESTS_DEFAULT_VALUE})
 if (RUY_ENABLE_TESTS)
   enable_testing()
 endif()
