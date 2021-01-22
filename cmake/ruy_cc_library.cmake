@@ -29,7 +29,7 @@ function(ruy_cc_library)
     ${ARGN}
   )
 
-  if(_RULE_TESTONLY AND NOT RUY_ENABLE_TESTS)
+  if(_RULE_TESTONLY AND RUY_MINIMAL_BUILD)
     return()
   endif()
 

@@ -18,8 +18,14 @@ project(ruy CXX)
 cmake_minimum_required(VERSION 3.13)  # Copied from IREE
 set(CMAKE_CXX_STANDARD 14)
 
-option(RUY_ENABLE_TESTS "Enable ruy's tests" ON)
-if (RUY_ENABLE_TESTS)
+if (PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
+  set(RUY_MINIMAL_BUILD_DEFAULT_VALUE OFF)
+else()
+  set(RUY_MINIMAL_BUILD_DEFAULT_VALUE ON)
+endif()
+
+option(RUY_MINIMAL_BUILD "Disable ruy's tests, examples, etc. Build only ruy public libraries." ${RUY_MINIMAL_BUILD_DEFAULT_VALUE})
+if (NOT RUY_MINIMAL_BUILD)
   enable_testing()
 endif()
 
@@ -40,8 +46,17 @@ if (NOT TARGET cpuinfo)
   add_subdirectory("third_party/cpuinfo" EXCLUDE_FROM_ALL)
 endif()
 
-if (NOT TARGET gtest)
+# googletest is only needed for tests. Projects embedding ruy as a subdirectory
+# and not needing to build ruy tests may proceed without a local checkout of
+# third_party/googletest.
+if (NOT RUY_MINIMAL_BUILD
+    AND NOT TARGET gtest
+    AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/googletest/CMakeLists.txt")
   add_subdirectory("third_party/googletest" EXCLUDE_FROM_ALL)
 endif()
 
-ruy_add_all_subdirs()
+add_subdirectory("ruy")
+
+if (NOT RUY_MINIMAL_BUILD)
+  add_subdirectory("example")
+endif()
