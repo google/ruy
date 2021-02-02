@@ -1401,15 +1401,19 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
       // 1 from using different rounding in right shifts, so the tolerance on
       // the difference may have to be as large as 2.
       tolerated_max_diff = 2;
-    } else if (RUY_PLATFORM_ARM || RUY_PLATFORM_X86) {
+    } else if (RUY_PLATFORM_ARM) {
       // All our code paths on ARM and x86, including SIMD paths, are bit-exact
       // with the reference code (by design of the reference code).
       tolerated_max_diff = 0;
+    } else if (RUY_PLATFORM_X86) {
+      // Our reference and ARM paths have diverged from x86 paths in PR #227.
+      // TODO: update the x86 path to adapt to that and reset that tolerance
+      // to 0.
+      tolerated_max_diff = 1;
     } else {
-      // In this case, we are comparing ruy paths only, but outside of ARM or
-      // x86. At the moment, it so happens that ruy's x86 SIMD code paths are
-      // bit exact with reference, but we allow for some tolerance on other
-      // architectures.
+      // Other architectures, which we don't have dedicated code paths for
+      // at the moment - TODO: try resetting that tolerance to 0, since by
+      // definition we're only using non-optimized code paths here.
       tolerated_max_diff = 1;
     }
 
