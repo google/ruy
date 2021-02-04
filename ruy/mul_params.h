@@ -62,15 +62,9 @@ struct MulParamsStorage;
 //     accumulators before casting them to the DstScalar type. The default
 //     values are such that the effective multiplier is 1 (no scaling).
 //  
-// In the latter case (DstScalar integral and narrower than std::int32_t),
-// the multiplier effect on accumulator values is as follows:
-//
-//   1. Left shift by max(0, multiplier_exponent).
-//   2. Fixed-point multiplication by multiplier_fixedpoint in Q0.31 format.
-//   3. Rounding right shift by max(0, -multiplier_exponent).
-//
-// Reference code for this can be found in the implementation of
-// ruy::ApplyMultiplier. If you look there, you'll find warnings like this:
+// For the latter case (DstScalar integral and narrower than std::int32_t),
+// reference code can be found in the implementation of ruy::ApplyMultiplier.
+// If you look there, you'll find warnings like this:
 //
 //   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 //   Warning: this code is not meant to be bit-exact-normative.

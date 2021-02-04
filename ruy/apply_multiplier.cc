@@ -37,6 +37,10 @@ namespace detail {
 // friendly implementations.
 //
 // On NEON this can be translated to a SQDMULH + rounding shift right sequence.
+// The use of SQDMULH rather than SQRDMULH gives a result that is
+// equivalent to a single rounded shift since the truncating shift of SQDMULH
+// can be combined with the rounding right shift via the formula (for k>=1):
+//  ((x>>31)+(1<<(k-1)))>>k = (x + (1<<(30+k))>>(31+k)
 //
 // Preconditions:
 // - quantized_multiplier >= 0

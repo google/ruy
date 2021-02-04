@@ -400,7 +400,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
 
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ins v13.h[4], w4\n" // dst_zero_point
@@ -1348,7 +1348,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
 
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ins v13.h[4], w4\n" // dst_zero_point
@@ -2145,7 +2145,7 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
 
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ins v13.h[4], w4\n" // dst_zero_point
@@ -3350,7 +3350,7 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
 
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ldrb w6, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"
         "dup v9.4s, w3\n"   // create prod_zp_depth_vec
@@ -4569,7 +4569,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
 
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "ldr w4, [%[params], #" RUY_STR(RUY_OFFSET_DST_ZERO_POINT) "]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ins v13.h[4], w4\n" // dst_zero_point
@@ -5295,7 +5295,7 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         // computed.
         "mov %[lhs_ptr], %[lhs_col_ptr]\n"
         // Load some parameters needed for the end work on current block.
-        "movi v8.4s, #-1\n"
+        "mvni v8.4s, #0\n"
         "mov %[rhs_ptr], %[rhs_col_ptr]\n"
         "ldr w3, [%[params], #" RUY_STR(RUY_OFFSET_PROD_ZP_DEPTH) "]\n"
         "ldrb w6, [%[params], #" RUY_STR(RUY_OFFSET_FLAGS) "]\n"

@@ -1023,7 +1023,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "vld1.32 {d12}, [r2]!\n"  // 2 values of multiplier_fixedpoint
 
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
-        "vmov.i32 q8, #-1\n"
+        "vmvn.i32 q8, #0\n"
         "bne 8f\n"
         // Case where channels are rows.
         // Load the remaining 2 bias values, since we're on the width-4 side
@@ -1961,7 +1961,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
 
         "vld1.32 {q10}, [r1]\n"
 
-        "vmov.i32 q8, #-1\n"
+        "vmvn.i32 q8, #0\n"
         "vmin.s32 q13, q10, q8\n"
         "vsub.s32 q12, q10, q13\n"
 
