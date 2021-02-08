@@ -3540,8 +3540,6 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         "bne 8f\n"
         // Case where channels are rows
 
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 10f\n"
         // Apply the positive exponent part of the multiplier.
         "sshl v16.4s, v16.4s, v9.4s\n"
         "sshl v17.4s, v17.4s, v10.4s\n"
@@ -3601,8 +3599,6 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         "8:\n"
         // Case where channels are columns
 
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 11f\n"
         // Apply the positive exponent part of the multiplier.
         "dup v4.4s, v9.s[0]\n"
         "dup v5.4s, v9.s[1]\n"
@@ -4666,9 +4662,6 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
         "sub v9.4s, v9.4s, v11.4s\n"
         "sub v10.4s, v10.4s, v12.4s\n"
 
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 403f\n"
-
         // Apply the positive exponent part of the multiplier.
         "sshl v16.4s, v16.4s, v9.4s\n"
         "sshl v17.4s, v17.4s, v10.4s\n"
@@ -5487,9 +5480,6 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         "bne 8f\n"
         // Case where channels are rows
 
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 10f\n"
-
         // Apply the positive exponent part of the multiplier.
         "sshl v16.4s, v16.4s, v9.4s\n"
         "sshl v17.4s, v17.4s, v10.4s\n"
@@ -5569,8 +5559,6 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         "8:\n"
         // Case where channels are columns
 
-        "tst w6, #" RUY_STR(RUY_ASM_FLAG_NEEDS_LEFT_SHIFT) "\n"
-        "beq 11f\n"
         // Apply the positive exponent part of the multiplier.
         "dup v4.4s, v9.s[0]\n"
         "dup v5.4s, v9.s[1]\n"
