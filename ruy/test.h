@@ -1402,7 +1402,7 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
       // the difference may have to be as large as 2.
       tolerated_max_diff = 2;
     } else if (RUY_PLATFORM_ARM) {
-      // All our code paths on ARM and x86, including SIMD paths, are bit-exact
+      // All our code paths on ARM (32 and 64-bit) are bit-exact
       // with the reference code (by design of the reference code).
       tolerated_max_diff = 0;
     } else if (RUY_PLATFORM_X86) {
@@ -1412,7 +1412,8 @@ bool Agree(ExternalPath external_path1, const Matrix<Scalar>& matrix1,
       tolerated_max_diff = 1;
     } else {
       // Other architectures, which we don't have dedicated code paths for
-      // at the moment - TODO: try resetting that tolerance to 0, since by
+      // at the moment.
+      // TODO: try resetting that tolerance to 0, since by
       // definition we're only using non-optimized code paths here.
       tolerated_max_diff = 1;
     }
