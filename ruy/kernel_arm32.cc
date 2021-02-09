@@ -1023,47 +1023,47 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "vld1.32 {d12}, [r2]!\n"  // 2 values of multiplier_fixedpoint
 
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
-        RUY_MAKE_ZERO(q8)
+        "vmvn.i32 q8, #0\n"
         "bne 8f\n"
         // Case where channels are rows.
         // Load the remaining 2 bias values, since we're on the width-4 side
         // of this 4x2 kernel.
         "vld1.32 {d21}, [r1]\n"  // 2 more values of multiplier_exponent
         "vld1.32 {d13}, [r2]\n"  // 2 more values of multiplier_fixedpoint
-        "vmax.s32 q11, q10, q8\n"
-        "vmin.s32 q10, q10, q8\n"
+        "vmin.s32 q11, q10, q8\n"
+        "vsub.s32 q10, q10, q11\n"
 
         // Apply the positive exponent part of the multiplier.
-        "vshl.s32 q14, q14, q11\n"
-        "vshl.s32 q15, q15, q11\n"
+        "vshl.s32 q14, q14, q10\n"
+        "vshl.s32 q15, q15, q10\n"
 
         // Apply the fixed-point part of the multiplier.
-        "vqrdmulh.s32 q14, q14, q6\n"
-        "vqrdmulh.s32 q15, q15, q6\n"
+        "vqdmulh.s32 q14, q14, q6\n"
+        "vqdmulh.s32 q15, q15, q6\n"
 
         // Apply the negative exponent part of the multiplier.
-        "vrshl.s32 q14, q14, q10\n"
-        "vrshl.s32 q15, q15, q10\n"
+        "vrshl.s32 q14, q14, q11\n"
+        "vrshl.s32 q15, q15, q11\n"
         "b 9f\n"
 
         "8:\n"
         // Case where channels are columns.
-        "vmax.s32 d22, d20, d16\n"
-        "vmin.s32 d20, d20, d16\n"
+        "vmin.s32 d22, d20, d16\n"
+        "vsub.s32 d20, d20, d22\n"
 
         // Apply the positive exponent part of the multiplier.
-        "vdup.32  q12, d22[0]\n"
-        "vdup.32  q13, d22[1]\n"
+        "vdup.32  q12, d20[0]\n"
+        "vdup.32  q13, d20[1]\n"
         "vshl.s32 q14, q14, q12\n"
         "vshl.s32 q15, q15, q13\n"
 
         // Apply the fixed-point part of the multiplier.
-        "vqrdmulh.s32 q14, q14, d12[0]\n"
-        "vqrdmulh.s32 q15, q15, d12[1]\n"
+        "vqdmulh.s32 q14, q14, d12[0]\n"
+        "vqdmulh.s32 q15, q15, d12[1]\n"
 
         // Apply the negative exponent part of the multiplier.
-        "vdup.32  q12, d20[0]\n"
-        "vdup.32  q13, d20[1]\n"
+        "vdup.32  q12, d22[0]\n"
+        "vdup.32  q13, d22[1]\n"
         "vrshl.s32 q14, q14, q12\n"
         "vrshl.s32 q15, q15, q13\n"
 
@@ -1961,13 +1961,12 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
 
         "vld1.32 {q10}, [r1]\n"
 
-        RUY_MAKE_ZERO(q8)
-        "vmax.s32 q12, q10, q8\n"
+        "vmvn.i32 q8, #0\n"
+        "vmin.s32 q13, q10, q8\n"
+        "vsub.s32 q12, q10, q13\n"
 
         // Apply the positive exponent part of the multiplier.
         "vshl.s32 q14, q14, q12\n"
-
-        "vmin.s32 q12, q10, q8\n"
 
         // Load fixed point part of the multiplier
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
@@ -1978,10 +1977,10 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "vld1.32 {q10}, [r1]\n" // multiplier_fixedpoint
 
         // Apply the fixed-point part of the multiplier.
-        "vqrdmulh.s32 q14, q14, q10\n"
+        "vqdmulh.s32 q14, q14, q10\n"
 
         // Apply the negative exponent part of the multiplier.
-        "vrshl.s32 q14, q14, q12\n"
+        "vrshl.s32 q14, q14, q13\n"
 
         "ldrb r10, [%[params], #" RUY_STR(RUY_OFFSET_DST_TYPE_ID) "]\n"
         "cmp r10, #" RUY_STR(RUY_ASM_TYPE_ID_INT16) "\n"
