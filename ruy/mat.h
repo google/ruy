@@ -327,7 +327,7 @@ inline bool IsColMajor(const MatLayout& layout) {
   return layout.order == Order::kColMajor;
 }
 
-inline int FlatSize(const MatLayout& layout) {
+inline std::ptrdiff_t FlatSize(const MatLayout& layout) {
   const int outerdim =
       layout.order == Order::kColMajor ? layout.cols : layout.rows;
   return layout.stride * outerdim;
@@ -349,7 +349,7 @@ inline bool IsColMajor(const PMatLayout& layout) {
   return layout.order == Order::kColMajor;
 }
 
-inline int FlatSize(const PMatLayout& layout) {
+inline std::ptrdiff_t FlatSize(const PMatLayout& layout) {
   const int outerdim =
       layout.order == Order::kColMajor ? layout.cols : layout.rows;
   return layout.stride * outerdim;
@@ -429,11 +429,11 @@ Scalar Element(const PMat<Scalar>& mat, int row, int col) {
 
 // Helpers for PEMat.
 
-inline int DataBytes(const PEMat& packed) {
+inline std::ptrdiff_t DataBytes(const PEMat& packed) {
   return FlatSize(packed.layout) * packed.data_type.size;
 }
 
-inline int SumsBytes(const PEMat& packed) {
+inline std::ptrdiff_t SumsBytes(const PEMat& packed) {
   // Packed matrices are only relevant for Ruy's TrMul implementations. For
   // TrMul, the number of sums is always equal to the number of columns.
   return packed.layout.cols * packed.sums_type.size;

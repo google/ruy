@@ -26,10 +26,10 @@ namespace {
 // Allocates the `data` and `sums` buffers, and sets the corresponding
 // pointer fields, in a PEMat whose other fields, particularly `layout`
 // and the runtime data types, are already populated.
-int AllocateBuffers(PEMat* packed_matrix) {
-  const int data_bytes = DataBytes(*packed_matrix);
+std::ptrdiff_t AllocateBuffers(PEMat* packed_matrix) {
+  const std::ptrdiff_t data_bytes = DataBytes(*packed_matrix);
   packed_matrix->data = detail::SystemAlignedAlloc(data_bytes);
-  int sums_bytes = 0;
+  std::ptrdiff_t sums_bytes = 0;
   if (!packed_matrix->sums_type.is_floating_point) {
     // Integer quantized matrices also need the `sums` buffer.
     sums_bytes = SumsBytes(*packed_matrix);
@@ -93,7 +93,7 @@ PrepackedCache::Action PrepackedCache::Get(const void* src_data,
   }
 
   // No existing entry found. Allocate new buffers now and insert in the cache.
-  const int new_bytes = AllocateBuffers(packed_matrix);
+  const std::ptrdiff_t new_bytes = AllocateBuffers(packed_matrix);
   EjectUntilRoomFor(new_bytes);
   Entry entry{*packed_matrix, timestamp_++};
   cache_.emplace(key, entry);
@@ -101,7 +101,7 @@ PrepackedCache::Action PrepackedCache::Get(const void* src_data,
   return Action::kInsertedNewEntry;
 }
 
-void PrepackedCache::EjectUntilRoomFor(int new_bytes) {
+void PrepackedCache::EjectUntilRoomFor(std::ptrdiff_t new_bytes) {
   profiler::ScopeLabel label("PrepackedCacheEjection");
   // While we are above the threshold of ejection, eject the LRU entry.
   while (!cache_.empty() && buffers_bytes_ + new_bytes > max_buffers_bytes_) {

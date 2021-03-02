@@ -101,7 +101,7 @@ class PrepackedCache final {
   ~PrepackedCache();
 
   // Returns the total size in bytes of buffers held in this cache.
-  int BuffersBytes() const { return buffers_bytes_; }
+  std::ptrdiff_t BuffersBytes() const { return buffers_bytes_; }
 
   // Returns the number of packed matrices held in this cache.
   int MatrixCount() const { return cache_.size(); }
@@ -128,11 +128,11 @@ class PrepackedCache final {
 
  private:
   void EjectOne();
-  void EjectUntilRoomFor(int new_bytes);
+  void EjectUntilRoomFor(std::ptrdiff_t new_bytes);
 
   std::unordered_map<Key, Entry, KeyHash> cache_;
-  const int max_buffers_bytes_;
-  int buffers_bytes_ = 0;
+  const std::ptrdiff_t max_buffers_bytes_;
+  std::ptrdiff_t buffers_bytes_ = 0;
   Timestamp timestamp_ = 0;
 };
 
