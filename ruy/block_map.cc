@@ -17,6 +17,7 @@ limitations under the License.
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 
 #ifdef RUY_MAKEBLOCKMAP_DEBUG
 #include <cstdio>
