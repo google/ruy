@@ -42,7 +42,7 @@ limitations under the License.
 #define RUY_OPT_SET (~RUY_OPT_BIT_PREFETCH_LOAD)
 #else
 // Default to all optimizations.
-#define RUY_OPT_SET (~0)
+#define RUY_OPT_SET (~0x40)
 #endif
 #endif
 
