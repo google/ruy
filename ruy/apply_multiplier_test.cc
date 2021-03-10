@@ -104,14 +104,9 @@ void TestApplyMultiplier(const MulParams<AccumScalar, DstScalar>& mul_params,
 
 TEST(ApplyMultiplierTest, ApplyMultiplierUniform) {
   MulParams<std::int32_t, std::int8_t> mul_params;
-  // Test that default values give a multiplication by 1.
-  TestApplyMultiplier(mul_params, 0, 1000, 1000);
   mul_params.set_multiplier_fixedpoint(1 << 30);
   mul_params.set_multiplier_exponent(-1);
   TestApplyMultiplier(mul_params, 0, 1000, 250);
-  mul_params.set_multiplier_fixedpoint(1 << 25);
-  mul_params.set_multiplier_exponent(3);
-  TestApplyMultiplier(mul_params, 0, 1000, 125);
 }
 
 TEST(ApplyMultiplierTest, ApplyMultiplierPerChannel) {

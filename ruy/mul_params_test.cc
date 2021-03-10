@@ -31,7 +31,7 @@ TEST(MulParamsTest, SpecClassSanity) {
 
   MulParamsType mul_params;
   EXPECT_EQ(mul_params.bias(), nullptr);
-  EXPECT_EQ(mul_params.multiplier_fixedpoint(), std::numeric_limits<std::int32_t>::max());
+  EXPECT_EQ(mul_params.multiplier_fixedpoint(), 0);
   EXPECT_EQ(mul_params.multiplier_exponent(), 0);
   EXPECT_EQ(mul_params.multiplier_fixedpoint_perchannel(), nullptr);
   EXPECT_EQ(mul_params.multiplier_exponent_perchannel(), nullptr);

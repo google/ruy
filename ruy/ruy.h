@@ -93,14 +93,6 @@ void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
 // (e.g. the number of CPU cores in typical scenarios). At least ruy forces
 // each invocation to make an explicit decision here, there is no automatic
 // detection of the best number of threads to use in ruy.
-//
-// Constraints on the template parameters:
-// * If DstScalar is floating-point then AccumScalar must also be.
-// * If DstScalar is integral then AccumScalar must be std::int32_t.
-// Please refer to MulParams' class comment for more information. When
-// DstScalar is integral and is narrower than AccumScalar, additional
-// MulParams fields must be set to control the scaling of internal accumulators
-// before the final saturating cast to the DstScalar type.
 template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
           typename DstScalar>
 void Mul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
