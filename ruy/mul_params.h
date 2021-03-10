@@ -247,14 +247,22 @@ struct MulParamsStorage<std::int32_t, DstScalar> final {
   static_assert(sizeof(DstScalar) < sizeof(AccumScalar), "");
 
   const AccumScalar* bias = nullptr;
-  union {
-    const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
-    AccumScalar multiplier_fixedpoint;
-  };
-  union {
-    const int* multiplier_exponent_perchannel = nullptr;
-    int multiplier_exponent;
-  };
+  // union {  // This used to be a union, temporarily flattened to debug a crash
+  const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
+  // Let the default multiplier be effecively a multiplication by 1, so that
+  // the matmul behaves as a (saturating) plain integer matmul. Unfortunately
+  // 1 is not exactly representable in fixedpoint with 0 integer bits, but
+  // using the highest representable value is a sufficiently good
+  // approximation: since this specialization of MulParams is for the case
+  // where DstScalar is at least 2x narrower than MulScalar, the values
+  // for which there would be a difference will get saturated anyway.
+  AccumScalar multiplier_fixedpoint = 0;
+  //};
+  // union {  // This used to be a union, temporarily flattened to debug a crash
+  const int* multiplier_exponent_perchannel = nullptr;
+  // See the above comment about the default value of multiplier_fixedpoint.
+  int multiplier_exponent = 0;
+  // };
   DstScalar clamp_min = std::numeric_limits<DstScalar>::lowest();
   DstScalar clamp_max = std::numeric_limits<DstScalar>::max();
   ChannelDimension channel_dimension = ChannelDimension::kRow;

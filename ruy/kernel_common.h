@@ -177,6 +177,8 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->prod_zp_depth = lhs.zero_point * rhs.zero_point * depth;
   params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
   if (mul_params.multiplier_fixedpoint_perchannel()) {
+    // Temporary release-assert to debug some crashes in an application.
+    RUY_CHECK(mul_params.multiplier_exponent_perchannel());
     params->flags |= RUY_ASM_FLAG_HAS_PERCHANNEL;
     params->multiplier_fixedpoint =
         mul_params.multiplier_fixedpoint_perchannel();
@@ -200,6 +202,11 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->dst_type_id = DstTypeId<DstScalar>::kValue;
   params->dst_base_ptr =
       dst->data.get() + start_col * dst->layout.stride + start_row;
+
+  // Temporary release-asserts to debug some crashes in an application.
+  RUY_CHECK(params->multiplier_fixedpoint);
+  RUY_CHECK(params->multiplier_exponent);
+  RUY_CHECK(params->bias);
 }
 
 template <int LhsCols, int RhsCols>

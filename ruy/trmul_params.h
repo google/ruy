@@ -53,7 +53,9 @@ constexpr int kMaxMulParamsSize =
                                 kMaxMulParamsSizeQuantizedIntegerCase));
 
 // OK to adjust as needed, but we want to avoid unnecessarily inflating that.
-static_assert(kMaxMulParamsSize <= 32, "");
+// Temporarily bumped from 32 to 48 as part of temporarily not using unions
+// in MulParams.
+static_assert(kMaxMulParamsSize <= 48, "");
 
 // Type-erased data needed for implementing TrMul.
 struct TrMulParams {
