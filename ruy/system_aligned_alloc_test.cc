@@ -15,49 +15,31 @@ limitations under the License.
 
 #include "ruy/system_aligned_alloc.h"
 
-#include <cstddef>
-#include <cstdio>
-#include <cstdlib>
-
-#ifdef _WIN32
-#include <malloc.h>
-#endif
+#include <cstdint>
+#include <type_traits>
 
 #include "ruy/check_macros.h"
+#include "ruy/gtest_wrapper.h"
 
 namespace ruy {
 namespace detail {
 namespace {
 
-void *RawSystemAlignedAlloc(std::ptrdiff_t num_bytes) {
-#ifdef _WIN32
-  return _aligned_malloc(num_bytes, kMinimumBlockAlignment);
-#else
-  void *ptr;
-  if (posix_memalign(&ptr, kMinimumBlockAlignment, num_bytes)) {
-    return nullptr;
+TEST(SystemAlignedAllocTest, SystemAlignedAllocTest) {
+  for (std::ptrdiff_t size = 1; size < 10000; size++) {
+    void* ptr = SystemAlignedAlloc(size);
+    RUY_CHECK(ptr);
+    RUY_CHECK(
+        !(reinterpret_cast<std::uintptr_t>(ptr) % kMinimumBlockAlignment));
+    SystemAlignedFree(ptr);
   }
-  return ptr;
-#endif
 }
 
 }  // namespace
-
-void *SystemAlignedAlloc(std::ptrdiff_t num_bytes) {
-  void *ptr = RawSystemAlignedAlloc(num_bytes);
-  if (!ptr) {
-    RUY_FATAL_ERROR("failed to allocate %td bytes", num_bytes);
-  }
-  return ptr;
-}
-
-void SystemAlignedFree(void *ptr) {
-#ifdef _WIN32
-  _aligned_free(ptr);
-#else
-  free(ptr);
-#endif
-}
-
 }  // namespace detail
 }  // namespace ruy
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

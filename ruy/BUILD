@@ -71,6 +71,11 @@ config_setting(
 )
 
 config_setting(
+    name = "android",
+    values = {"crosstool_top": "//external:android/crosstool"},
+)
+
+config_setting(
     name = "dbg_build",
     values = {
         "compilation_mode": "dbg",
@@ -122,8 +127,13 @@ cc_library(
 
 cc_library(
     name = "check_macros",
+    srcs = ["check_macros.cc"],
     hdrs = ["check_macros.h"],
     copts = ruy_copts(),
+    linkopts = select({
+        ":android": ["-llog"],
+        "//conditions:default": [],
+    }),
 )
 
 cc_test(
@@ -213,6 +223,18 @@ cc_library(
         "system_aligned_alloc.h",
     ],
     copts = ruy_copts(),
+    deps = [":check_macros"],
+)
+
+cc_test(
+    name = "system_aligned_alloc_test",
+    srcs = ["system_aligned_alloc_test.cc"],
+    copts = ruy_copts(),
+    deps = [
+        ":check_macros",
+        ":gtest_wrapper",
+        ":system_aligned_alloc",
+    ],
 )
 
 cc_library(
