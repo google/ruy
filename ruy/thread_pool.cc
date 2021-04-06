@@ -25,6 +25,7 @@ limitations under the License.
 #include <thread>  // NOLINT(build/c++11)
 
 #include "ruy/check_macros.h"
+#include "ruy/denormal.h"
 #include "ruy/trace.h"
 #include "ruy/wait.h"
 
@@ -112,6 +113,9 @@ class Thread {
   void ThreadFuncImpl() {
     RUY_TRACE_SCOPE_NAME("Ruy worker thread function");
     ChangeState(State::Ready);
+
+    // Suppress denormals to avoid computation inefficiency.
+    ScopedSuppressDenormals suppress_denormals;
 
     // Thread main loop
     while (true) {

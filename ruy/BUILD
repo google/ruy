@@ -357,6 +357,7 @@ cc_library(
     deps = [
         ":blocking_counter",
         ":check_macros",
+        ":denormal",
         ":time",
         ":trace",
         ":wait",
@@ -417,6 +418,14 @@ cc_library(
         ":platform",
         ":size_util",
     ],
+)
+
+cc_library(
+    name = "denormal",
+    srcs = ["denormal.cc"],
+    hdrs = ["denormal.h"],
+    copts = ruy_copts(),
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -956,6 +965,7 @@ cc_library(
         ":cpu_cache_params",
         ":cpuinfo",
         ":ctx",
+        ":denormal",
         ":mat",
         ":matrix",
         ":mul_params",

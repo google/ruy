@@ -30,6 +30,7 @@ limitations under the License.
 #include "ruy/cpu_cache_params.h"
 #include "ruy/cpuinfo.h"
 #include "ruy/ctx.h"
+#include "ruy/denormal.h"
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
@@ -306,6 +307,12 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   const int tentative_thread_count =
       GetTentativeThreadCount(ctx, rows, cols, depth);
   const auto& cpu_cache_params = ctx->mutable_cpuinfo()->CacheParams();
+
+  // Suppress denormals to avoid computation inefficiency.
+  // Note this only handles the denormal suppression on the main thread. As for
+  // worker threads, the suppression is handled in each thread's main loop. See
+  // the corresponding code in thread_pool.cc for details.
+  ScopedSuppressDenormals suppress_denormals;
 
   // Case of running this TrMul as a simple loop.
   // This is a good place to start reading this function: all the rest
