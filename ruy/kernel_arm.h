@@ -49,6 +49,7 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
@@ -104,7 +105,8 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
 
 #if RUY_PLATFORM_NEON_64
 template <typename DstScalar>
-struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
+struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
+              DstScalar> {
   static constexpr Path kPath = Path::kNeonDotprod;
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
@@ -121,6 +123,8 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t, DstSca
       Kernel8bitNeonDotprod1Col(params);
     } else if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
       Kernel8bitNeonDotprodA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      Kernel8bitNeonDotprodX1(params);
     } else {
       Kernel8bitNeonDotprod(params);
     }
@@ -188,8 +192,7 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
   Tuning tuning = Tuning::kAuto;
   using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
   using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
-  using Base =
-      Kernel<Path::kNeon, float, float, float, float>;
+  using Base = Kernel<Path::kNeon, float, float, float, float>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PMat<float>& lhs, const PMat<float>& rhs,
            const MulParams<float, float>& mul_params, int start_row,

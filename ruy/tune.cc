@@ -23,7 +23,13 @@ limitations under the License.
 namespace ruy {
 
 Tuning TuningResolver::ResolveNow(CpuInfo* cpuinfo) {
-  return cpuinfo->CurrentCpuIsA55ish() ? Tuning::kA55ish : Tuning::kGeneric;
+  if (cpuinfo->CurrentCpuIsA55ish()) {
+    return Tuning::kA55ish;
+  }
+  if (cpuinfo->CurrentCpuIsX1()) {
+    return Tuning::kX1;
+  }
+  return Tuning::kGeneric;
 }
 
 TuningResolver::TuningResolver()

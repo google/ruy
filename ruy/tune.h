@@ -69,7 +69,13 @@ enum class Tuning {
   // A55r1 supports dotprod unlike A55r0 and A53, they are not using the same
   // kernels in practice anyway, so there was no need to distinguish them with
   // separate Tuning values.
-  kA55ish
+  kA55ish,
+  // Use code tuned for Cortex-X1 CPUs. Currently, the driver to distinguish
+  // this CPU is the get maximum performance on the dotprod kernels, where we
+  // attain high performance simply by avoiding any manual loop unrolling. As a
+  // purely performance oriented microarchitecture, there will likely be
+  // additional reasons to distinguish the X1 from other CPUs.
+  kX1
 };
 
 // Why a TuningResolver class?

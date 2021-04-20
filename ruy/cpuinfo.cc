@@ -133,6 +133,17 @@ bool CpuInfo::CurrentCpuIsA55ish() {
   }
 }
 
+bool CpuInfo::CurrentCpuIsX1() {
+  if (!EnsureInitialized()) {
+    return false;
+  }
+  if (cpuinfo_get_uarch(cpuinfo_get_current_uarch_index())->uarch ==
+      cpuinfo_uarch_cortex_x1) {
+    return true;
+  }
+  return false;
+}
+
 #else  // not defined RUY_HAVE_CPUINFO
 
 CpuInfo::~CpuInfo() {}
@@ -151,6 +162,7 @@ bool CpuInfo::Avx2Fma() { return false; }
 bool CpuInfo::Avx512() { return false; }
 bool CpuInfo::AvxVnni() { return false; }
 bool CpuInfo::CurrentCpuIsA55ish() { return false; }
+bool CpuInfo::CurrentCpuIsX1() { return false; }
 
 #endif
 

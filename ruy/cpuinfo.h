@@ -39,6 +39,7 @@ class CpuInfo final {
   // Common features
   const CpuCacheParams& CacheParams();
   bool CurrentCpuIsA55ish();
+  bool CurrentCpuIsX1();
 
  private:
   enum class InitStatus {
