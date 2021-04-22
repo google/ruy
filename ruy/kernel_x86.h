@@ -607,14 +607,12 @@ inline void KernelFloatAvxCommon(const KernelParamsFloat<8, 8>& params) {
       const float* rhs_ptr = rhs_col_ptr;
       for (int d = 0; d < params.depth; ++d) {
         const __m256 lhs_data = _mm256_loadu_ps(lhs_ptr);
-        const float* rhs_data = rhs_ptr;
-        // Load 8 RHS values, then use permute instructions to
-        // broadcast each value to a register.
-        __m256 rhs1 = _mm256_loadu_ps(rhs_data);  // Load [0 1 2 3 4 5 6 7]
+        // Load 8 RHS values, then use permute instructions to broadcast each
+        // value to a register. _mm256_permute2f128_ps is slow on AMD.
         __m256 rhs0_3 =
-            _mm256_permute2f128_ps(rhs1, rhs1, 0);  // [0 1 2 3 0 1 2 3]
+            _mm256_broadcast_ps(reinterpret_cast<const __m128*>(rhs_ptr));
         __m256 rhs4_7 =
-            _mm256_permute2f128_ps(rhs1, rhs1, 17);  // [4 5 6 7 4 5 6 7]
+            _mm256_broadcast_ps(reinterpret_cast<const __m128*>(rhs_ptr + 4));
 
         const __m256 dup_rhs_element_0 = _mm256_permute_ps(rhs0_3, 0);
         accum_data_v[0] = intrin_utils::MulAdd<path>(
@@ -707,13 +705,11 @@ inline void KernelFloatAvxCommon(const KernelParamsFloat<8, 8>& params) {
       const float* rhs_ptr = rhs_col_ptr;
       for (int d = 0; d < params.depth; ++d) {
         const __m256 lhs_data = _mm256_loadu_ps(lhs_ptr);
-        const float* rhs_data = rhs_ptr;
 
-        __m256 rhs1 = _mm256_loadu_ps(rhs_data);  // Load [0 1 2 3 4 5 6 7]
         __m256 rhs0_3 =
-            _mm256_permute2f128_ps(rhs1, rhs1, 0);  // [0 1 2 3 0 1 2 3]
+            _mm256_broadcast_ps(reinterpret_cast<const __m128*>(rhs_ptr));
         __m256 rhs4_7 =
-            _mm256_permute2f128_ps(rhs1, rhs1, 17);  // [4 5 6 7 4 5 6 7]
+            _mm256_broadcast_ps(reinterpret_cast<const __m128*>(rhs_ptr + 4));
 
         const __m256 dup_rhs_element_0 = _mm256_permute_ps(rhs0_3, 0);
         accum_data_v[0] = intrin_utils::MulAdd<path>(
