@@ -133,6 +133,7 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
 #endif
 
 void KernelFloatNeon(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonX1(const KernelParamsFloat<8, 8>& params);
 void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params);
 void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params);
 void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params);
@@ -154,6 +155,8 @@ struct Kernel<Path::kNeon, float, float, float, float> {
                           end_col, dst, &params);
     if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
       KernelFloatNeonA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      KernelFloatNeonX1(params);
     } else {
       KernelFloatNeon(params);
     }
@@ -202,6 +205,8 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
                           end_col, dst, &params);
     if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
       KernelFloatNeonDotprodA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      KernelFloatNeonX1(params);
     } else {
       KernelFloatNeon(params);
     }
