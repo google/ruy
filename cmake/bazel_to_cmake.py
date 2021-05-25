@@ -49,7 +49,7 @@ replacements = [
     ['selects.config_setting_group', 'config_setting_group'],
     ['@com_google_googletest//:gtest', 'gtest'],
     ['@com_google_googletest//:gtest_main', 'gtest_main'],
-    ['@cpuinfo//:cpuinfo_with_unstripped_include_path', 'cpuinfo'],
+    ['@cpuinfo', 'cpuinfo'],
 ]
 
 
@@ -81,6 +81,8 @@ def generate_cmake_select(select_name, dict):
             condition = 'CMAKE_SYSTEM_PROCESSOR STREQUAL s390 OR CMAKE_SYSTEM_PROCESSOR STREQUAL s390x'
         elif re.search(r':fuchsia$', key):
             condition = 'CMAKE_SYSTEM_NAME STREQUAL Fuchsia'
+        elif re.search(r':android$', key):
+            condition = 'CMAKE_SYSTEM_NAME STREQUAL Android'
         elif re.search(r':arm32_assuming_neon$', key):
             condition = 'CMAKE_SYSTEM_PROCESSOR STREQUAL arm'
         elif re.search(r':do_not_want_O3$', key):

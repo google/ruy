@@ -18,6 +18,7 @@ limitations under the License.
 #ifndef RUY_RUY_CHECK_MACROS_H_
 #define RUY_RUY_CHECK_MACROS_H_
 
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
@@ -68,12 +69,13 @@ struct ToString<T, typename std::enable_if<std::is_enum<T>::value>::type> {
   }
 };
 
+void FatalError(const char* format, ...);
+
 inline void CheckImpl(bool condition, const char* file, int line,
                       const char* macro, const char* condition_str) {
   if (!condition) {
-    fprintf(stderr, "%s:%d: %s condition not satisfied: %s\n", file, line,
-            macro, condition_str);
-    abort();
+    FatalError("%s:%d: %s condition not satisfied: %s\n", file, line, macro,
+               condition_str);
   }
 }
 
@@ -89,15 +91,17 @@ inline void CheckImpl(const char* file, int line, const char* macro,
     ToString<LhsType>::Run(lhs_value, lhs_value_buf);
     char rhs_value_buf[kValueBufSize];
     ToString<RhsType>::Run(rhs_value, rhs_value_buf);
-    fprintf(
-        stderr,
+    FatalError(
         "%s:%d: %s condition not satisfied:   [ %s %s %s ]   with values   [ "
         "%s %s %s ].\n",
         file, line, macro, lhs, op_symbol, rhs, lhs_value_buf, op_symbol,
         rhs_value_buf);
-    abort();
   }
 }
+
+#define RUY_FATAL_ERROR(format, ...)                                       \
+  ruy::check_macros::FatalError("%s:%d: " format "\n", __FILE__, __LINE__, \
+                                __VA_ARGS__);
 
 #define RUY_CHECK_IMPL(macro, condition)                              \
   ruy::check_macros::CheckImpl(condition, __FILE__, __LINE__, #macro, \
