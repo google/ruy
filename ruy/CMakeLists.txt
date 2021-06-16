@@ -107,6 +107,8 @@ ruy_cc_library(
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   set(ruy_3_pthread "")
+elseif(CMAKE_SYSTEM_NAME STREQUAL xtensa-esp32-elf)
+  set(ruy_3_pthread "")
 else()
   set(ruy_3_pthread "-pthread")
 endif()
@@ -1707,6 +1709,24 @@ ruy_cc_test(
     gtest_main
   TAGS
     slow
+)
+
+ruy_cc_test(
+  NAME
+    ruy_test_overflow_dst_zero_point
+  SRCS
+    test_overflow_dst_zero_point.cc
+  COPTS
+    ${ruy_0_Wall_Wcxx14_compat_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+  DEPS
+    ruy_gtest_wrapper
+    ruy_matrix
+    ruy
+    ruy_path
+    ruy_test_lib
+    ruy_tune
 )
 
 ruy_add_all_subdirs()

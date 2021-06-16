@@ -623,8 +623,8 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtun v16.8b, v16.8h\n"
@@ -750,8 +750,8 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to int8
         "sqxtn v16.8b, v16.8h\n"
@@ -1472,7 +1472,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         // Now all data is in the first 32-bits of v16
@@ -1553,7 +1553,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to int8
         "sqxtn v16.8b, v16.8h\n"
@@ -2394,9 +2394,9 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
         "dup v14.8h, v13.h[4]\n"
         RUY_MAKE_ZERO(v20)
         "add %[rhs_ptr], %[rhs_ptr], #64\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
         RUY_MAKE_ZERO(v21)
-        "add v17.8h, v17.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
         RUY_MAKE_ZERO(v22)
 
         // Cast-and-saturate from int16 to uint8
@@ -2526,9 +2526,9 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
         "dup v14.8h, v13.h[4]\n"
         RUY_MAKE_ZERO(v20)
         "add %[rhs_ptr], %[rhs_ptr], #64\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
         RUY_MAKE_ZERO(v21)
-        "add v17.8h, v17.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
         RUY_MAKE_ZERO(v22)
 
         // Cast-and-saturate from int16 to uint8
@@ -3713,14 +3713,14 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtun v16.8b, v16.8h\n"
@@ -3888,14 +3888,14 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtn v16.8b, v16.8h\n"
@@ -4967,14 +4967,14 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtun v16.8b, v16.8h\n"
@@ -5142,14 +5142,14 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtn v16.8b, v16.8h\n"
@@ -5947,7 +5947,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8, leaving all data in the
         // lower half of v16.
@@ -6043,7 +6043,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // Add the destination zero point
         "dup v14.8h, v13.h[4]\n"
-        "add v16.8h, v16.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
 
         // Cast-and-saturate from int16 to uint8
         "sqxtn v16.8b, v16.8h\n"
@@ -6946,14 +6946,14 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_MAKE_ZERO(v31)
 
         // Add the destination zero point
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldrb w2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"
@@ -7120,14 +7120,14 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_MAKE_ZERO(v31)
 
         // Add the destination zero point
-        "add v16.8h, v16.8h, v14.8h\n"
-        "add v17.8h, v17.8h, v14.8h\n"
-        "add v18.8h, v18.8h, v14.8h\n"
-        "add v19.8h, v19.8h, v14.8h\n"
-        "add v20.8h, v20.8h, v14.8h\n"
-        "add v21.8h, v21.8h, v14.8h\n"
-        "add v22.8h, v22.8h, v14.8h\n"
-        "add v23.8h, v23.8h, v14.8h\n"
+        "sqadd v16.8h, v16.8h, v14.8h\n"
+        "sqadd v17.8h, v17.8h, v14.8h\n"
+        "sqadd v18.8h, v18.8h, v14.8h\n"
+        "sqadd v19.8h, v19.8h, v14.8h\n"
+        "sqadd v20.8h, v20.8h, v14.8h\n"
+        "sqadd v21.8h, v21.8h, v14.8h\n"
+        "sqadd v22.8h, v22.8h, v14.8h\n"
+        "sqadd v23.8h, v23.8h, v14.8h\n"
 
         // Load the clamp_min, clamp_max bounds
         "ldrb w2, [%[params], #" RUY_STR(RUY_OFFSET_CLAMP_MIN) "]\n"

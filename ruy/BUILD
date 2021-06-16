@@ -1205,6 +1205,22 @@ ruy_test(
     ],
 )
 
+cc_test(
+    name = "test_overflow_dst_zero_point",
+    srcs = [
+        "test_overflow_dst_zero_point.cc",
+    ],
+    copts = ruy_copts(),
+    deps = [
+        ":gtest_wrapper",
+        ":matrix",
+        ":path",
+        ":ruy",
+        ":test_lib",
+        ":tune",
+    ],
+)
+
 bzl_library(
     name = "ruy_test_ext.oss_bzl",
     srcs = ["ruy_test_ext.oss.bzl"],

@@ -1102,7 +1102,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "vdup.16 q13, r4\n" // dst_zero_point
 
         // Add the destination zero point
-        "vadd.i16 q14, q14, q13\n"
+        "vqadd.s16 q14, q14, q13\n"
 
         // Cast-and-saturate from int16 to uint8
         // Now all 8 1-byte values are in d30.
@@ -1226,7 +1226,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "vdup.16 q13, r4\n" // dst_zero_point
 
         // Add the destination zero point
-        "vadd.i16 q14, q14, q13\n"
+        "vqadd.s16 q14, q14, q13\n"
 
         // Cast-and-saturate from int16 to int8
         // Now all 8 1-byte values are in d30.
@@ -2014,7 +2014,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "vdup.16 q13, r4\n" // dst_zero_point
 
         // Add the destination zero point
-        "vadd.i16 q14, q14, q13\n"
+        "vqadd.s16 q14, q14, q13\n"
 
         // Cast-and-saturate from int16 to uint8
         "vqmovun.s16 d30, q14\n"
@@ -2126,7 +2126,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "vdup.16 q13, r4\n" // dst_zero_point
 
         // Add the destination zero point
-        "vadd.i16 q14, q14, q13\n"
+        "vqadd.s16 q14, q14, q13\n"
 
         // Cast-and-saturate from int16 to int8
         "vqmovn.s16 d30, q14\n"

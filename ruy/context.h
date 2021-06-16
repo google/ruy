@@ -90,6 +90,9 @@ class Context final {
   // Paths in kNonArchPaths are always implicitly supported.
   void set_runtime_enabled_paths(Path paths);
 
+  // Returns the set of Path's that are available.
+  Path get_runtime_enabled_paths();
+
  private:
   CtxImpl* const impl_;
 
