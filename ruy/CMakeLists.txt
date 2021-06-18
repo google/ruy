@@ -107,8 +107,6 @@ ruy_cc_library(
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   set(ruy_3_pthread "")
-elseif(CMAKE_SYSTEM_NAME STREQUAL xtensa-esp32-elf)
-  set(ruy_3_pthread "")
 else()
   set(ruy_3_pthread "-pthread")
 endif()

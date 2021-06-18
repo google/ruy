@@ -10,8 +10,6 @@ endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
   set(ruy_profiler_1_pthread "")
-elseif(CMAKE_SYSTEM_NAME STREQUAL xtensa-esp32-elf)
-  set(ruy_profiler_1_pthread "")
 else()
   set(ruy_profiler_1_pthread "-pthread")
 endif()
