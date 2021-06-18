@@ -19,6 +19,9 @@ limitations under the License.
 #include "ruy/cpu_cache_params.h"
 #include "ruy/side_pair.h"
 
+#include <limits>
+#include <stdexcept>
+
 namespace ruy {
 
 enum class BlockMapTraversalOrder {
