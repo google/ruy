@@ -1592,7 +1592,7 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
                                     int packed_stride, std::int32_t* sums_ptr,
                                     int input_xor) {
   profiler::ScopeLabel label("Pack (kNeonDotprod, from row-major)");
-  asm(
+  asm volatile(
       // clang-format off
           // Prefetch data. This was tuned on Cortex-A55-rev1 cores.
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0]]\n")
