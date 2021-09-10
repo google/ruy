@@ -58,7 +58,7 @@ void TestOverflowingAdditionOfDestinationZeroPoint(ruy::Context* context,
                                      ? std::numeric_limits<DstScalar>::max()
                                      : std::numeric_limits<DstScalar>::min();
 
-  const std::vector<const std::int8_t> lhs_data(1, 0);
+  const std::vector<std::int8_t> lhs_data(1, 0);
   const std::vector<std::int8_t> rhs_data(cols, 0);
   std::vector<DstScalar> dst_data(cols, 0);
 
