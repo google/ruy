@@ -1847,6 +1847,12 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeResultPaths() {
     paths_bitfield = get_ctx(&context)->GetRuntimeEnabledPaths();
   }
 
+  // Disable the internal test-only variants of the StandardCpp path in
+  // benchmarks
+  if (benchmark) {
+    paths_bitfield = paths_bitfield & kAllPaths;
+  }
+
   // Disable the internal test-only variants of the StandardCpp path on large
   // tests.
   // This constant be large enough to exercise some interesting BlockMap logic,
