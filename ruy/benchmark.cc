@@ -103,10 +103,20 @@ std::vector<int> ParseCommaSeparatedInts(
 }
 
 void Benchmark() {
+  // For now, support for int8*int16 cases is limited to the
+  // symmetric case (zero_point==0) because that appears to be
+  // the case in the initial use cases, and that limits complexity
+  // in thinking about accumulator overflows. This would not be a concern
+  // in the future if the accumulator type was int64, but for now its int32.
+  const bool is_int8_times_int16 =
+      (std::is_same<LhsScalar, std::int8_t>::value &&
+       std::is_same<RhsScalar, std::int16_t>::value) ||
+      (std::is_same<LhsScalar, std::int16_t>::value &&
+       std::is_same<RhsScalar, std::int8_t>::value);
   const bool symm_lhs = std::is_floating_point<LhsScalar>::value ||
-                        GetBoolEnvVarOrFalse("SYMM_LHS");
+                        is_int8_times_int16 || GetBoolEnvVarOrFalse("SYMM_LHS");
   const bool symm_rhs = std::is_floating_point<RhsScalar>::value ||
-                        GetBoolEnvVarOrFalse("SYMM_RHS");
+                        is_int8_times_int16 || GetBoolEnvVarOrFalse("SYMM_RHS");
   const bool benchmark_cubic = GetBoolEnvVarOrFalse("RUY_BENCHMARK_CUBIC") ||
                                GetBoolEnvVarOrFalse("RUY_BENCHMARK_CUBIC_LIST");
   const int explicit_rows = GetIntEnvVarOrZero("ROWS");

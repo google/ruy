@@ -44,6 +44,18 @@ void ValidateZeroPoints(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
   CheckZeroPoint(rhs_zero_point);
   CheckZeroPoint(dst_zero_point);
 
+  // For now, support for int16 source types is limited to the
+  // symmetric case (zero_point==0) because that appears to be
+  // the case in the initial use cases, and that limits complexity
+  // in thinking about accumulator overflows.
+  const bool has_16bit_input = std::is_same<LhsScalar, std::int16_t>::value ||
+                               std::is_same<RhsScalar, std::int16_t>::value;
+  if (has_16bit_input) {
+    RUY_DCHECK(!lhs_zero_point);
+    RUY_DCHECK(!rhs_zero_point);
+    RUY_DCHECK(!dst_zero_point);
+  }
+
   // Guard against the case when both LHS and RHS zero_point's are equal to
   // the minimum representable value. In that case, padding with zero_point
   // values will generate the bad case for fast int8 kernels on NEON

@@ -1715,6 +1715,16 @@ template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
           typename DstScalar>
 void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::MakeZeroPoints() {
   RUY_CHECK_EQ(life_stage, LifeStage::kInitial);
+  if (std::is_same<LhsScalar, std::int16_t>::value ||
+      std::is_same<RhsScalar, std::int16_t>::value) {
+    // For now, support for int16 source types is limited to the
+    // symmetric case (zero_point==0) because that appears to be
+    // the case in the initial use cases, and that limits complexity
+    // in thinking about accumulator overflows.
+    // Setting use_specified_zero_points causes the default values 0 to be
+    // used unless explicitly overridden.
+    use_specified_zero_points = true;
+  }
   if (!benchmark && !use_specified_zero_points) {
     MakeRandomScalar(RandomRange::kReasonableSrcZeroPoint, &lhs_zero_point);
     MakeRandomScalar(RandomRange::kReasonableSrcZeroPoint, &rhs_zero_point);

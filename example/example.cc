@@ -126,6 +126,7 @@ void ExampleMulInt8PerChannelQuantized(ruy::Context *context) {
   std::cout << "RHS:\n" << rhs;
   std::cout << "Result:\n" << dst << "\n";
 }
+
 void ExampleMulInt8GetRawAccumulators(ruy::Context *context) {
   const std::int8_t lhs_data[] = {1, 2, 3, 4};
   const std::int8_t rhs_data[] = {1, 2, 3, 4};
@@ -151,6 +152,35 @@ void ExampleMulInt8GetRawAccumulators(ruy::Context *context) {
   std::cout << "Result:\n" << dst << "\n";
 }
 
+void ExampleMulInt8TimesInt16PerChannelQuantized(ruy::Context *context) {
+  const std::int8_t lhs_data[] = {1, 2, 3, 4};
+  const std::int16_t rhs_data[] = {1000, 2000, 3000, 4000};
+  const std::int32_t multiplier_data[] = {3 << 28, 5 << 28};
+  const int exponent_data[] = {1, -2};
+  std::int16_t dst_data[4];
+
+  ruy::Matrix<std::int8_t> lhs;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
+  ruy::Matrix<std::int16_t> rhs;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
+  ruy::Matrix<std::int16_t> dst;
+  ruy::MakeSimpleLayout(2, 2, ruy::Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
+
+  ruy::MulParams<std::int32_t, std::int16_t> mul_params;
+  mul_params.set_multiplier_fixedpoint_perchannel(multiplier_data);
+  mul_params.set_multiplier_exponent_perchannel(exponent_data);
+  ruy::Mul(lhs, rhs, mul_params, context, &dst);
+
+  std::cout << "Example Mul, int8 times int16 quantized with per-channel "
+               "multipliers\n";
+  std::cout << "LHS:\n" << lhs;
+  std::cout << "RHS:\n" << rhs;
+  std::cout << "Result:\n" << dst << "\n";
+}
+
 int main() {
   ruy::Context context;
   ExampleMulFloat(&context);
@@ -158,4 +188,5 @@ int main() {
   ExampleMulUint8AsymmetricQuantized(&context);
   ExampleMulInt8PerChannelQuantized(&context);
   ExampleMulInt8GetRawAccumulators(&context);
+  ExampleMulInt8TimesInt16PerChannelQuantized(&context);
 }

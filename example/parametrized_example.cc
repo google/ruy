@@ -140,7 +140,8 @@ int main(int argc, char* argv[]) {
   }
   Params params;
   const char* allowed_types =
-      "f32xf32->f32, i8xi8->i8, i8xi8->i16, i8xi8->i32, u8xu8->i16, u8xi8->u8";
+      "f32xf32->f32, i8xi8->i8, i8xi8->i16, i8xi8->i32, u8xu8->i16, u8xi8->u8, "
+      "i8xi16->i16, i16xi8->i16";
   const char* allowed_orders = "row-major, column-major";
   read_cmdline_args(help, argc, argv, "--types", "%s", "f32xf32->f32",
                     allowed_types, &params.types);
@@ -172,7 +173,7 @@ int main(int argc, char* argv[]) {
                     allowed_orders, &params.lhs_order);
   read_cmdline_args(help, argc, argv, "--rhs_order", "%s", "row-major",
                     allowed_orders, &params.rhs_order);
-  read_cmdline_args(help, argc, argv, "--rhs_order", "%s", "row-major",
+  read_cmdline_args(help, argc, argv, "--dst_order", "%s", "row-major",
                     allowed_orders, &params.dst_order);
 
   if (help) {
@@ -191,6 +192,10 @@ int main(int argc, char* argv[]) {
     run<std::uint8_t, std::uint8_t, std::int16_t>(params);
   } else if (!strcmp(params.types, "u8xi8->u8")) {
     run<std::uint8_t, std::int8_t, std::uint8_t>(params);
+  } else if (!strcmp(params.types, "i8xi16->i16")) {
+    run<std::int8_t, std::int16_t, std::int16_t>(params);
+  } else if (!strcmp(params.types, "i16xi8->i16")) {
+    run<std::int16_t, std::int8_t, std::int16_t>(params);
   } else {
     fprintf(stderr, "Unknown types: %s\n", params.types);
     exit(1);
