@@ -31,8 +31,8 @@ namespace ruy {
 
 #if RUY_PLATFORM_X86
 
-RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kAvx2Fma)
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kAvx)
+RUY_INHERIT_KERNEL(Path::kAvx, Path::kAvx2Fma)
 RUY_INHERIT_KERNEL(Path::kAvx2Fma, Path::kAvx512)
 
 void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params);
