@@ -93,8 +93,8 @@ struct Kernel<Path::kAvx2Fma, std::int8_t, std::int8_t, std::int32_t,
               DstScalar> {
   static constexpr Path kPath = Path::kAvx2Fma;
   Tuning tuning = Tuning::kAuto;
-  using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
-  using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
+  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
+  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 4, 8>;
   explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
   void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
            const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,

@@ -103,10 +103,10 @@ template <Path path>
 void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
   profiler::ScopeLabel label("Kernel kAvx2Fma 8-bit");
   const std::int8_t splitter_idx_data[32] = {
-      0, 1, 4, 5, 8,  9,  12, 13,  //
-      2, 3, 6, 7, 10, 11, 14, 15,  //
-      0, 1, 4, 5, 8,  9,  12, 13,  //
-      2, 3, 6, 7, 10, 11, 14, 15   //
+      0, 8,  1, 9,  2, 10, 3, 11,  //
+      4, 12, 5, 13, 6, 14, 7, 15,  //
+      0, 8,  1, 9,  2, 10, 3, 11,  //
+      4, 12, 5, 13, 6, 14, 7, 15   //
   };
 
   std::int32_t dst_stride = 0;
@@ -255,26 +255,6 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
       for (int d = 0; d < params.depth; d += kAvx8bitInnerSize) {
         const __m256i lhs_data =
             _mm256_load_si256(reinterpret_cast<const __m256i*>(lhs_ptr));
-        const __m256i rhs_data_8bit =
-            _mm256_load_si256(reinterpret_cast<const __m256i*>(rhs_ptr));
-
-        // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
-        std::int32_t rhs_data[16];
-        const __m128i rhs_data_bottom_lane =
-            _mm256_castsi256_si128(rhs_data_8bit);
-        const __m128i rhs_data_top_lane =
-            _mm256_extracti128_si256(rhs_data_8bit, 1);
-        const __m256i rhs_16_bit_dup_low =
-            _mm256_cvtepi8_epi16(rhs_data_bottom_lane);
-        const __m256i rhs_16_bit_dup_high =
-            _mm256_cvtepi8_epi16(rhs_data_top_lane);
-        // Now that we have cast the RHS data, we store it so that each value
-        // can be separately loaded in the accumulation loop.
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(rhs_data),
-                            rhs_16_bit_dup_low);
-        _mm256_storeu_si256(reinterpret_cast<__m256i*>(rhs_data + 8),
-                            rhs_16_bit_dup_high);
-
         const __m256i lhs_data_split =
             _mm256_shuffle_epi8(lhs_data, splitter_idx);
         const __m256i lhs_data_split_expand_bottom =
@@ -282,61 +262,36 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
         const __m256i lhs_data_split_expand_top =
             _mm256_cvtepi8_epi16(_mm256_extracti128_si256(lhs_data_split, 1));
 
-        // Take bytes 0, 1, 4, 5, 8, 9, ... expanded to 16-bit.
-        const __m256i lhs_16_bit_low = _mm256_permute2x128_si256(
-            lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x20);
-        // Take bytes 2, 3, 6, 7, 10, 11, ... expanded to 16-bit.
-        const __m256i lhs_16_bit_high = _mm256_permute2x128_si256(
-            lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x31);
+        const __m256i rhs_data =
+            _mm256_load_si256(reinterpret_cast<const __m256i*>(rhs_ptr));
+        const __m256i rhs_data_split =
+            _mm256_shuffle_epi8(rhs_data, splitter_idx);
+        const __m256i rhs_data_split_expand_bottom =
+            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(rhs_data_split, 0));
+        const __m256i rhs_data_split_expand_top =
+            _mm256_cvtepi8_epi16(_mm256_extracti128_si256(rhs_data_split, 1));
 
-        __m256i rhs0 = _mm256_lddqu_si256(reinterpret_cast<const __m256i*>(
-            rhs_data));  // Load [0 1 2 3 4 5 6 7]
-        __m256i rhs1 = _mm256_lddqu_si256(
-            reinterpret_cast<const __m256i*>(rhs_data + 8));  // Load [8 - 15]
-        __m256i rhs0_3 =
-            _mm256_permute2f128_si256(rhs0, rhs0, 0);  // [0 1 2 3 0 1 2 3]
-        __m256i rhs4_7 =
-            _mm256_permute2f128_si256(rhs0, rhs0, 0x11);  // [4 5 6 7 4 5 6 7]
-        __m256i rhs8_11 =
-            _mm256_permute2f128_si256(rhs1, rhs1, 0);  // [8 9 10 11 8 9 10 11]
-        __m256i rhs12_15 =
-            _mm256_permute2f128_si256(rhs1, rhs1, 17);  // [12 - 15, 12 - 15]
-
-        auto process_column = [=](__m256i& rhs_dup_lo, __m256i& rhs_dup_hi,
-                                  __m256i& accum) {
+        auto process_column = [=](int i, __m256i& accum) {
+          __m256i rhs_element_lo = _mm256_permutevar8x32_epi32(
+              rhs_data_split_expand_bottom, _mm256_set1_epi32(i));
+          __m256i rhs_element_hi = _mm256_permutevar8x32_epi32(
+              rhs_data_split_expand_top, _mm256_set1_epi32(i));
           accum = _mm256_add_epi32(
-              accum, _mm256_madd_epi16(lhs_16_bit_low, rhs_dup_lo));
+              accum,
+              _mm256_madd_epi16(lhs_data_split_expand_bottom, rhs_element_lo));
           accum = _mm256_add_epi32(
-              accum, _mm256_madd_epi16(lhs_16_bit_high, rhs_dup_hi));
+              accum,
+              _mm256_madd_epi16(lhs_data_split_expand_top, rhs_element_hi));
         };
-        __m256i tmp0, tmp1, tmp2, tmp3;
-        tmp0 = _mm256_shuffle_epi32(rhs0_3, 0);
-        tmp1 = _mm256_shuffle_epi32(rhs0_3, 0x55);
-        process_column(tmp0, tmp1, accum_data_v0);
-        tmp2 = _mm256_shuffle_epi32(rhs0_3, 0xaa);
-        tmp3 = _mm256_shuffle_epi32(rhs0_3, 0xff);
-        process_column(tmp2, tmp3, accum_data_v1);
 
-        tmp0 = _mm256_shuffle_epi32(rhs4_7, 0);
-        tmp1 = _mm256_shuffle_epi32(rhs4_7, 0x55);
-        process_column(tmp0, tmp1, accum_data_v2);
-        tmp2 = _mm256_shuffle_epi32(rhs4_7, 0xaa);
-        tmp3 = _mm256_shuffle_epi32(rhs4_7, 0xff);
-        process_column(tmp2, tmp3, accum_data_v3);
-
-        tmp0 = _mm256_shuffle_epi32(rhs8_11, 0);
-        tmp1 = _mm256_shuffle_epi32(rhs8_11, 0x55);
-        process_column(tmp0, tmp1, accum_data_v4);
-        tmp2 = _mm256_shuffle_epi32(rhs8_11, 0xaa);
-        tmp3 = _mm256_shuffle_epi32(rhs8_11, 0xff);
-        process_column(tmp2, tmp3, accum_data_v5);
-
-        tmp0 = _mm256_shuffle_epi32(rhs12_15, 0);
-        tmp1 = _mm256_shuffle_epi32(rhs12_15, 0x55);
-        process_column(tmp0, tmp1, accum_data_v6);
-        tmp2 = _mm256_shuffle_epi32(rhs12_15, 0xaa);
-        tmp3 = _mm256_shuffle_epi32(rhs12_15, 0xff);
-        process_column(tmp2, tmp3, accum_data_v7);
+        process_column(0, accum_data_v0);
+        process_column(1, accum_data_v1);
+        process_column(2, accum_data_v2);
+        process_column(3, accum_data_v3);
+        process_column(4, accum_data_v4);
+        process_column(5, accum_data_v5);
+        process_column(6, accum_data_v6);
+        process_column(7, accum_data_v7);
 
         lhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
         rhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
@@ -574,6 +529,7 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
               &tmp_ptr[6 * dst_stride], accum_data_v6);
           intrin_utils::mm256_storeu_cvtepi32_epi8<path>(
               &tmp_ptr[7 * dst_stride], accum_data_v7);
+
         } else {
           for (int j = 0; j < residual_cols; ++j) {
             __m256i result = accum_data_v[j];
@@ -734,10 +690,10 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
   RUY_DCHECK_EQ(params.start_col, 0);
 
   const std::int8_t splitter_idx_data[32] = {
-      0, 1, 4, 5, 8,  9,  12, 13,  //
-      2, 3, 6, 7, 10, 11, 14, 15,  //
-      0, 1, 4, 5, 8,  9,  12, 13,  //
-      2, 3, 6, 7, 10, 11, 14, 15   //
+      0, 8,  1, 9,  2, 10, 3, 11,  //
+      4, 12, 5, 13, 6, 14, 7, 15,  //
+      0, 8,  1, 9,  2, 10, 3, 11,  //
+      4, 12, 5, 13, 6, 14, 7, 15   //
   };
 
   int bias_ptr_block_increment =
@@ -811,16 +767,14 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
     for (int d = 0; d < params.depth; d += kAvx8bitInnerSize) {
       const __m256i lhs_data =
           _mm256_load_si256(reinterpret_cast<const __m256i*>(lhs_ptr));
-      const __m128i rhs_data_8bit = intrin_utils::mm_loadu_si32<path>(rhs_ptr);
-
-      // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
-      // For simplicity we load 4x the data that we need and process twice the
-      // data  that we need  and store only the data we need.
-      std::int32_t rhs_data[2];
-      const __m128i rhs_16_bit_dup = _mm_cvtepi8_epi16(rhs_data_8bit);
-      // Now that we have cast the RHS data, we store it so that each value
-      // can be separately loaded in the accumulation loop.
-      _mm_storeu_si64(reinterpret_cast<__m128i*>(rhs_data), rhs_16_bit_dup);
+      const __m256i rhs_data =
+          _mm256_load_si256(reinterpret_cast<const __m256i*>(rhs_ptr));
+      const __m256i rhs_data_split =
+          _mm256_shuffle_epi8(rhs_data, splitter_idx);
+      const __m256i rhs_data_split_expand_bottom =
+          _mm256_cvtepi8_epi16(_mm256_extracti128_si256(rhs_data_split, 0));
+      const __m256i rhs_data_split_expand_top =
+          _mm256_cvtepi8_epi16(_mm256_extracti128_si256(rhs_data_split, 1));
 
       // NOTE: There may be opportunities for permuting the data in the packing
       // code instead of here.
@@ -831,24 +785,16 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
       const __m256i lhs_data_split_expand_top =
           _mm256_cvtepi8_epi16(_mm256_extracti128_si256(lhs_data_split, 1));
 
-      // Take bytes 0, 1, 4, 5, 8, 9, ... expanded to 16-bit.
-      const __m256i lhs_16_bit_low = _mm256_permute2x128_si256(
-          lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x20);
-      // Take bytes 2, 3, 6, 7, 10, 11, ... expanded to 16-bit.
-      const __m256i lhs_16_bit_high = _mm256_permute2x128_si256(
-          lhs_data_split_expand_bottom, lhs_data_split_expand_top, 0x31);
-      // Accumulate for column 0.
-      const std::int32_t low_rhs_value = rhs_data[0];
-      const std::int32_t high_rhs_value = rhs_data[1];
-
-      const __m256i rhs_16_bit_dup_low = _mm256_set1_epi32(low_rhs_value);
-      const __m256i rhs_16_bit_dup_high = _mm256_set1_epi32(high_rhs_value);
-
       accum_data_v0 = _mm256_add_epi32(
-          accum_data_v0, _mm256_madd_epi16(lhs_16_bit_low, rhs_16_bit_dup_low));
+          accum_data_v0, _mm256_madd_epi16(lhs_data_split_expand_bottom,
+                                           _mm256_permutevar8x32_epi32(
+                                               rhs_data_split_expand_bottom,
+                                               _mm256_set1_epi32(0))));
       accum_data_v0 = _mm256_add_epi32(
-          accum_data_v0,
-          _mm256_madd_epi16(lhs_16_bit_high, rhs_16_bit_dup_high));
+          accum_data_v0, _mm256_madd_epi16(lhs_data_split_expand_top,
+                                           _mm256_permutevar8x32_epi32(
+                                               rhs_data_split_expand_top,
+                                               _mm256_set1_epi32(0))));
 
       lhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
       rhs_ptr += kAvx8bitBlockSize * kAvx8bitInnerSize;
