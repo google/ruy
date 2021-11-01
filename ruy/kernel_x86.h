@@ -74,7 +74,12 @@ struct Kernel<Path::kAvx512, std::int8_t, std::int16_t, std::int32_t,
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    Kernel8bitAvx512(params);
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
+      Kernel8bitAvx512SingleCol(params);
+    } else {
+      Kernel8bitAvx512(params);
+    }
   }
 };
 
@@ -143,7 +148,12 @@ struct Kernel<Path::kAvx2Fma, std::int8_t, std::int16_t, std::int32_t,
     KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
                          end_col, dst, &params);
-    Kernel8bitAvx2(params);
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
+      Kernel8bitAvx2SingleCol(params);
+    } else {
+      Kernel8bitAvx2(params);
+    }
   }
 };
 
