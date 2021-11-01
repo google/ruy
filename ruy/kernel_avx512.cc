@@ -67,7 +67,8 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
     RUY_DCHECK(false);
   }
 
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   void* dst_col_ptr = params.dst_base_ptr;
 
   for (int col = params.start_col; col <= params.last_col; col += 16) {
@@ -625,7 +626,8 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
 
   int bias_ptr_block_increment = params.flags & RUY_ASM_FLAG_HAS_BIAS ? 16 : 0;
 
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   void* dst_col_ptr = params.dst_base_ptr;
   const std::int32_t* bias_col_ptr = params.bias;
   if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {

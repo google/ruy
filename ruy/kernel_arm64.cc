@@ -101,7 +101,8 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -1160,7 +1161,8 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -1832,7 +1834,8 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -2987,7 +2990,8 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -4413,7 +4417,8 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -5667,7 +5672,8 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -6362,7 +6368,8 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
   CheckOffsetsInKernelParams8bit(params);
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   const std::int8_t* lhs_ptr = lhs_col_ptr;
   const std::int8_t* rhs_ptr = rhs_col_ptr;
   void* dst_col_ptr = params.dst_base_ptr;

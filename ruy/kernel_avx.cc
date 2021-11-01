@@ -462,7 +462,8 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
     RUY_DCHECK(false);
   }
 
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   void* dst_col_ptr = params.dst_base_ptr;
 
   for (int col = params.start_col; col <= params.last_col;
@@ -1184,7 +1185,8 @@ void Kernel8bitAvxSingleColImpl(const KernelParams8bit<8, 8>& params) {
   int bias_ptr_block_increment =
       params.flags & RUY_ASM_FLAG_HAS_BIAS ? kAvx8bitBlockSize : 0;
 
-  const std::int8_t* rhs_col_ptr = params.rhs_base_ptr;
+  const std::int8_t* rhs_col_ptr =
+      static_cast<const int8_t*>(params.rhs_base_ptr);
   void* dst_col_ptr = params.dst_base_ptr;
   const std::int32_t* bias_col_ptr = params.bias;
   if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
