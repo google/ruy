@@ -67,8 +67,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
     RUY_DCHECK(false);
   }
 
-  const std::int8_t* rhs_col_ptr =
-      static_cast<const int8_t*>(params.rhs_base_ptr);
+  const void* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
 
   for (int col = params.start_col; col <= params.last_col; col += 16) {
@@ -248,27 +247,34 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       }
 
       const std::int8_t* lhs_ptr = lhs_col_ptr;
-      const std::int8_t* rhs_ptr = rhs_col_ptr;
+      const void* rhs_ptr = rhs_col_ptr;
       for (int d = 0; d < params.depth; d += 4) {
         const __m512i lhs_data = _mm512_loadu_si512(lhs_ptr);
         __m512i rhs_data_8bit = _mm512_loadu_si512(rhs_ptr);
 
         // Each "int32" is two 16-bit RHS values, sign extended from 8-bit.
-        std::int32_t rhs_data[32];
-        const __m256i rhs_data_bottom_lane =
-            _mm512_castsi512_si256(rhs_data_8bit);
-        const __m256i rhs_data_top_lane =
-            _mm512_extracti32x8_epi32(rhs_data_8bit, 1);
-        const __m512i rhs_16_bit_dup_low =
-            _mm512_cvtepi8_epi16(rhs_data_bottom_lane);
-        const __m512i rhs_16_bit_dup_high =
-            _mm512_cvtepi8_epi16(rhs_data_top_lane);
-        // Now that we have cast the RHS data, we store it so that each value
-        // can be separately loaded in the accumulation loop.
-        _mm512_storeu_si512(reinterpret_cast<__m256i*>(rhs_data),
-                            rhs_16_bit_dup_low);
-        _mm512_storeu_si512(reinterpret_cast<__m256i*>(rhs_data + 16),
-                            rhs_16_bit_dup_high);
+        std::int32_t rhs_data_buf[32];
+        const std::int32_t* rhs_data =
+            reinterpret_cast<const std::int32_t*>(rhs_ptr);
+        if (params.rhs_scalar_size == 1) {
+          rhs_data = rhs_data_buf;
+          const __m256i rhs_data_bottom_lane =
+              _mm512_castsi512_si256(rhs_data_8bit);
+          const __m256i rhs_data_top_lane =
+              _mm512_extracti32x8_epi32(rhs_data_8bit, 1);
+          const __m512i rhs_16_bit_dup_low =
+              _mm512_cvtepi8_epi16(rhs_data_bottom_lane);
+          const __m512i rhs_16_bit_dup_high =
+              _mm512_cvtepi8_epi16(rhs_data_top_lane);
+          // Now that we have cast the RHS data, we store it so that each value
+          // can be separately loaded in the accumulation loop.
+          _mm512_storeu_si512(reinterpret_cast<__m256i*>(rhs_data_buf),
+                              rhs_16_bit_dup_low);
+          _mm512_storeu_si512(reinterpret_cast<__m256i*>(rhs_data_buf + 16),
+                              rhs_16_bit_dup_high);
+        } else {
+          RUY_DCHECK(params.rhs_scalar_size == 2);
+        }
 
         // Take bytes 0, 1, 4, 5, 8, 9, ... and expand to 16-bit.
         const __m512i lhs_16_bit_low =
@@ -306,7 +312,8 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
         process_column(15, accum_data_vf);
 
         lhs_ptr += 16 * 4;
-        rhs_ptr += 16 * 4;
+        rhs_ptr = static_cast<const void*>(static_cast<const char*>(rhs_ptr) +
+                                           16 * 4 * params.rhs_scalar_size);
       }
 
       if (params.dst_type_id != DstTypeId<std::int32_t>::kValue) {
@@ -613,7 +620,8 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
 
     dst_col_ptr = static_cast<void*>(static_cast<char*>(dst_col_ptr) +
                                      16 * params.dst_stride);
-    rhs_col_ptr += 16 * params.rhs_stride;
+    rhs_col_ptr = static_cast<const void*>(
+        static_cast<const char*>(rhs_col_ptr) + 16 * params.rhs_stride);
   }  // End col-block loop.
 }  // NOLINT(readability/fn_size)
 

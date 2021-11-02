@@ -60,6 +60,24 @@ struct Kernel<Path::kAvx512, std::int8_t, std::int8_t, std::int32_t, DstScalar> 
   }
 };
 
+template <typename DstScalar>
+struct Kernel<Path::kAvx512, std::int8_t, std::int16_t, std::int32_t,
+              DstScalar> {
+  static constexpr Path kPath = Path::kAvx512;
+  Tuning tuning = Tuning::kAuto;
+  using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
+  using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int16_t>& rhs,
+           const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
+    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
+                         end_col, dst, &params);
+    Kernel8bitAvx512(params);
+  }
+};
+
 void KernelFloatAvx512(const KernelParamsFloat<16, 16>& params);
 void KernelFloatAvx512SingleCol(const KernelParamsFloat<16, 16>& param);
 
