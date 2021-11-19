@@ -1063,19 +1063,17 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                                                         : dst->layout().rows());
   using DimPair =
       typename Eigen::Tensor<Scalar, 1, 0, Eigen::Index>::DimensionPair;
-  Eigen::array<DimPair, 1> contract_dims(
+  Eigen::array<DimPair, 1> contract_dims{
       {DimPair((LhsOrder == Order::kColMajor) ? 1 : 0,
-               (RhsOrder == Order::kColMajor) ? 0 : 1)});
-  Eigen::array<int, 2> shuffle(DstOrder == Order::kColMajor ? 0 : 1,
-                               DstOrder == Order::kColMajor ? 1 : 0);
+               (RhsOrder == Order::kColMajor) ? 0 : 1)}};
   static Eigen::ThreadPool pool(max_num_threads ? max_num_threads : 1);
   static Eigen::ThreadPoolDevice device(&pool, pool.NumThreads());
   if (mul_params.bias()) {
     TensorBiasType tensor_bias(mul_params.bias(), dst->layout().rows());
-    Eigen::array<int, 2> bias_2d_shape(tr ? 1 : dst->layout().rows(),
-                                       tr ? dst->layout().rows() : 1);
-    Eigen::array<int, 2> bcast(tr ? dst->layout().cols() : 1,
-                               tr ? 1 : dst->layout().cols());
+    Eigen::array<int, 2> bias_2d_shape{tr ? 1 : dst->layout().rows(),
+                                       tr ? dst->layout().rows() : 1};
+    Eigen::array<int, 2> bcast{tr ? dst->layout().cols() : 1,
+                               tr ? 1 : dst->layout().cols()};
     if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
         mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
       tensor_dst.device(device) =
