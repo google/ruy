@@ -59,7 +59,7 @@ void MulFrontEndUpToCreateTrMulParams(
   // Perform validation of parameters early so that failures are easier to map
   // to user errors. In particular, perform this validation before the
   // transposition.
-  Validate(lhs, rhs, dst);
+  Validate(lhs, rhs, dst, mul_params);
 
   // De-templatize this Mul call by creating a TrMulParams structure.
   // This is also where the specific kernel and pack code paths corresponding to

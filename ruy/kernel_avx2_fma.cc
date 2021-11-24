@@ -120,6 +120,7 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
   } else {
     RUY_DCHECK(false);
   }
+  RUY_DCHECK(params.bias_scalar == 4 || params.bias_scalar == 8);
 
   const void* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -173,10 +174,31 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
       // In the channels-are-rows case, we can load bias here.
       if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
           !(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
-        initial_accum_data = _mm256_add_epi32(
-            initial_accum_data,
-            _mm256_loadu_si256(
-                reinterpret_cast<const __m256i*>(params.bias + row)));
+        __m256i bias_data;
+        if (params.bias_scalar == 4) {
+          bias_data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+              static_cast<const std::int32_t*>(params.bias) + row));
+        } else {
+          __m256i bias_data_low =
+              _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+                  static_cast<const std::int64_t*>(params.bias) + row));
+          __m256i bias_data_high =
+              _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+                  static_cast<const std::int64_t*>(params.bias) + row + 4));
+
+          // _mm256_cvtepi64_epi32 is available in AVX512F
+          // See the below logic to mimic _mm256_cvtepi64_epi32
+          // grab the 32-bit low halves of 64-bit elements into one vector
+          // {h3,h2, l3, l2 | h1,h0, l1,l0}  from high to low
+          __m256 combined = _mm256_shuffle_ps(
+              _mm256_castsi256_ps(bias_data_low),
+              _mm256_castsi256_ps(bias_data_high), _MM_SHUFFLE(2, 0, 2, 0));
+
+          // re-arrange pairs of 32-bit elements with vpermpd.
+          bias_data = _mm256_castpd_si256(_mm256_permute4x64_pd(
+              _mm256_castps_pd(combined), _MM_SHUFFLE(3, 1, 2, 0)));
+        }
+        initial_accum_data = _mm256_add_epi32(initial_accum_data, bias_data);
       }
 
       // Adjustments common across columns.
@@ -222,8 +244,30 @@ void Kernel8bitAvx2Impl(const KernelParams8bit<8, 8>& params) {
       // Finally, in the channels-are-columns case, load bias data here.
       if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
           (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
-        const __m256i bias_data = _mm256_loadu_si256(
-            reinterpret_cast<const __m256i*>(params.bias + col));
+        __m256i bias_data;
+        if (params.bias_scalar == 4) {
+          bias_data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+              static_cast<const std::int32_t*>(params.bias) + col));
+        } else {
+          __m256i bias_data_low =
+              _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+                  static_cast<const std::int64_t*>(params.bias) + col));
+          __m256i bias_data_high =
+              _mm256_loadu_si256(reinterpret_cast<const __m256i*>(
+                  static_cast<const std::int64_t*>(params.bias) + col + 4));
+
+          // _mm256_cvtepi64_epi32 is available in AVX512F
+          // See the below logic to mimic _mm256_cvtepi64_epi32
+          // grab the 32-bit low halves of 64-bit elements into one vector
+          // {h3,h2, l3, l2 | h1,h0, l1,l0}  from high to low
+          __m256 combined = _mm256_shuffle_ps(
+              _mm256_castsi256_ps(bias_data_low),
+              _mm256_castsi256_ps(bias_data_high), _MM_SHUFFLE(2, 0, 2, 0));
+
+          // re-arrange pairs of 32-bit elements with vpermpd.
+          bias_data = _mm256_castpd_si256(_mm256_permute4x64_pd(
+              _mm256_castps_pd(combined), _MM_SHUFFLE(3, 1, 2, 0)));
+        }
         accum_data_v0 = _mm256_add_epi32(
             accum_data_v0,
             _mm256_permutevar8x32_epi32(bias_data, _mm256_set1_epi32(0)));
@@ -744,6 +788,7 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
   RUY_DCHECK_EQ(params.dst_cols, 1);
   RUY_DCHECK_EQ(params.last_col, 0);
   RUY_DCHECK_EQ(params.start_col, 0);
+  RUY_DCHECK(params.bias_scalar == 4 || params.bias_scalar == 8);
 
   const std::int8_t splitter_idx_data[32] = {
       0, 1, 4, 5, 8,  9,  12, 13,  //
@@ -757,14 +802,20 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
 
   const void* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
-  const std::int32_t* bias_col_ptr = params.bias;
+  const void* bias_col_ptr = params.bias;
   if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
-    bias_col_ptr += params.start_row;
+    if (params.bias_scalar == 4) {
+      bias_col_ptr = static_cast<const void*>(
+          static_cast<const std::int32_t*>(bias_col_ptr) + params.start_row);
+    } else {
+      bias_col_ptr = static_cast<const void*>(
+          static_cast<const std::int64_t*>(bias_col_ptr) + params.start_row);
+    }
   }
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
   void* dst_ptr = dst_col_ptr;
-  const std::int32_t* bias_ptr = bias_col_ptr;
+  const void* bias_ptr = bias_col_ptr;
 
   const std::int32_t lhs_zero_point = params.lhs_zero_point;
   const bool has_rhs_sums_offsets =
@@ -792,7 +843,15 @@ void Kernel8bitAvx2SingleColImpl(const KernelParams8bit<8, 8>& params) {
     // Initialize with bias.
     __m256i initial_accum_data =
         _mm256_loadu_si256(reinterpret_cast<const __m256i*>(bias_ptr));
-    bias_ptr += bias_ptr_block_increment;
+    if (params.bias_scalar == 4) {
+      bias_ptr =
+          static_cast<const void*>(static_cast<const std::int32_t*>(bias_ptr) +
+                                   bias_ptr_block_increment);
+    } else {
+      bias_ptr =
+          static_cast<const void*>(static_cast<const std::int64_t*>(bias_ptr) +
+                                   bias_ptr_block_increment);
+    }
 
     // Adjustments common across columns.
     const std::int32_t rhs_zero_point = params.rhs_zero_point;

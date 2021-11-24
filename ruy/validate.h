@@ -76,10 +76,20 @@ void ValidateZeroPoints(LhsScalar lhs_zero_point, RhsScalar rhs_zero_point,
 
 }  // namespace detail
 
-template <typename LhsScalar, typename RhsScalar, typename DstScalar>
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
 void Validate(const Mat<LhsScalar>& lhs, const Mat<RhsScalar>& rhs,
-              const Mat<DstScalar>& dst) {
+              const Mat<DstScalar>& dst,
+              const MulParams<AccumScalar, DstScalar> mul_params) {
   detail::ValidateZeroPoints(lhs.zero_point, rhs.zero_point, dst.zero_point);
+
+  // Except 16x8 quant, which accepts 64 bits bias and 32 bits accum,
+  // bias_scalar should be the same with accum_scalar.
+  const bool is_16x8_quant_mul = sizeof(LhsScalar) == 1 &&
+                                 sizeof(RhsScalar) == 2 &&
+                                 sizeof(AccumScalar) == 4;
+  RUY_DCHECK(mul_params.bias_scalar() == sizeof(AccumScalar) ||
+             ((is_16x8_quant_mul) && mul_params.bias_scalar() == 8));
 }
 
 }  // namespace ruy

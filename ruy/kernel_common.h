@@ -95,7 +95,7 @@ template <int LhsCols, int RhsCols>
 struct KernelParams8bit {
   static constexpr int kMaxDstTypeSize = 4;
 
-  const std::int32_t* bias;
+  const void* bias;
   const std::int32_t* lhs_sums;
   const std::int32_t* rhs_sums;
   const std::int8_t* lhs_base_ptr;
@@ -127,6 +127,7 @@ struct KernelParams8bit {
   std::int32_t multiplier_fixedpoint_buf[LhsCols];
   std::int32_t multiplier_exponent_buf[LhsCols];
   std::size_t rhs_scalar_size;
+  std::size_t bias_scalar;
 };
 
 template <typename RhsScalar, typename DstScalar, int LhsCols, int RhsCols>
@@ -151,8 +152,10 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->rhs_base_ptr = rhs.data + start_col * rhs.layout.stride;
   params->flags = 0;
   params->bias = params->zero_data;
+  params->bias_scalar = 4;
   if (mul_params.bias()) {
     params->bias = mul_params.bias();
+    params->bias_scalar = mul_params.bias_scalar();
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   if (lhs.sums) {
@@ -256,7 +259,7 @@ inline void MakeKernelParamsFloat(const PMat<float>& lhs,
   std::uint8_t flags = 0;
   params->bias = params->zero_data;
   if (mul_params.bias()) {
-    params->bias = mul_params.bias();
+    params->bias = static_cast<const float*>(mul_params.bias());
     flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
   if (mul_params.channel_dimension() == ChannelDimension::kCol) {
