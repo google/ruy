@@ -29,6 +29,9 @@ template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
 void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
                   const MulParams<AccumScalar, DstScalar>& mul_params,
                   Matrix<DstScalar>* dst) {
+  const bool is_16x8_quant_mul = sizeof(LhsScalar) == 1 &&
+                                 sizeof(RhsScalar) == 2 &&
+                                 sizeof(AccumScalar) == 4;
   for (int i = 0; i < lhs.layout().rows(); i++) {
     for (int j = 0; j < rhs.layout().cols(); j++) {
       AccumScalar accum = 0;
@@ -40,7 +43,14 @@ void ReferenceMul(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
       int channel =
           mul_params.channel_dimension() == ChannelDimension::kRow ? i : j;
       if (mul_params.bias()) {
-        accum += mul_params.bias()[channel];
+        if (mul_params.bias_scalar() == sizeof(AccumScalar)) {
+          accum += static_cast<const AccumScalar*>(mul_params.bias())[channel];
+        } else if (is_16x8_quant_mul && mul_params.bias_scalar() == 8) {
+          // Support 64bit bias for 16x8 quant mul.
+          accum += static_cast<const std::int64_t*>(mul_params.bias())[channel];
+        } else {
+          RUY_DCHECK(false);
+        }
       }
       ApplyMultiplier(mul_params, channel, &accum);
       accum += dst->zero_point();

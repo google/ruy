@@ -66,6 +66,7 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
   } else {
     RUY_DCHECK(false);
   }
+  RUY_DCHECK(params.bias_scalar == 4 || params.bias_scalar == 8);
 
   const void* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
@@ -123,10 +124,21 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       // In the channels-are-rows case, we can load bias here.
       if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
           !(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
-        initial_accum_data = _mm512_add_epi32(
-            initial_accum_data,
-            _mm512_loadu_si512(
-                reinterpret_cast<const __m512i*>(params.bias + row)));
+        __m512i bias_data;
+        if (params.bias_scalar == 4) {
+          bias_data = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+              static_cast<const std::int32_t*>(params.bias) + row));
+        } else {
+          bias_data =
+              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(_mm512_loadu_si512(
+                  static_cast<const std::int64_t*>(params.bias) + row)));
+          bias_data = _mm512_inserti32x8(
+              bias_data,
+              _mm512_cvtepi64_epi32(_mm512_loadu_si512(
+                  static_cast<const std::int64_t*>(params.bias) + row + 8)),
+              1);
+        }
+        initial_accum_data = _mm512_add_epi32(initial_accum_data, bias_data);
       }
 
       const std::int32_t rhs_zero_point = params.rhs_zero_point;
@@ -194,8 +206,21 @@ void Kernel8bitAvx512(const KernelParams8bit<16, 16>& params) {
       // Finally, in the channels-are-columns case, load bias data here.
       if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
           (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
-        const __m512i bias_data = _mm512_loadu_si512(
-            reinterpret_cast<const __m512i*>(params.bias + col));
+        __m512i bias_data;
+        if (params.bias_scalar == 4) {
+          bias_data = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(
+              static_cast<const std::int32_t*>(params.bias) + col));
+        } else {
+          bias_data =
+              _mm512_castsi256_si512(_mm512_cvtepi64_epi32(_mm512_loadu_si512(
+                  static_cast<const std::int64_t*>(params.bias) + col)));
+          bias_data = _mm512_inserti32x8(
+              bias_data,
+              _mm512_cvtepi64_epi32(_mm512_loadu_si512(
+                  static_cast<const std::int64_t*>(params.bias) + col + 8)),
+              1);
+        }
+
         accum_data_v0 = _mm512_add_epi32(
             accum_data_v0,
             _mm512_permutexvar_epi32(_mm512_set1_epi32(0), bias_data));
@@ -631,19 +656,26 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
   RUY_DCHECK_EQ(params.dst_cols, 1);
   RUY_DCHECK_EQ(params.last_col, 0);
   RUY_DCHECK_EQ(params.start_col, 0);
+  RUY_DCHECK(params.bias_scalar == 4 || params.bias_scalar == 8);
 
   int bias_ptr_block_increment = params.flags & RUY_ASM_FLAG_HAS_BIAS ? 16 : 0;
 
   const void* rhs_col_ptr = params.rhs_base_ptr;
   void* dst_col_ptr = params.dst_base_ptr;
-  const std::int32_t* bias_col_ptr = params.bias;
+  const void* bias_col_ptr = params.bias;
   if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
-    bias_col_ptr += params.start_row;
+    if (params.bias_scalar == 4) {
+      bias_col_ptr = static_cast<const void*>(
+          static_cast<const std::int32_t*>(bias_col_ptr) + params.start_row);
+    } else {
+      bias_col_ptr = static_cast<const void*>(
+          static_cast<const std::int64_t*>(bias_col_ptr) + params.start_row);
+    }
   }
 
   const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
   void* dst_ptr = dst_col_ptr;
-  const std::int32_t* bias_ptr = bias_col_ptr;
+  const void* bias_ptr = bias_col_ptr;
 
   const std::int32_t lhs_zero_point = params.lhs_zero_point;
   const bool has_rhs_sums_offsets =
@@ -667,7 +699,16 @@ void Kernel8bitAvx512SingleCol(const KernelParams8bit<16, 16>& params) {
         (static_cast<std::uint32_t>(1) << residual_rows) - 1;
     __m512i initial_accum_data =
         _mm512_loadu_si512(reinterpret_cast<const __m512i*>(bias_ptr));
-    bias_ptr += bias_ptr_block_increment;
+    if (params.bias_scalar == 4) {
+      bias_ptr =
+          static_cast<const void*>(static_cast<const std::int32_t*>(bias_ptr) +
+                                   bias_ptr_block_increment);
+
+    } else {
+      bias_ptr =
+          static_cast<const void*>(static_cast<const std::int64_t*>(bias_ptr) +
+                                   bias_ptr_block_increment);
+    }
 
     const std::int32_t rhs_zero_point = params.rhs_zero_point;
     if ((params.flags & RUY_ASM_FLAG_HAS_LHS_SUMS) && rhs_zero_point) {

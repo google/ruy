@@ -783,10 +783,10 @@ inline gemmlowp::GemmContext& GlobalGemmlowpContext() {
 }
 
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename MulParamsType>
+          typename RhsScalar, typename DstScalar, typename AccumScalar>
 void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-                  const MulParamsType& mul_params, int max_num_threads,
-                  Matrix<DstScalar>* dst) {
+                  const MulParams<AccumScalar, DstScalar>& mul_params,
+                  int max_num_threads, Matrix<DstScalar>* dst) {
   static constexpr gemmlowp::MapOrder kGemmlowpLhsOrder =
       GemmlowpOrder<LhsOrder>::kValue;
   static constexpr gemmlowp::MapOrder kGemmlowpRhsOrder =
@@ -832,7 +832,8 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
         gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
     gemmlowp::OutputStageBiasAddition<ColVectorMap> bias_add_stage;
     bias_add_stage.bias_vector =
-        ColVectorMap(mul_params.bias(), dst->layout().rows());
+        ColVectorMap(static_cast<const AccumScalar*>(mul_params.bias()),
+                     dst->layout().rows());
 #ifndef GEMMLOWP_SSE4  // gemmlowp perchannel stuff does not build on SSE
     if (mul_params.multiplier_exponent_perchannel()) {
       const auto& output_pipeline =
@@ -926,10 +927,10 @@ struct EigenOrder<Order::kRowMajor> {
 };
 
 template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename LhsScalar,
-          typename RhsScalar, typename DstScalar, typename MulParamsType>
+          typename RhsScalar, typename DstScalar, typename AccumScalar>
 void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
-               const MulParamsType& mul_params, int max_num_threads,
-               Matrix<DstScalar>* dst) {
+               const MulParams<AccumScalar, DstScalar>& mul_params,
+               int max_num_threads, Matrix<DstScalar>* dst) {
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
@@ -964,7 +965,8 @@ void EvalEigen(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
   if (mul_params.bias()) {
-    EigenBiasType eigen_bias(mul_params.bias(), dst->layout().rows());
+    EigenBiasType eigen_bias(static_cast<const AccumScalar*>(mul_params.bias()),
+                             dst->layout().rows());
     if (mul_params.clamp_max() == std::numeric_limits<DstScalar>::infinity() &&
         mul_params.clamp_min() == -std::numeric_limits<DstScalar>::infinity()) {
       eigen_dst.noalias() = (eigen_lhs * eigen_rhs).colwise() + eigen_bias;
@@ -1020,6 +1022,7 @@ template <Order LhsOrder, Order RhsOrder, Order DstOrder, typename Scalar,
 void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                      const MulParamsType& mul_params, int max_num_threads,
                      Matrix<Scalar>* dst) {
+  using AccumScalar = typename MulParamsType::AccumScalar;
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
@@ -1069,7 +1072,9 @@ void EvalEigenTensor(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   static Eigen::ThreadPool pool(max_num_threads ? max_num_threads : 1);
   static Eigen::ThreadPoolDevice device(&pool, pool.NumThreads());
   if (mul_params.bias()) {
-    TensorBiasType tensor_bias(mul_params.bias(), dst->layout().rows());
+    TensorBiasType tensor_bias(
+        static_cast<const AccumScalar*>(mul_params.bias()),
+        dst->layout().rows());
     Eigen::array<int, 2> bias_2d_shape{tr ? 1 : dst->layout().rows(),
                                        tr ? dst->layout().rows() : 1};
     Eigen::array<int, 2> bcast{tr ? dst->layout().cols() : 1,
@@ -1171,6 +1176,7 @@ template <typename Scalar, typename MulParamsType>
 void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
                   const MulParamsType& mul_params, int max_num_threads,
                   Matrix<Scalar>* dst) {
+  using AccumScalar = typename MulParamsType::AccumScalar;
   RUY_CHECK_EQ(lhs.zero_point(), 0);
   RUY_CHECK_EQ(rhs.zero_point(), 0);
   RUY_CHECK_EQ(dst->zero_point(), 0);
@@ -1242,7 +1248,8 @@ void EvalOpenBlas(const Matrix<Scalar>& lhs, const Matrix<Scalar>& rhs,
   Eigen::setNbThreads(max_num_threads ? max_num_threads : 1);
 
   if (mul_params.bias()) {
-    EigenBiasType eigen_bias(mul_params.bias(), dst->layout().rows());
+    EigenBiasType eigen_bias(static_cast<const AccumScalar*>(mul_params.bias()),
+                             dst->layout().rows());
     if (mul_params.clamp_max() == std::numeric_limits<Scalar>::infinity() &&
         mul_params.clamp_min() == -std::numeric_limits<Scalar>::infinity()) {
       eigen_dst.noalias() = eigen_dst.colwise() + eigen_bias;
