@@ -101,8 +101,12 @@ class MulParams final {
   using DstScalar = tDstScalar;
 
   // The bias vector data, if not null.
-  const AccumScalar* bias() const { return storage_.bias; }
-  void set_bias(const AccumScalar* ptr) { storage_.bias = ptr; }
+  const void* bias() const { return storage_.bias; }
+  void set_bias(const void* ptr) { storage_.bias = ptr; }
+  size_t bias_scalar() const { return storage_.bias_scalar; }
+  void set_bias_scalar(size_t bias_scalar) {
+    storage_.bias_scalar = bias_scalar;
+  }
   // Only for non-floating-point cases. The fixed-point part (i.e. the mantissa)
   // of the multiplier by which accumulators are multiplied before being casted
   // to the destination type.
@@ -222,7 +226,8 @@ struct MulParamsStorage final {
   static_assert(std::is_floating_point<DstScalar>::value, "");
   static_assert(sizeof(DstScalar) <= sizeof(AccumScalar), "");
 
-  const AccumScalar* bias = nullptr;
+  const void* bias = nullptr;
+  size_t bias_scalar = sizeof(AccumScalar);
   DstScalar clamp_min = -std::numeric_limits<DstScalar>::infinity();
   DstScalar clamp_max = std::numeric_limits<DstScalar>::infinity();
   ChannelDimension channel_dimension = ChannelDimension::kRow;
@@ -246,7 +251,8 @@ struct MulParamsStorage<std::int32_t, DstScalar> final {
   static_assert(std::is_integral<DstScalar>::value, "");
   static_assert(sizeof(DstScalar) < sizeof(AccumScalar), "");
 
-  const AccumScalar* bias = nullptr;
+  const void* bias = nullptr;
+  size_t bias_scalar = sizeof(AccumScalar);
   // union {  // This used to be a union, temporarily flattened to debug a crash
   const AccumScalar* multiplier_fixedpoint_perchannel = nullptr;
   // Let the default multiplier be effecively a multiplication by 1, so that
@@ -279,7 +285,8 @@ struct MulParamsStorage<std::int32_t, std::int32_t> final {
   using AccumScalar = std::int32_t;
   using DstScalar = std::int32_t;
 
-  const AccumScalar* bias = nullptr;
+  const void* bias = nullptr;
+  size_t bias_scalar = sizeof(AccumScalar);
   ChannelDimension channel_dimension = ChannelDimension::kRow;
   std::int8_t perchannel_buffers_capacity_rounding_log2 = 0;
 

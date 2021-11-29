@@ -196,6 +196,9 @@ struct Kernel {
     // clamped_end_row.
     int clamped_end_row = std::min(end_row, dst->layout.rows);
     int clamped_end_col = std::min(end_col, dst->layout.cols);
+    const bool is_16x8_quant_mul = sizeof(LhsScalar) == 1 &&
+                                   sizeof(RhsScalar) == 2 &&
+                                   sizeof(AccumScalar) == 4;
     RUY_DCHECK_LE(0, start_row);
     RUY_DCHECK_LE(start_row, clamped_end_row);
     RUY_DCHECK_LE(clamped_end_row, dst->layout.rows);
@@ -219,7 +222,16 @@ struct Kernel {
         int channel =
             mul_params.channel_dimension() == ChannelDimension::kRow ? i : j;
         if (mul_params.bias()) {
-          accum += mul_params.bias()[channel];
+          if (mul_params.bias_scalar() == sizeof(AccumScalar)) {
+            accum +=
+                static_cast<const AccumScalar*>(mul_params.bias())[channel];
+          } else if (is_16x8_quant_mul && mul_params.bias_scalar() == 8) {
+            // Support 64bit bias for 16x8 quant mul.
+            accum +=
+                static_cast<const std::int64_t*>(mul_params.bias())[channel];
+          } else {
+            RUY_DCHECK(false);
+          }
         }
         if (lhs.zero_point) {
           accum -= lhs.zero_point * rhs.sums[j];

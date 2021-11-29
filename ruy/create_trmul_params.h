@@ -253,7 +253,15 @@ void AssertThatExtraCapacityInPerChannelBuffersIsZeroInitialized(
 #if RUY_DCHECK_IS_ENABLED
   if (mul_params.bias()) {
     for (int i = user_size; i < user_capacity; i++) {
-      RUY_DCHECK_EQ(mul_params.bias()[i], 0);
+      if (mul_params.bias_scalar() == sizeof(AccumScalar)) {
+        RUY_DCHECK_EQ(static_cast<const AccumScalar*>(mul_params.bias())[i], 0);
+      } else if (mul_params.bias_scalar() == 8) {
+        // Support 64bit bias for 16x8 quant mul.
+        RUY_DCHECK_EQ(static_cast<const std::int64_t*>(mul_params.bias())[i],
+                      0);
+      } else {
+        RUY_DCHECK(false);
+      }
     }
   }
   if (mul_params.multiplier_fixedpoint_perchannel()) {
@@ -273,7 +281,8 @@ void AssertThatExtraCapacityInPerChannelBuffersIsZeroInitialized(
 #endif
 }
 
-template <typename AccumScalar, typename DstScalar,
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar,
           bool HaveQuantizedMultipliers =
               std::is_same<AccumScalar, std::int32_t>::value &&
               !std::is_same<DstScalar, std::int32_t>::value>
@@ -288,17 +297,34 @@ struct EnsurePerChannelBuffersLargeEnoughImpl {
     const int user_size = params.src[channel_side].layout.cols;
     const int user_capacity = round_up_pot(
         user_size, mul_params->perchannel_buffers_capacity_rounding());
+    const bool is_16x8_quant_mul = sizeof(LhsScalar) == 1 &&
+                                   sizeof(RhsScalar) == 2 &&
+                                   sizeof(AccumScalar) == 4;
     // We should have already checked earlier for the case where
     // user_capacity >= required_capacity.
     RUY_DCHECK_GT(required_capacity, user_capacity);
     if (mul_params->bias()) {
-      AccumScalar* new_data =
-          allocator->Allocate<AccumScalar>(required_capacity);
-      std::memcpy(new_data, mul_params->bias(),
-                  user_size * sizeof(AccumScalar));
-      std::memset(new_data + user_size, 0,
-                  (required_capacity - user_size) * sizeof(AccumScalar));
-      mul_params->set_bias(new_data);
+      if (mul_params->bias_scalar() == sizeof(AccumScalar)) {
+        AccumScalar* new_data =
+            allocator->Allocate<AccumScalar>(required_capacity);
+        std::memcpy(new_data, mul_params->bias(),
+                    user_size * sizeof(AccumScalar));
+        std::memset(new_data + user_size, 0,
+                    (required_capacity - user_size) * sizeof(AccumScalar));
+        mul_params->set_bias(new_data);
+
+      } else if (is_16x8_quant_mul && mul_params->bias_scalar() == 8) {
+        // Support 64bit bias for 16x8 quant mul.
+        std::int64_t* new_data =
+            allocator->Allocate<std::int64_t>(required_capacity);
+        std::memcpy(new_data, mul_params->bias(),
+                    user_size * sizeof(std::int64_t));
+        std::memset(new_data + user_size, 0,
+                    (required_capacity - user_size) * sizeof(std::int64_t));
+        mul_params->set_bias(new_data);
+      } else {
+        RUY_DCHECK(false);
+      }
     }
     if (mul_params->multiplier_fixedpoint_perchannel()) {
       AccumScalar* new_data =
@@ -320,8 +346,10 @@ struct EnsurePerChannelBuffersLargeEnoughImpl {
   }
 };
 
-template <typename AccumScalar, typename DstScalar>
-struct EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar, false> {
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
+struct EnsurePerChannelBuffersLargeEnoughImpl<LhsScalar, RhsScalar, AccumScalar,
+                                              DstScalar, false> {
   static void Run(const TrMulParams& params, Allocator* allocator,
                   MulParams<AccumScalar, DstScalar>* mul_params) {
     const Side channel_side =
@@ -335,6 +363,7 @@ struct EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar, false> {
     // We should have already checked earlier for the case where
     // user_capacity >= required_capacity.
     RUY_DCHECK_GT(required_capacity, user_capacity);
+    RUY_DCHECK_EQ(mul_params->bias_scalar(), sizeof(AccumScalar));
     if (mul_params->bias()) {
       AccumScalar* new_data =
           allocator->Allocate<AccumScalar>(required_capacity);
@@ -347,7 +376,8 @@ struct EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar, false> {
   }
 };
 
-template <typename AccumScalar, typename DstScalar>
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
 void EnsurePerChannelBuffersLargeEnough(
     const TrMulParams& params, Ctx* ctx,
     MulParams<AccumScalar, DstScalar>* mul_params) {
@@ -368,8 +398,9 @@ void EnsurePerChannelBuffersLargeEnough(
   }
   ctx->set_performance_advisory(
       PerformanceAdvisory::kReallocatedPerChannelBuffer);
-  EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar>::Run(
-      params, ctx->GetMainAllocator(), mul_params);
+  EnsurePerChannelBuffersLargeEnoughImpl<
+      LhsScalar, RhsScalar, AccumScalar,
+      DstScalar>::Run(params, ctx->GetMainAllocator(), mul_params);
 }
 
 // Ensures that `params->mul_params_bytes` contains MulParams data that's ready
@@ -382,7 +413,8 @@ void EnsurePerChannelBuffersLargeEnough(
 //      MulParams, and that consists just in toggling channel_dimension.
 //   2. Per-channel buffers may be reallocated, see
 //      EnsurePerChannelBuffersLargeEnough.
-template <typename AccumScalar, typename DstScalar>
+template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
+          typename DstScalar>
 void FinalizeMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
                        ChannelDimension channel_dimension, Ctx* ctx,
                        TrMulParams* params) {
@@ -394,7 +426,8 @@ void FinalizeMulParams(const MulParams<AccumScalar, DstScalar>& mul_params,
       reinterpret_cast<MulParamsType*>(params->mul_params_bytes);
   std::memcpy(dst_mul_params, &mul_params, sizeof(MulParamsType));
   dst_mul_params->set_channel_dimension(channel_dimension);
-  EnsurePerChannelBuffersLargeEnough(*params, ctx, dst_mul_params);
+  EnsurePerChannelBuffersLargeEnough<LhsScalar, RhsScalar, AccumScalar,
+                                     DstScalar>(*params, ctx, dst_mul_params);
 }
 
 // In this function, the `channel_dimension` parameter overrides the value
@@ -438,7 +471,8 @@ void CreateTrMulParamsAssumingColMajorDst(
   // Specifically, the EnsurePerChannelBuffersLargeEnough part of this will read
   // the packed matrix layouts that are written to `params` by the above
   // PopulateTrMulParams* call.
-  FinalizeMulParams(mul_params, channel_dimension, ctx, params);
+  FinalizeMulParams<LhsScalar, RhsScalar, AccumScalar, DstScalar>(
+      mul_params, channel_dimension, ctx, params);
 }
 
 }  // namespace detail

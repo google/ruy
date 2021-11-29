@@ -461,6 +461,7 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
   } else {
     RUY_DCHECK(false);
   }
+  RUY_DCHECK(params.bias_scalar == 4);
 
   const std::int8_t* rhs_col_ptr =
       static_cast<const int8_t*>(params.rhs_base_ptr);
@@ -518,12 +519,12 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
           !(params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
         initial_accum_data_lo = _mm_add_epi32(
             initial_accum_data_lo,
-            _mm_loadu_si128(
-                reinterpret_cast<const __m128i*>(params.bias + row)));
+            _mm_loadu_si128(reinterpret_cast<const __m128i*>(
+                static_cast<const std::int32_t*>(params.bias) + row)));
         initial_accum_data_hi = _mm_add_epi32(
             initial_accum_data_hi,
-            _mm_loadu_si128(
-                reinterpret_cast<const __m128i*>(params.bias + row + 4)));
+            _mm_loadu_si128(reinterpret_cast<const __m128i*>(
+                static_cast<const std::int32_t*>(params.bias) + row + 4)));
       }
 
       // Adjustments common across columns.
@@ -580,22 +581,30 @@ void Kernel8bitAvxImpl(const KernelParams8bit<8, 8>& params) {
       // Finally, in the channels-are-columns case, load bias data here.
       if ((params.flags & RUY_ASM_FLAG_HAS_BIAS) &&
           (params.flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL)) {
-        accum_data_v0 = intrin_utils::AddBiasEpi32<path>(accum_data_v0,
-                                                         params.bias + col, 0);
-        accum_data_v1 = intrin_utils::AddBiasEpi32<path>(accum_data_v1,
-                                                         params.bias + col, 1);
-        accum_data_v2 = intrin_utils::AddBiasEpi32<path>(accum_data_v2,
-                                                         params.bias + col, 2);
-        accum_data_v3 = intrin_utils::AddBiasEpi32<path>(accum_data_v3,
-                                                         params.bias + col, 3);
-        accum_data_v4 = intrin_utils::AddBiasEpi32<path>(accum_data_v4,
-                                                         params.bias + col, 4);
-        accum_data_v5 = intrin_utils::AddBiasEpi32<path>(accum_data_v5,
-                                                         params.bias + col, 5);
-        accum_data_v6 = intrin_utils::AddBiasEpi32<path>(accum_data_v6,
-                                                         params.bias + col, 6);
-        accum_data_v7 = intrin_utils::AddBiasEpi32<path>(accum_data_v7,
-                                                         params.bias + col, 7);
+        accum_data_v0 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v0, static_cast<const std::int32_t*>(params.bias) + col,
+            0);
+        accum_data_v1 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v1, static_cast<const std::int32_t*>(params.bias) + col,
+            1);
+        accum_data_v2 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v2, static_cast<const std::int32_t*>(params.bias) + col,
+            2);
+        accum_data_v3 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v3, static_cast<const std::int32_t*>(params.bias) + col,
+            3);
+        accum_data_v4 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v4, static_cast<const std::int32_t*>(params.bias) + col,
+            4);
+        accum_data_v5 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v5, static_cast<const std::int32_t*>(params.bias) + col,
+            5);
+        accum_data_v6 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v6, static_cast<const std::int32_t*>(params.bias) + col,
+            6);
+        accum_data_v7 = intrin_utils::AddBiasEpi32<path>(
+            accum_data_v7, static_cast<const std::int32_t*>(params.bias) + col,
+            7);
       }
 
       const std::int8_t* lhs_ptr = lhs_col_ptr;
@@ -1188,7 +1197,9 @@ void Kernel8bitAvxSingleColImpl(const KernelParams8bit<8, 8>& params) {
   const std::int8_t* rhs_col_ptr =
       static_cast<const int8_t*>(params.rhs_base_ptr);
   void* dst_col_ptr = params.dst_base_ptr;
-  const std::int32_t* bias_col_ptr = params.bias;
+  RUY_DCHECK(params.bias_scalar == 4);
+  const std::int32_t* bias_col_ptr =
+      static_cast<const std::int32_t*>(params.bias);
   if (params.flags & RUY_ASM_FLAG_HAS_BIAS) {
     bias_col_ptr += params.start_row;
   }

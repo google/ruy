@@ -41,11 +41,13 @@ TEST(MulParamsTest, SpecClassSanity) {
   EXPECT_EQ(mul_params.perchannel_buffers_capacity_rounding(), 1);
   std::int32_t bias_data[1];
   mul_params.set_bias(bias_data);
+  mul_params.set_bias_scalar(sizeof(std::int32_t));
   mul_params.set_multiplier_fixedpoint(123);
   mul_params.set_multiplier_exponent(4);
   mul_params.set_channel_dimension(ChannelDimension::kCol);
   mul_params.set_perchannel_buffers_capacity_rounding(8);
   EXPECT_EQ(mul_params.bias(), bias_data);
+  EXPECT_EQ(mul_params.bias_scalar(), sizeof(std::int32_t));
   EXPECT_EQ(mul_params.multiplier_fixedpoint(), 123);
   EXPECT_EQ(mul_params.multiplier_exponent(), 4);
   EXPECT_EQ(mul_params.channel_dimension(), ChannelDimension::kCol);
