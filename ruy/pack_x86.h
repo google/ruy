@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef RUY_RUY_PACK_X86_H_
 #define RUY_RUY_PACK_X86_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
@@ -267,6 +268,52 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
           reinterpret_cast<const std::int8_t*>(src_ptr), kInputXor,
           reinterpret_cast<const std::int8_t*>(zerobuf), src_stride,
           remaining_src_cols, src_matrix.layout.rows, packed_ptr, sums_ptr);
+    }
+  }
+};
+
+void Pack16bitColMajorForAvx512(const std::int16_t* src_ptr,
+                                const std::int16_t* zerobuf, int src_stride,
+                                int remaining_src_cols, int src_rows,
+                                std::int16_t* packed_ptr,
+                                std::int32_t* sums_ptr);
+
+template <>
+struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
+                std::int16_t, std::int16_t, std::int32_t, Order::kColMajor> {
+  using Layout = FixedKernelLayout<Order::kColMajor, 4, 16>;
+  static constexpr int kHalfLayoutCols =
+      8;  // Half the number of cols in a block.
+
+  static void Run(Tuning, const Mat<std::int16_t>& src_matrix,
+                  PMat<std::int16_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (AVX-512 16-bit)");
+
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+    RUY_DCHECK_EQ(kHalfLayoutCols * 2, Layout::kCols);
+    std::int32_t* sums = packed_matrix->sums;
+    std::int16_t zerobuf[kHalfLayoutCols * Layout::kRows];
+    std::fill(zerobuf, zerobuf + kHalfLayoutCols * Layout::kRows,
+              static_cast<int16_t>(packed_matrix->zero_point));
+    for (int block_col = start_col; block_col < end_col;
+         block_col += Layout::kCols) {
+      std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
+      int src_stride = src_matrix.layout.stride;
+      const std::int16_t* src_ptr =
+          src_matrix.data.get() + src_stride * block_col;
+      int remaining_src_cols = src_matrix.layout.cols - block_col;
+
+      static constexpr int block_col_mask = ~(Layout::kCols - 1);
+      std::int16_t* packed_ptr =
+          packed_matrix->data +
+          packed_matrix->layout.stride * (block_col & block_col_mask);
+      Pack16bitColMajorForAvx512(src_ptr, zerobuf, src_stride,
+                                 remaining_src_cols, src_matrix.layout.rows,
+                                 packed_ptr, sums_ptr);
     }
   }
 };
