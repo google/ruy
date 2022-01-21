@@ -377,20 +377,22 @@ void TrMul(Ctx* ctx, TrMulParams* params) {
   // reservation granule.
   std::atomic<int>* atomic_block_id;
   main_allocator->Allocate(1, &atomic_block_id);
-
-  // Create task objects.
-  TrMulTask* tasks;
-  main_allocator->Allocate(thread_count, &tasks);
-
   atomic_block_id->store(thread_count);
 
+  // Create task objects. We allocate a single buffer and then use placement-new
+  // to construct N TrMulTask objects within it. To avoid having the Clang CFI
+  // sanitizer complain about a TrMulTask* pointer temporarily pointing to
+  // garbage, we keep the pointer a plain char* until finished constructing.
+  char* tasks_buf =
+      main_allocator->Allocate<char>(thread_count * sizeof(TrMulTask));
   for (int i = 0; i < thread_count; i++) {
     auto* allocator = ctx->GetThreadSpecificAllocator(i);
     auto* tuning_resolver = ctx->GetThreadSpecificTuningResolver(i);
-    new (tasks + i) TrMulTask(params, block_map, atomic_block_id, i,
-                              need_atomics, packing_status, tuning_resolver,
-                              allocator, ctx->mutable_cpuinfo());
+    new (tasks_buf + i * sizeof(TrMulTask)) TrMulTask(
+        params, block_map, atomic_block_id, i, need_atomics, packing_status,
+        tuning_resolver, allocator, ctx->mutable_cpuinfo());
   }
+  TrMulTask* tasks = reinterpret_cast<TrMulTask*>(tasks_buf);
 
   // Do the computation.
   ctx->mutable_thread_pool()->Execute(thread_count, tasks);
