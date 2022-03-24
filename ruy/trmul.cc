@@ -256,11 +256,11 @@ int GetTentativeThreadCount(Ctx* ctx, int rows, int cols, int depth) {
   // Empirically determined rule for reasonable number of
   // threads to use. This is proportional to the number of arithmetic ops
   // in this Mul (product of the 3 sizes).
-  static constexpr int kDivisorLog2 = 15;
-  const int guess_log2 = std::max(
-      0, ceil_log2(rows) + ceil_log2(cols) + ceil_log2(depth) - kDivisorLog2);
-  int tentative_thread_count =
-      std::min(1 << guess_log2, ctx->max_num_threads());
+  const int64_t total_number_of_elements = rows * cols * depth;
+  static constexpr int64_t kDivisor = 32768;
+  int tentative_thread_count = std::max(
+      1, std::min(static_cast<int>(total_number_of_elements / kDivisor),
+                  ctx->max_num_threads()));
   RUY_TRACE_INFO(GET_TENTATIVE_THREAD_COUNT);
   return tentative_thread_count;
 }
