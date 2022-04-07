@@ -65,23 +65,9 @@ class Thread {
     state_mutex_.lock();
     State old_state = state_.load(std::memory_order_relaxed);
     RUY_DCHECK_NE(old_state, new_state);
-    switch (old_state) {
-      case State::Startup:
-        RUY_DCHECK_EQ(new_state, State::Ready);
-        break;
-      case State::Ready:
-        RUY_DCHECK(new_state == State::HasWork ||
-                   new_state == State::ExitAsSoonAsPossible);
-        break;
-      case State::HasWork:
-        RUY_DCHECK(new_state == State::Ready ||
-                   new_state == State::ExitAsSoonAsPossible);
-        break;
-      default:
-        abort();
-    }
     switch (new_state) {
       case State::Ready:
+        RUY_DCHECK(old_state == State::Startup || old_state == State::HasWork);
         if (task_) {
           // Doing work is part of reverting to 'ready' state.
           task_->Run();
@@ -89,11 +75,15 @@ class Thread {
         }
         break;
       case State::HasWork:
+        RUY_DCHECK(old_state == State::Ready);
         RUY_DCHECK(!task_);
         task_ = task;
         break;
-      default:
+      case State::ExitAsSoonAsPossible:
+        RUY_DCHECK(old_state == State::Ready || old_state == State::HasWork);
         break;
+      default:
+        abort();
     }
     state_.store(new_state, std::memory_order_relaxed);
     state_cond_.notify_all();
