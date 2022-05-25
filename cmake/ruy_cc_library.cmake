@@ -42,12 +42,16 @@ function(ruy_cc_library)
     set(_RULE_IS_INTERFACE 0)
   endif()
 
+  file(RELATIVE_PATH _SUBDIR ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_LIST_DIR})
+
   if(_RULE_IS_INTERFACE)
     # Generating a header-only library.
     add_library(${_NAME} INTERFACE)
+    set_target_properties(${_NAME} PROPERTIES PUBLIC_HEADER "${_RULE_HDRS}")
     target_include_directories(${_NAME}
       INTERFACE
-        "${PROJECT_SOURCE_DIR}"
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>"
+        "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     )
     target_link_libraries(${_NAME}
       INTERFACE
@@ -60,12 +64,8 @@ function(ruy_cc_library)
     )
   else()
     # Generating a static binary library.
-    add_library(${_NAME} STATIC "")
-    target_sources(${_NAME}
-      PRIVATE
-        ${_RULE_SRCS}
-        ${_RULE_HDRS}
-    )
+    add_library(${_NAME} STATIC ${_RULE_SRCS} ${_RULE_HDRS})
+    set_target_properties(${_NAME} PROPERTIES PUBLIC_HEADER "${_RULE_HDRS}")
     ruy_include_directories(${_NAME} "${_RULE_DEPS}")
     target_compile_options(${_NAME}
       PRIVATE
@@ -80,6 +80,15 @@ function(ruy_cc_library)
     target_compile_definitions(${_NAME}
       PUBLIC
         ${_RULE_DEFINES}
+    )
+  endif()
+
+  if(NOT _RULE_TESTONLY)
+    install(
+      TARGETS ${_NAME}
+      EXPORT ruyTargets
+      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+      PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${_SUBDIR}
     )
   endif()
 endfunction()

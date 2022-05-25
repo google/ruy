@@ -49,7 +49,7 @@ replacements = [
     ['selects.config_setting_group', 'config_setting_group'],
     ['@com_google_googletest//:gtest', 'gtest'],
     ['@com_google_googletest//:gtest_main', 'gtest_main'],
-    ['@cpuinfo', 'cpuinfo'],
+    ['@cpuinfo', 'cpuinfo::cpuinfo'],
 ]
 
 

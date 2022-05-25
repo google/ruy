@@ -410,13 +410,13 @@ else()
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL ppc64le)
-  set(ruy_6_cpuinfo "")
+  set(ruy_6_cpuinfo_cpuinfo "")
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL s390 OR CMAKE_SYSTEM_PROCESSOR STREQUAL s390x)
-  set(ruy_6_cpuinfo "")
+  set(ruy_6_cpuinfo_cpuinfo "")
 elseif(CMAKE_SYSTEM_NAME STREQUAL Fuchsia)
-  set(ruy_6_cpuinfo "")
+  set(ruy_6_cpuinfo_cpuinfo "")
 else()
-  set(ruy_6_cpuinfo "cpuinfo")
+  set(ruy_6_cpuinfo_cpuinfo "cpuinfo::cpuinfo")
 endif()
 
 ruy_cc_library(
@@ -436,7 +436,7 @@ ruy_cc_library(
     ruy_platform
     ruy_check_macros
     ruy_cpu_cache_params
-    ${ruy_6_cpuinfo}
+    ${ruy_6_cpuinfo_cpuinfo}
 )
 
 ruy_cc_library(
