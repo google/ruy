@@ -83,6 +83,8 @@ function(ruy_cc_library)
     )
   endif()
 
+  add_library(${PROJECT_NAME}::${_NAME} ALIAS ${_NAME})
+
   if(NOT _RULE_TESTONLY)
     install(
       TARGETS ${_NAME}
