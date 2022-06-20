@@ -46,7 +46,7 @@ option(RUY_FIND_CPUINFO "Use find_package to find cpuinfo" OFF)
 
 # Skip cpuinfo if it was already generated, which can happen when ruy is
 # a subdirectory in a wider project that already uses cpuinfo.
-if (NOT TARGET cpuinfo AND NOT TARGET cpuinfo::cpuinfo)
+if (NOT TARGET cpuinfo::cpuinfo)
   if (RUY_FIND_CPUINFO)
     find_package(cpuinfo REQUIRED)
   else()
@@ -80,10 +80,6 @@ if (NOT TARGET cpuinfo AND NOT TARGET cpuinfo::cpuinfo)
       endif()
     endif()
   endif()
-endif()
-
-if (TARGET cpuinfo AND NOT TARGET cpuinfo::cpuinfo)
-  add_library(cpuinfo::cpuinfo ALIAS cpuinfo)
 endif()
 
 # googletest is only needed for tests. Projects embedding ruy as a subdirectory
