@@ -282,16 +282,20 @@ void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params) {
         // Let r8 be stack offset of the row or column variable, whichever
         // is the channel index.
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
-        "ite eq\n"
-        "moveq r8, #" RUY_STR(RUY_STACK_OFFSET_ROW) "\n"
-        "movne r8, #" RUY_STR(RUY_STACK_OFFSET_COL) "\n"
+        "bne 1000f\n"
+        "mov r8, #" RUY_STR(RUY_STACK_OFFSET_ROW) "\n"
+        "b 1001f\n"
+        "1000:\n"
+        "mov r8, #" RUY_STR(RUY_STACK_OFFSET_COL) "\n"
+        "1001:\n"
         // Let r8 be the channel index.
         "ldr r8, [sp, r8]\n"
         // Compute the bias pointer, by conditionally using the channel index
         // (r8) as offset into bias buffer (r1).
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
-        "it ne\n"
-        "addne r1, r1, r8, lsl #2\n"
+        "beq 1002f\n"
+        "add r1, r1, r8, lsl #2\n"
+        "1002:\n"
 
         // Load 4 bias values. When the channel dimension is rows, we will load
         // another 4 bias values just before performing the bias addition below,
@@ -896,16 +900,21 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         // Let r8 be stack offset of the row or column variable, whichever
         // is the channel index.
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) "\n"
-        "ite eq\n"
-        "moveq r8, #" RUY_STR(RUY_STACK_OFFSET_ROW) "\n"
-        "movne r8, #" RUY_STR(RUY_STACK_OFFSET_COL) "\n"
+        "bne 1000f\n"
+        "mov r8, #" RUY_STR(RUY_STACK_OFFSET_ROW) "\n"
+        "b 1001f\n"
+        "1000:\n"
+        "mov r8, #" RUY_STR(RUY_STACK_OFFSET_COL) "\n"
+        "1001:\n"
+
         // Let r8 be the channel index.
         "ldr r8, [sp, r8]\n"
         // Compute the bias pointer, by conditionally using the channel index
         // (r8) as offset into bias buffer (r1).
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
-        "it ne\n"
-        "addne r1, r1, r8, lsl #2\n"
+        "beq 1002f\n"
+        "add r1, r1, r8, lsl #2\n"
+        "1002:\n"
 
         // Load 2 bias values. When the channel dimension is rows, we will load
         // another 2 bias values just before performing the bias addition below,
@@ -1012,10 +1021,10 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "ldr r2, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
         // r6 has flags, r8 has channel index
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "it ne\n"
-        "addne r1, r1, r8, lsl #2\n"
-        "it ne\n"
-        "addne r2, r2, r8, lsl #2\n"
+        "beq 1003f\n"
+        "add r1, r1, r8, lsl #2\n"
+        "add r2, r2, r8, lsl #2\n"
+        "1003:\n"
 
         // Load the first 2 values of multiplier exponent and fixedpoint data
         // Since this kernel is rectangular 4x2, we will only conditionally load
@@ -1870,8 +1879,9 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "ldr r8, [sp, #" RUY_STR(RUY_STACK_OFFSET_ROW) "]\n"
 
         "tst r4, #" RUY_STR(RUY_ASM_FLAG_HAS_BIAS) "\n"
-        "it ne\n"
-        "addne r1, r1, r8, lsl #2\n"
+        "beq 1000f\n"
+        "add r1, r1, r8, lsl #2\n"
+        "1000:\n"
 
         // Load 4 bias values.
         "vld1.32 {d24, d25}, [r1]\n"
@@ -1958,8 +1968,9 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_EXPONENT) "]\n"
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
         "ldr r4, [sp, #" RUY_STR(RUY_STACK_OFFSET_ROW) "]\n"
-        "it ne\n"
-        "addne r1, r1, r4, lsl #2\n"
+        "beq 1001f\n"
+        "add r1, r1, r4, lsl #2\n"
+        "1001:\n"
 
         "vld1.32 {q10}, [r1]\n"
 
@@ -1974,8 +1985,9 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         "ldr r1, [%[params], #" RUY_STR(RUY_OFFSET_MULTIPLIER_FIXEDPOINT) "]\n"
         // r6 has flags, r4 has row
         "tst r6, #" RUY_STR(RUY_ASM_FLAG_HAS_PERCHANNEL) "\n"
-        "it ne\n"
-        "addne r1, r1, r4, lsl #2\n"
+        "beq 1002f\n"
+        "add r1, r1, r4, lsl #2\n"
+        "1002:\n"
         "vld1.32 {q10}, [r1]\n" // multiplier_fixedpoint
 
         // Apply the fixed-point part of the multiplier.
