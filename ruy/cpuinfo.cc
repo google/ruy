@@ -56,6 +56,9 @@ void QueryCacheParams(CpuCacheParams* cache_params) {
         continue;  // continue, not break, it is possible to have L1+L3 but no
                    // L2.
       }
+      if (!cache->processor_count) {
+        continue;  // crashes from Chrome on Android suggests that might happen?
+      }
       const bool is_local =
           cpuinfo_get_processor(cache->processor_start)->core ==
           cpuinfo_get_processor(cache->processor_start +
