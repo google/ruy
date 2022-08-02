@@ -18,7 +18,7 @@ project(ruy CXX)
 cmake_minimum_required(VERSION 3.13)  # Copied from IREE
 set(CMAKE_CXX_STANDARD 14)
 
-
+include(GNUInstallDirs)
 
 if (PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
   set(RUY_IS_TOPLEVEL TRUE)
