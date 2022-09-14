@@ -28,6 +28,7 @@ class ThreadPool;
 enum class Path : std::uint8_t;
 enum class Tuning;
 enum class PerformanceAdvisory;
+enum class NumThreadsStrategy : std::uint8_t;
 
 // A Context holds runtime information used by Ruy. It holds runtime resources
 // such as the workers thread pool and the allocator (which holds buffers for
@@ -70,6 +71,10 @@ class Context final {
   // (e.g. ARM big.LITTLE).
   int max_num_threads() const;
   void set_max_num_threads(int value);
+
+  // Controls the logic to determine how many threads to use.
+  NumThreadsStrategy num_threads_strategy() const;
+  void set_num_threads_strategy(NumThreadsStrategy strategy);
 
   // Returns true of the last ruy::Mul using this Context flagged the specified
   // `advisory`. This is reset by each ruy::Mul call.

@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "ruy/ctx_impl.h"
 #include "ruy/gtest_wrapper.h"
+#include "ruy/strategy_controls.h"
 #include "ruy/path.h"
 #include "ruy/platform.h"
 
@@ -65,6 +66,14 @@ TEST(ContextInternalTest, ThreadSpecificResources) {
       EXPECT_NE(ctx.GetThreadSpecificTuningResolver(j), nullptr);
     }
   }
+}
+
+TEST(ContextInternalTest, SetNumThreadsStrategy) {
+  CtxImpl ctx;
+  EXPECT_EQ(ctx.num_threads_strategy(), NumThreadsStrategy::kDefault);
+  ctx.set_num_threads_strategy(NumThreadsStrategy::kForceMaxNumThreads);
+  EXPECT_EQ(ctx.num_threads_strategy(),
+            NumThreadsStrategy::kForceMaxNumThreads);
 }
 
 }  // namespace

@@ -436,6 +436,13 @@ cc_library(
 )
 
 cc_library(
+    name = "strategy_controls",
+    hdrs = ["strategy_controls.h"],
+    copts = ruy_copts(),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
     name = "matrix",
     hdrs = ["matrix.h"],
     copts = ruy_copts(),
@@ -859,6 +866,7 @@ cc_library(
         ":performance_advisory",
         ":platform",
         ":prepacked_cache",
+        ":strategy_controls",
         ":thread_pool",
         ":tune",
     ],
@@ -874,6 +882,7 @@ cc_test(
         ":path",
         ":platform",
         ":prepacked_cache",
+        ":strategy_controls",
         ":tune",
     ],
 )
@@ -907,6 +916,7 @@ cc_library(
         ":performance_advisory",
         ":platform",
         ":prepacked_cache",
+        ":strategy_controls",
         ":thread_pool",
         ":trace",
         ":tune",
@@ -937,6 +947,7 @@ cc_test(
         ":gtest_wrapper",
         ":path",
         ":platform",
+        ":strategy_controls",
     ],
 )
 
@@ -972,6 +983,7 @@ cc_library(
         ":opt_set",
         ":side_pair",
         ":size_util",
+        ":strategy_controls",
         ":thread_pool",
         ":trace",
         ":trmul_params",

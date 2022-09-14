@@ -35,6 +35,7 @@ limitations under the License.
 #include "ruy/mat.h"
 #include "ruy/matrix.h"
 #include "ruy/mul_params.h"
+#include "ruy/strategy_controls.h"
 #include "ruy/opt_set.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/side_pair.h"
@@ -259,6 +260,10 @@ int GetTentativeThreadCount(Ctx* ctx, int rows, int cols, int depth) {
   // in this Mul (product of the 3 sizes).
   // Be defensive here by explicitly promoting operands to int64 to avoid the
   // pitfall of `int64 result = x * y;` overflowing as x and y are still narrow.
+  if (ctx->num_threads_strategy() == NumThreadsStrategy::kForceMaxNumThreads) {
+    return ctx->max_num_threads();
+  }
+  RUY_CHECK_EQ(ctx->num_threads_strategy(), NumThreadsStrategy::kDefault);
   const std::int64_t rows_i64 = rows;
   const std::int64_t cols_i64 = cols;
   const std::int64_t depth_i64 = depth;

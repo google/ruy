@@ -32,6 +32,7 @@ class CpuInfo;
 enum class Path : std::uint8_t;
 enum class Tuning;
 enum class PerformanceAdvisory;
+enum class NumThreadsStrategy : std::uint8_t;
 
 // Ctx is the internal context class used throughout ruy code. Whereas Context
 // is exposed to users, Ctx is internal to ruy. As many of ruy's internal
@@ -53,6 +54,8 @@ class Ctx /* not final, subclassed by CtxImpl */ {
   void clear_performance_advisories();
   void set_performance_advisory(PerformanceAdvisory advisory);
   bool performance_advisory(PerformanceAdvisory advisory) const;
+  void set_num_threads_strategy(NumThreadsStrategy strategy);
+  NumThreadsStrategy num_threads_strategy() const;
 
   // Returns the set of Path's that are available. By default, this is based on
   // runtime detection of CPU features, as well as on which code paths were

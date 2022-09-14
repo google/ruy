@@ -17,6 +17,7 @@ limitations under the License.
 
 #include "ruy/ctx.h"
 #include "ruy/ctx_impl.h"
+#include "ruy/strategy_controls.h"
 #include "ruy/path.h"
 #include "ruy/performance_advisory.h"
 #include "ruy/prepacked_cache.h"
@@ -43,6 +44,12 @@ ThreadPool* Context::mutable_thread_pool() {
 int Context::max_num_threads() const { return ctx().max_num_threads(); }
 void Context::set_max_num_threads(int value) {
   mutable_ctx()->set_max_num_threads(value);
+}
+NumThreadsStrategy Context::num_threads_strategy() const {
+  return ctx().num_threads_strategy();
+}
+void Context::set_num_threads_strategy(NumThreadsStrategy strategy) {
+  mutable_ctx()->set_num_threads_strategy(strategy);
 }
 
 void Context::ClearPrepackedCache() { mutable_ctx()->ClearPrepackedCache(); }

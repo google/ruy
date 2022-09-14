@@ -26,6 +26,7 @@ limitations under the License.
 #include "ruy/path.h"
 #include "ruy/performance_advisory.h"
 #include "ruy/platform.h"
+#include "ruy/strategy_controls.h"
 #include "ruy/prepacked_cache.h"
 #include "ruy/trace.h"
 
@@ -55,6 +56,12 @@ void Ctx::set_performance_advisory(PerformanceAdvisory advisory) {
 bool Ctx::performance_advisory(PerformanceAdvisory advisory) const {
   return (impl().performance_advisory_ & advisory) !=
          PerformanceAdvisory::kNone;
+}
+void Ctx::set_num_threads_strategy(NumThreadsStrategy strategy) {
+  mutable_impl()->num_threads_strategy_ = strategy;
+}
+NumThreadsStrategy Ctx::num_threads_strategy() const {
+  return impl().num_threads_strategy_;
 }
 
 void Ctx::SetRuntimeEnabledPaths(Path paths) {

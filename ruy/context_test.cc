@@ -16,6 +16,7 @@ limitations under the License.
 #include "ruy/context.h"
 
 #include "ruy/gtest_wrapper.h"
+#include "ruy/strategy_controls.h"
 #include "ruy/path.h"
 #include "ruy/prepacked_cache.h"
 #include "ruy/tune.h"
@@ -30,10 +31,14 @@ TEST(ContextTest, ContextClassSanity) {
   EXPECT_EQ(&context.thread_pool(), context.mutable_thread_pool());
   EXPECT_NE(context.mutable_thread_pool(), nullptr);
   EXPECT_EQ(context.max_num_threads(), 1);
+  EXPECT_EQ(context.num_threads_strategy(), NumThreadsStrategy::kDefault);
   context.set_explicit_tuning(Tuning::kGeneric);
   context.set_max_num_threads(2);
+  context.set_num_threads_strategy(NumThreadsStrategy::kForceMaxNumThreads);
   EXPECT_EQ(context.explicit_tuning(), Tuning::kGeneric);
   EXPECT_EQ(context.max_num_threads(), 2);
+  EXPECT_EQ(context.num_threads_strategy(),
+            NumThreadsStrategy::kForceMaxNumThreads);
 }
 
 }  // namespace
