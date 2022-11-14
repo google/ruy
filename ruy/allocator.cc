@@ -103,20 +103,24 @@ void Allocator::FreeAll() {
     return;
   }
 
-  // No rounding-up of the size means linear instead of logarithmic
+  // Free all memory before reallocating `ptr_`.
+  // This minimizes the memory high-water-mark.
+  detail::SystemAlignedFree(ptr_);
+  for (void* p : fallback_blocks_) {
+    detail::SystemAlignedFree(p);
+  }
+
+  // We reallocate to the exact new size, rather than growing
+  // exponentially like std::vector. This means linear instead of logarithmic
   // bound on the number of allocation in some worst-case calling patterns.
   // This is considered worth it because minimizing memory usage is important
   // and actual calling patterns in applications that we care about still
   // reach the no-further-allocations steady state in a small finite number
   // of iterations.
   std::ptrdiff_t new_size = size_ + fallback_blocks_total_size_;
-  detail::SystemAlignedFree(ptr_);
   ptr_ = detail::SystemAlignedAlloc(new_size);
   size_ = new_size;
 
-  for (void* p : fallback_blocks_) {
-    detail::SystemAlignedFree(p);
-  }
   fallback_blocks_.clear();
   fallback_blocks_total_size_ = 0;
 }
