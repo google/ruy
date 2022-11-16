@@ -3,6 +3,7 @@
 load("//ruy:build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 
 package(
+    default_applicable_licenses = ["//third_party/ruy:license"],
     licenses = ["notice"],  # Apache 2.0
 )
 

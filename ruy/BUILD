@@ -8,6 +8,7 @@ load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 
 package(
+    default_applicable_licenses = ["//third_party/ruy:license"],
     licenses = ["notice"],  # Apache 2.0
 )
 
