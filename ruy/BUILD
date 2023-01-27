@@ -72,6 +72,11 @@ config_setting(
 )
 
 config_setting(
+    name = "nestcam_ambarella",
+    flag_values = {"//tools/cpp:cc_target_os": "nestcam_ambarella"},
+)
+
+config_setting(
     name = "dbg_build",
     values = {
         "compilation_mode": "dbg",
@@ -395,6 +400,7 @@ cc_library(
         ":ppc": [],
         ":s390x": [],
         ":fuchsia": [],
+        ":nestcam_ambarella": [],
         "//conditions:default": ["-DRUY_HAVE_CPUINFO"],
     }),
     deps = [
@@ -406,6 +412,7 @@ cc_library(
         ":ppc": [],
         ":s390x": [],
         ":fuchsia": [],
+        ":nestcam_ambarella": [],
         "//conditions:default": ["@cpuinfo"],
     }),
 )
