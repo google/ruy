@@ -29,7 +29,7 @@ drop=(
     ':validate'
     'profiler:instrumentation'
     '\bclog\b'
-    '\bcpuinfo_impl\b'
+    '\bcpuinfo\b'
     ':apply_multiplier'
     '\blabel='
 )
