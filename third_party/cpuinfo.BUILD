@@ -112,11 +112,13 @@ cc_library(
     linkstatic = select({
         # https://github.com/bazelbuild/bazel/issues/11552
         ":macos_x86_64": False,
+        ":macos_x86_64_legacy": False,
         "//conditions:default": True,
     }),
     defines = select({
         # When linkstatic=False, we need default visibility
         ":macos_x86_64": ["CLOG_VISIBILITY="],
+        ":macos_x86_64_legacy": ["CLOG_VISIBILITY="],
         "//conditions:default": [],
     }),
     strip_include_prefix = "deps/clog/include",
@@ -132,6 +134,7 @@ cc_library(
         ":linux_armeabi": COMMON_SRCS + ARM_SRCS + LINUX_SRCS + LINUX_ARM32_SRCS,
         ":linux_aarch64": COMMON_SRCS + ARM_SRCS + LINUX_SRCS + LINUX_ARM64_SRCS,
         ":macos_x86_64": COMMON_SRCS + X86_SRCS + MACH_SRCS + MACH_X86_SRCS,
+        ":macos_x86_64_legacy": COMMON_SRCS + X86_SRCS + MACH_SRCS + MACH_X86_SRCS,
         ":windows_x86_64": COMMON_SRCS + X86_SRCS + WINDOWS_X86_SRCS,
         ":android_armv7": COMMON_SRCS + ARM_SRCS + LINUX_SRCS + LINUX_ARM32_SRCS + ANDROID_ARM_SRCS,
         ":android_arm64": COMMON_SRCS + ARM_SRCS + LINUX_SRCS + LINUX_ARM64_SRCS + ANDROID_ARM_SRCS,
@@ -160,6 +163,7 @@ cc_library(
     linkstatic = select({
         # https://github.com/bazelbuild/bazel/issues/11552
         ":macos_x86_64": False,
+        ":macos_x86_64_legacy": False,
         "//conditions:default": True,
     }),
     # Headers must be in textual_hdrs to allow us to set the standard to C99
@@ -239,10 +243,18 @@ config_setting(
 )
 
 config_setting(
-    name = "macos_x86_64",
+    name = "macos_x86_64_legacy",
     values = {
         "apple_platform_type": "macos",
         "cpu": "darwin",
+    },
+)
+
+config_setting(
+    name = "macos_x86_64",
+    values = {
+        "apple_platform_type": "macos",
+        "cpu": "darwin_x86_64",
     },
 )
 
