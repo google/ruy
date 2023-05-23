@@ -108,7 +108,7 @@ limitations under the License.
 // Enable on sufficiently recent Android NDK. Earlier versions had broken
 // intrinsics headers.
 #define RUY_PLATFORM_X86_ENHANCEMENTS 1
-#elif (defined(__APPLE__) || defined(__linux__)) && defined(__clang__) && \
+#elif (defined(__APPLE_) || defined(__linux__)) && defined(__clang__) && \
     (__clang_major__ >= 8)
 // Enable on recent versions of Clang. Might be possible
 // to relax this version requirement.
