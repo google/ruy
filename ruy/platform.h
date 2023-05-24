@@ -98,31 +98,13 @@ limitations under the License.
 // Determine whether to enable X86 non-portable performance improvements,
 // typically x86 SIMD paths (AVX, etc).
 #if defined(RUY_FORCE_ENABLE_X86_ENHANCEMENTS)
-#define RUY_PLATFORM_X86_ENHANCEMENTS 1
+    #define RUY_PLATFORM_X86_ENHANCEMENTS 1
 #elif defined(__EMSCRIPTEN__)
-// We use some x86 asm e.g. in runtime CPU detection and to implement missing
-// intrinsics. This can't build to Emscripten.
-#define RUY_PLATFORM_X86_ENHANCEMENTS 0
-#elif defined(__ANDROID_NDK__) && defined(__NDK_MAJOR__) && \
-    (__NDK_MAJOR__ >= 20)
-// Enable on sufficiently recent Android NDK. Earlier versions had broken
-// intrinsics headers.
-#define RUY_PLATFORM_X86_ENHANCEMENTS 1
-#elif (defined(__APPLE_) || defined(__linux__)) && defined(__clang__) && \
-    (__clang_major__ >= 8)
-// Enable on recent versions of Clang. Might be possible
-// to relax this version requirement.
-#define RUY_PLATFORM_X86_ENHANCEMENTS 1
-#elif defined(__GNUC__) && (__GNUC__ >= 9)
-// Enable on recent versions of GCC. Might be possible
-// to relax this version requirement.
-#define RUY_PLATFORM_X86_ENHANCEMENTS 1
-// Things are working on MSVC 2019. This should also enable on sufficiently
-// recent Clang-CL.
-#elif defined(_MSC_VER) && (_MSC_VER >= 1920)
-#define RUY_PLATFORM_X86_ENHANCEMENTS 1
+    // We use some x86 asm e.g. in runtime CPU detection and to implement missing
+    // intrinsics. This can't build to Emscripten.
+    #define RUY_PLATFORM_X86_ENHANCEMENTS 0
 #else
-#define RUY_PLATFORM_X86_ENHANCEMENTS 0
+    #define RUY_PLATFORM_X86_ENHANCEMENTS 1
 #endif
 
 // These CPU capabilities will all be true when Skylake, etc, are enabled during
