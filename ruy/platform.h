@@ -28,8 +28,11 @@ limitations under the License.
 // Detect APPLE.
 #ifdef __APPLE__
 #define RUY_PLATFORM_APPLE 1
+#include <TargetConditionals.h>
+#define RUY_PLATFORM_APPLE_IPHONE_SIMULATOR TARGET_IPHONE_SIMULATOR
 #else
 #define RUY_PLATFORM_APPLE 0
+#define RUY_PLATFORM_APPLE_IPHONE_SIMULATOR 0
 #endif
 
 // Detect APPLE.
@@ -108,8 +111,9 @@ limitations under the License.
 // Enable on sufficiently recent Android NDK. Earlier versions had broken
 // intrinsics headers.
 #define RUY_PLATFORM_X86_ENHANCEMENTS 1
-#elif (defined(__APPLE__) || defined(__linux__)) && defined(__clang__) && \
-    (__clang_major__ >= 8)
+#elif ((RUY_PLATFORM_APPLE && !RUY_PLATFORM_APPLE_IPHONE_SIMULATOR) || \
+       defined(__linux__)) &&                                          \
+    defined(__clang__) && (__clang_major__ >= 8)
 // Enable on recent versions of Clang. Might be possible
 // to relax this version requirement.
 #define RUY_PLATFORM_X86_ENHANCEMENTS 1
