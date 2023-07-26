@@ -126,7 +126,12 @@ bool CpuInfo::CurrentCpuIsA55ish() {
     return false;
   }
 
-  switch (cpuinfo_get_uarch(cpuinfo_get_current_uarch_index())->uarch) {
+  const struct cpuinfo_uarch_info* cpuinfo_uarch =
+      cpuinfo_get_uarch(cpuinfo_get_current_uarch_index());
+  if (!cpuinfo_uarch) {
+    return false;
+  }
+  switch (cpuinfo_uarch->uarch) {
     case cpuinfo_uarch_cortex_a53:
     case cpuinfo_uarch_cortex_a55r0:
     case cpuinfo_uarch_cortex_a55:
