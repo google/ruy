@@ -145,8 +145,12 @@ bool CpuInfo::CurrentCpuIsX1() {
   if (!EnsureInitialized()) {
     return false;
   }
-  if (cpuinfo_get_uarch(cpuinfo_get_current_uarch_index())->uarch ==
-      cpuinfo_uarch_cortex_x1) {
+  const struct cpuinfo_uarch_info* cpuinfo_uarch =
+      cpuinfo_get_uarch(cpuinfo_get_current_uarch_index());
+  if (!cpuinfo_uarch) {
+    return false;
+  }
+  if (cpuinfo_uarch->uarch == cpuinfo_uarch_cortex_x1) {
     return true;
   }
   return false;
