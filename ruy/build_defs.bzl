@@ -58,6 +58,7 @@ def ruy_copts_avx():
     return select({
         "//ruy:x86_64_and_not_msvc": ["-mavx"],
         "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX"],
+        "//googlex/wing/missiontier:amd64_mode": [],
         "//conditions:default": [],
     })
 
@@ -65,6 +66,7 @@ def ruy_copts_avx2_fma():
     return select({
         "//ruy:x86_64_and_not_msvc": ["-mavx2", "-mfma"],
         "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX2"],
+        "//googlex/wing/missiontier:amd64_mode": [],
         "//conditions:default": [],
     })
 
@@ -75,5 +77,6 @@ def ruy_copts_avx512():
     return select({
         "//ruy:x86_64_and_not_msvc": ["$(STACK_FRAME_UNLIMITED)", "-mavx512f", "-mavx512vl", "-mavx512cd", "-mavx512bw", "-mavx512dq"],
         "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX512"],
+        "//googlex/wing/missiontier:amd64_mode": [],
         "//conditions:default": [],
     })
