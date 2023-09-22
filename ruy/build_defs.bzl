@@ -4,7 +4,7 @@
 # Returns warnings flags to use for all ruy code.
 def ruy_copts_warnings():
     return select({
-        "@bazel_tools//src/conditions:windows": [
+        "//tools/cc_target_os:windows": [
             # We run into trouble on Windows toolchains with warning flags,
             # as mentioned in the comments below on each flag.
             # We could be more aggressive in enabling supported warnings on each
@@ -57,14 +57,14 @@ def ruy_copts():
 def ruy_copts_avx():
     return select({
         "//ruy:x86_64_and_not_msvc": ["-mavx"],
-        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX"],
+        "//tools/cc_target_os:windows_msvc": ["/arch:AVX"],
         "//conditions:default": [],
     })
 
 def ruy_copts_avx2_fma():
     return select({
         "//ruy:x86_64_and_not_msvc": ["-mavx2", "-mfma"],
-        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX2"],
+        "//tools/cc_target_os:windows_msvc": ["/arch:AVX2"],
         "//conditions:default": [],
     })
 
@@ -74,6 +74,6 @@ def ruy_copts_avx512():
     # in optimized builds (-c opt).
     return select({
         "//ruy:x86_64_and_not_msvc": ["$(STACK_FRAME_UNLIMITED)", "-mavx512f", "-mavx512vl", "-mavx512cd", "-mavx512bw", "-mavx512dq"],
-        "@bazel_tools//src/conditions:windows_msvc": ["/arch:AVX512"],
+        "//tools/cc_target_os:windows_msvc": ["/arch:AVX512"],
         "//conditions:default": [],
     })

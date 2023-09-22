@@ -12,63 +12,51 @@ package(
     licenses = ["notice"],  # Apache 2.0
 )
 
-config_setting(
-    name = "armeabi-v7a",
-    values = {"cpu": "armeabi-v7a"},
-)
-
-config_setting(
-    name = "armv7a",
-    values = {"cpu": "armv7a"},
-)
-
 # Detect ARM 32-bit targets where we are going to just assume NEON support.
-selects.config_setting_group(
+config_setting(
     name = "arm32_assuming_neon",
-    match_any = [
-        ":armeabi-v7a",
-        ":armv7a",
+    constraint_values = [
+        "@platforms//cpu:armv7",
     ],
 )
 
 config_setting(
-    name = "x86_64_k8",
-    values = {"cpu": "k8"},
-)
-
-config_setting(
-    name = "x86_64_haswell",
-    values = {"cpu": "haswell"},
-)
-
-# MSVC toolchains define a different "cpu" value, which helps us as we need
-# to pass different flags on MSVC vs GCC-compatible toolchains to enable
-# x86 SIMD extensions.
-selects.config_setting_group(
     name = "x86_64_and_not_msvc",
-    match_any = [
-        ":x86_64_k8",
-        ":x86_64_haswell",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
     ],
+)
+
+config_setting(
+    name = "windows_msvc",
+    constraint_values = [
+        "@platforms//os:windows",
+    ],
+    flag_values = {
+        "//tools/cpp:compiler": "msvc",
+    },
 )
 
 config_setting(
     name = "ppc",
-    values = {
-        "cpu": "ppc",
-    },
+    constraint_values = [
+        "@platforms//cpu:ppc",
+    ],
 )
 
 config_setting(
     name = "s390x",
-    values = {
-        "cpu": "s390x",
-    },
+    constraint_values = [
+        "@platforms//cpu:s390x",
+    ],
 )
 
 config_setting(
     name = "fuchsia",
-    values = {"cpu": "fuchsia"},
+    constraint_values = [
+        "@platforms//os:fuchsia",
+    ],
 )
 
 config_setting(
@@ -88,7 +76,7 @@ config_setting(
 selects.config_setting_group(
     name = "do_not_want_O3",
     match_any = [
-        "@bazel_tools//src/conditions:windows_msvc",
+        ":windows_msvc",
         ":dbg_build",
         ":fastbuild_build",
     ],
@@ -381,7 +369,7 @@ cc_library(
     ],
     copts = ruy_copts() +
             select({
-                "@bazel_tools//src/conditions:windows": [],
+                "@platforms//os:windows": [],
                 "//conditions:default": [
                     # ruy_copts contains -Wundef, but cpuinfo's header warns with that.
                     "-Wno-undef",
@@ -1139,7 +1127,7 @@ cc_library(
     # need defines, not copts, because it's controlling a header, test.h
     defines = ruy_test_ext_defines(),
     linkopts = select({
-        "@bazel_tools//src/conditions:windows": [],
+        "@platforms//os:windows": [],
         "//conditions:default": ["-lm"],
     }),
     deps = [
