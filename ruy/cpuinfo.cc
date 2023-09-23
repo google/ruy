@@ -48,6 +48,7 @@ void QueryCacheParams(CpuCacheParams* cache_params) {
     int local_cache_size = 0;
     int last_level_cache_size = 0;
     const cpuinfo_processor* processor = cpuinfo_get_processor(i);
+    if (!processor) continue;
     // Loop over cache levels. Ignoring L4 for now: it seems that in CPUs that
     // have L4, we would still prefer to stay in lower-latency L3.
     for (const cpuinfo_cache* cache :
@@ -56,14 +57,16 @@ void QueryCacheParams(CpuCacheParams* cache_params) {
         continue;  // continue, not break, it is possible to have L1+L3 but no
                    // L2.
       }
-      if (!cache->processor_count) {
+      if (!cache->processor_count || !cache->processor_start) {
         continue;  // crashes from Chrome on Android suggests that might happen?
       }
-      const bool is_local =
-          cpuinfo_get_processor(cache->processor_start)->core ==
-          cpuinfo_get_processor(cache->processor_start +
-                                cache->processor_count - 1)
-              ->core;
+      const cpuinfo_processor* start_processor =
+          cpuinfo_get_processor(cache->processor_start);
+      const cpuinfo_processor* end_processor = cpuinfo_get_processor(
+          cache->processor_start + cache->processor_count - 1);
+      if (!start_processor || !end_processor) continue;
+      const bool is_local = start_processor->core == end_processor->core;
+
       if (is_local) {
         local_cache_size = cache->size;
       }
