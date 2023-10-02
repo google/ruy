@@ -10,6 +10,6 @@ def ruy_linkopts_thread_standard_library():
     # with Bazel. Instead we do the following, which is copied from
     # https://github.com/abseil/abseil-cpp/blob/1112609635037a32435de7aa70a9188dcb591458/absl/base/BUILD.bazel#L155
     return select({
-        "//tools/cc_target_os:windows": [],
+        "@bazel_tools//src/conditions:windows": [],
         "//conditions:default": ["-pthread"],
     })
