@@ -2,7 +2,7 @@
 # To regenerate, run:
 #   cmake/bazel_to_cmake.sh
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME MATCHES Windows) # Windows or WindowsStore
   set(ruy_0_Wall_Wcxx14_compat_Wextra_Wundef "")
 else()
   set(ruy_0_Wall_Wcxx14_compat_Wextra_Wundef "-Wall;-Wextra;-Wc++14-compat;-Wundef")
@@ -105,7 +105,7 @@ ruy_cc_library(
     ${ruy_2_O3}
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME MATCHES Windows) # Windows or WindowsStore
   set(ruy_3_pthread "")
 else()
   set(ruy_3_pthread "-pthread")
@@ -393,7 +393,7 @@ ruy_cc_library(
     ${ruy_2_O3}
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME MATCHES Windows) # Windows or WindowsStore
   set(ruy_4_Wno_undef "")
 else()
   set(ruy_4_Wno_undef "-Wno-undef")
@@ -1297,7 +1297,7 @@ ruy_cc_library(
     ruy_mul_params
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME MATCHES Windows) # Windows or WindowsStore
   set(ruy_10_lm "")
 else()
   set(ruy_10_lm "-lm")

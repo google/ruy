@@ -8,7 +8,7 @@ else()
   set(ruy_profiler_0_RUY_PROFILER "")
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL Windows)
+if(CMAKE_SYSTEM_NAME MATCHES Windows) # Windows or WindowsStore
   set(ruy_profiler_1_pthread "")
 else()
   set(ruy_profiler_1_pthread "-pthread")
