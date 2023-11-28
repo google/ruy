@@ -941,13 +941,13 @@ void Pack8bitColMajorForNeonDotprodA55ish(
 
           // Store the block to the packed matrix and, interleaved with
           // that, compute sums using sdot instructions.
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           "str q20, [%[packed_ptr], #0]\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
           "str q21, [%[packed_ptr], #32]\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           "str q22, [%[packed_ptr], #64]\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
           // End of main loop on blocks of 16 rows.
@@ -975,13 +975,13 @@ void Pack8bitColMajorForNeonDotprodA55ish(
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           "str q20, [%[packed_ptr], #0]\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
           "str q21, [%[packed_ptr], #32]\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           "str q22, [%[packed_ptr], #64]\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
@@ -1041,19 +1041,19 @@ void Pack8bitColMajorForNeonDotprodA55ish(
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           "str q20, [%[packed_ptr], #0]\n"
           "cmp w2, #4\n"
           "ble 4f\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           "str q21, [%[packed_ptr], #32]\n"
           "cmp w2, #8\n"
           "ble 4f\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
           "str q22, [%[packed_ptr], #64]\n"
           "cmp w2, #12\n"
           "ble 4f\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
@@ -1164,10 +1164,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1197,10 +1197,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1230,10 +1230,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1263,10 +1263,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "cmp w1, w2\n"
           "str q20, [%[packed_ptr], #0]\n"
@@ -1298,10 +1298,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1325,10 +1325,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1352,10 +1352,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1379,10 +1379,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1438,10 +1438,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
           // Compute sums using sdot instructions.
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           // Store the block to the packed matrix.
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1471,10 +1471,10 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
 
           "str q20, [%[packed_ptr], #0]\n"
           "str q21, [%[packed_ptr], #32]\n"
@@ -1538,19 +1538,19 @@ void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "trn1 v21.2d, v17.2d, v19.2d\n"
           "trn2 v23.2d, v17.2d, v19.2d\n"
 
-          ".word 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
+          ".inst 0x4e9b969c  // sdot v28.4s, v20.16b, v27.16b\n"
           "str q20, [%[packed_ptr], #0]\n"
           "cmp w2, #4\n"
           "ble 4f\n"
-          ".word 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
+          ".inst 0x4e9b96be  // sdot v30.4s, v21.16b, v27.16b\n"
           "str q21, [%[packed_ptr], #32]\n"
           "cmp w2, #8\n"
           "ble 4f\n"
-          ".word 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
+          ".inst 0x4e9b96dd  // sdot v29.4s, v22.16b, v27.16b\n"
           "str q22, [%[packed_ptr], #64]\n"
           "cmp w2, #12\n"
           "ble 4f\n"
-          ".word 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
+          ".inst 0x4e9b96ff  // sdot v31.4s, v23.16b, v27.16b\n"
           "str q23, [%[packed_ptr], #96]\n"
           "add %[packed_ptr], %[packed_ptr], #128\n"
 
@@ -1639,8 +1639,8 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "eor v3.16b, v3.16b, v26.16b\n"
           // Update the sums.
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], 128]\n")
-          ".word 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
-          ".word 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
+          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
           // Store the column-major 4x8 block to the packed matrix, and
           // increment some source pointers.
           "str q2, [%[packed_ptr], 0]\n"
@@ -1707,8 +1707,8 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "eor v2.16b, v2.16b, v26.16b\n"
           "eor v3.16b, v3.16b, v26.16b\n"
           // Update the sums.
-          ".word 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
-          ".word 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
+          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
           // Store the column-major 4x8 block to the packed matrix, and
           // increment some source pointers.
           "str q2, [%[packed_ptr], 0]\n"
