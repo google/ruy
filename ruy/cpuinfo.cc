@@ -59,11 +59,14 @@ void QueryCacheParams(CpuCacheParams* cache_params) {
       if (!cache->processor_count) {
         continue;  // crashes from Chrome on Android suggests that might happen?
       }
-      const bool is_local =
-          cpuinfo_get_processor(cache->processor_start)->core ==
-          cpuinfo_get_processor(cache->processor_start +
-                                cache->processor_count - 1)
-              ->core;
+      const cpuinfo_processor* processor_start =
+          cpuinfo_get_processor(cache->processor_start);
+      const cpuinfo_processor* processor_end = cpuinfo_get_processor(
+          cache->processor_start + cache->processor_count - 1);
+      if (!processor_start || !processor_end) {
+        continue;  // crashes from Chrome on Android suggests this might happen.
+      }
+      const bool is_local = processor_start->core == processor_end->core;
       if (is_local) {
         local_cache_size = cache->size;
       }
