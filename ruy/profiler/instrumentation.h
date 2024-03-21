@@ -19,7 +19,6 @@ limitations under the License.
 #ifdef RUY_PROFILER
 #include <cstdio>
 #include <mutex>
-#include <string>
 #include <vector>
 #endif
 
