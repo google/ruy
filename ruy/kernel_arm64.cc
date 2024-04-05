@@ -3076,10 +3076,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // Perform the first few multiply-adds on the data that we have already
         // loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // Main loop of the whole GEMM, over rows and columns of the
         // destination matrix.
@@ -3110,146 +3110,146 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         "81:\n"
         "add w1, w1, #16\n"
 
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
         "ldr q0, [%[lhs_ptr], #0]\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
         "ldr q2, [%[rhs_ptr], #0]\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
         "ldr q1, [%[lhs_ptr], #16]\n"
 
-        ".word 0x4f87e098  // sdot v24.4s, v4.16b, v7.4b[0]\n"
-        ".word 0x4fa7e09a  // sdot v26.4s, v4.16b, v7.4b[1]\n"
+        ".inst 0x4f87e098  // sdot v24.4s, v4.16b, v7.4b[0]\n"
+        ".inst 0x4fa7e09a  // sdot v26.4s, v4.16b, v7.4b[1]\n"
         "ldr q3, [%[rhs_ptr], #16]\n"
-        ".word 0x4f87e89c  // sdot v28.4s, v4.16b, v7.4b[2]\n"
-        ".word 0x4fa7e89e  // sdot v30.4s, v4.16b, v7.4b[3]\n"
-        ".word 0x4f86e0b1  // sdot v17.4s, v5.16b, v6.4b[0]\n"
-        ".word 0x4fa6e0b3  // sdot v19.4s, v5.16b, v6.4b[1]\n"
-        ".word 0x4f86e8b5  // sdot v21.4s, v5.16b, v6.4b[2]\n"
-        ".word 0x4fa6e8b7  // sdot v23.4s, v5.16b, v6.4b[3]\n"
-        ".word 0x4f87e0b9  // sdot v25.4s, v5.16b, v7.4b[0]\n"
-        ".word 0x4fa7e0bb  // sdot v27.4s, v5.16b, v7.4b[1]\n"
-        ".word 0x4f87e8bd  // sdot v29.4s, v5.16b, v7.4b[2]\n"
-        ".word 0x4fa7e8bf  // sdot v31.4s, v5.16b, v7.4b[3]\n"
+        ".inst 0x4f87e89c  // sdot v28.4s, v4.16b, v7.4b[2]\n"
+        ".inst 0x4fa7e89e  // sdot v30.4s, v4.16b, v7.4b[3]\n"
+        ".inst 0x4f86e0b1  // sdot v17.4s, v5.16b, v6.4b[0]\n"
+        ".inst 0x4fa6e0b3  // sdot v19.4s, v5.16b, v6.4b[1]\n"
+        ".inst 0x4f86e8b5  // sdot v21.4s, v5.16b, v6.4b[2]\n"
+        ".inst 0x4fa6e8b7  // sdot v23.4s, v5.16b, v6.4b[3]\n"
+        ".inst 0x4f87e0b9  // sdot v25.4s, v5.16b, v7.4b[0]\n"
+        ".inst 0x4fa7e0bb  // sdot v27.4s, v5.16b, v7.4b[1]\n"
+        ".inst 0x4f87e8bd  // sdot v29.4s, v5.16b, v7.4b[2]\n"
+        ".inst 0x4fa7e8bf  // sdot v31.4s, v5.16b, v7.4b[3]\n"
         "ldr q5, [%[lhs_ptr], #48]\n"
-        ".word 0x4f86e090  // sdot v16.4s, v4.16b, v6.4b[0]\n"
-        ".word 0x4fa6e092  // sdot v18.4s, v4.16b, v6.4b[1]\n"
+        ".inst 0x4f86e090  // sdot v16.4s, v4.16b, v6.4b[0]\n"
+        ".inst 0x4fa6e092  // sdot v18.4s, v4.16b, v6.4b[1]\n"
         "ldr q7, [%[rhs_ptr], #48]\n"
-        ".word 0x4f86e894  // sdot v20.4s, v4.16b, v6.4b[2]\n"
-        ".word 0x4fa6e896  // sdot v22.4s, v4.16b, v6.4b[3]\n"
+        ".inst 0x4f86e894  // sdot v20.4s, v4.16b, v6.4b[2]\n"
+        ".inst 0x4fa6e896  // sdot v22.4s, v4.16b, v6.4b[3]\n"
         "ldr q4, [%[lhs_ptr], #32]\n"
 
-        ".word 0x4f8be118  // sdot v24.4s, v8.16b, v11.4b[0]\n"
-        ".word 0x4fabe11a  // sdot v26.4s, v8.16b, v11.4b[1]\n"
+        ".inst 0x4f8be118  // sdot v24.4s, v8.16b, v11.4b[0]\n"
+        ".inst 0x4fabe11a  // sdot v26.4s, v8.16b, v11.4b[1]\n"
         "ldr q6, [%[rhs_ptr], #32]\n"
-        ".word 0x4f8be91c  // sdot v28.4s, v8.16b, v11.4b[2]\n"
-        ".word 0x4fabe91e  // sdot v30.4s, v8.16b, v11.4b[3]\n"
-        ".word 0x4f8ae131  // sdot v17.4s, v9.16b, v10.4b[0]\n"
-        ".word 0x4faae133  // sdot v19.4s, v9.16b, v10.4b[1]\n"
-        ".word 0x4f8ae935  // sdot v21.4s, v9.16b, v10.4b[2]\n"
-        ".word 0x4faae937  // sdot v23.4s, v9.16b, v10.4b[3]\n"
-        ".word 0x4f8be139  // sdot v25.4s, v9.16b, v11.4b[0]\n"
-        ".word 0x4fabe13b  // sdot v27.4s, v9.16b, v11.4b[1]\n"
-        ".word 0x4f8be93d  // sdot v29.4s, v9.16b, v11.4b[2]\n"
-        ".word 0x4fabe93f  // sdot v31.4s, v9.16b, v11.4b[3]\n"
+        ".inst 0x4f8be91c  // sdot v28.4s, v8.16b, v11.4b[2]\n"
+        ".inst 0x4fabe91e  // sdot v30.4s, v8.16b, v11.4b[3]\n"
+        ".inst 0x4f8ae131  // sdot v17.4s, v9.16b, v10.4b[0]\n"
+        ".inst 0x4faae133  // sdot v19.4s, v9.16b, v10.4b[1]\n"
+        ".inst 0x4f8ae935  // sdot v21.4s, v9.16b, v10.4b[2]\n"
+        ".inst 0x4faae937  // sdot v23.4s, v9.16b, v10.4b[3]\n"
+        ".inst 0x4f8be139  // sdot v25.4s, v9.16b, v11.4b[0]\n"
+        ".inst 0x4fabe13b  // sdot v27.4s, v9.16b, v11.4b[1]\n"
+        ".inst 0x4f8be93d  // sdot v29.4s, v9.16b, v11.4b[2]\n"
+        ".inst 0x4fabe93f  // sdot v31.4s, v9.16b, v11.4b[3]\n"
         "ldr q9, [%[lhs_ptr], #80]\n"
-        ".word 0x4f8ae110  // sdot v16.4s, v8.16b, v10.4b[0]\n"
-        ".word 0x4faae112  // sdot v18.4s, v8.16b, v10.4b[1]\n"
+        ".inst 0x4f8ae110  // sdot v16.4s, v8.16b, v10.4b[0]\n"
+        ".inst 0x4faae112  // sdot v18.4s, v8.16b, v10.4b[1]\n"
         "ldr q11, [%[rhs_ptr], #80]\n"
-        ".word 0x4f8ae914  // sdot v20.4s, v8.16b, v10.4b[2]\n"
-        ".word 0x4faae916  // sdot v22.4s, v8.16b, v10.4b[3]\n"
+        ".inst 0x4f8ae914  // sdot v20.4s, v8.16b, v10.4b[2]\n"
+        ".inst 0x4faae916  // sdot v22.4s, v8.16b, v10.4b[3]\n"
         "ldr q8, [%[lhs_ptr], #64]\n"
 
-        ".word 0x4f8fe198  // sdot v24.4s, v12.16b, v15.4b[0]\n"
-        ".word 0x4fafe19a  // sdot v26.4s, v12.16b, v15.4b[1]\n"
+        ".inst 0x4f8fe198  // sdot v24.4s, v12.16b, v15.4b[0]\n"
+        ".inst 0x4fafe19a  // sdot v26.4s, v12.16b, v15.4b[1]\n"
         "ldr q10, [%[rhs_ptr], #64]\n"
-        ".word 0x4f8fe99c  // sdot v28.4s, v12.16b, v15.4b[2]\n"
-        ".word 0x4fafe99e  // sdot v30.4s, v12.16b, v15.4b[3]\n"
+        ".inst 0x4f8fe99c  // sdot v28.4s, v12.16b, v15.4b[2]\n"
+        ".inst 0x4fafe99e  // sdot v30.4s, v12.16b, v15.4b[3]\n"
         "add %[lhs_ptr], %[lhs_ptr], #128\n"
-        ".word 0x4f8ee1b1  // sdot v17.4s, v13.16b, v14.4b[0]\n"
-        ".word 0x4faee1b3  // sdot v19.4s, v13.16b, v14.4b[1]\n"
+        ".inst 0x4f8ee1b1  // sdot v17.4s, v13.16b, v14.4b[0]\n"
+        ".inst 0x4faee1b3  // sdot v19.4s, v13.16b, v14.4b[1]\n"
         "add %[rhs_ptr], %[rhs_ptr], #128\n"
-        ".word 0x4f8ee9b5  // sdot v21.4s, v13.16b, v14.4b[2]\n"
-        ".word 0x4faee9b7  // sdot v23.4s, v13.16b, v14.4b[3]\n"
-        ".word 0x4f8fe1b9  // sdot v25.4s, v13.16b, v15.4b[0]\n"
-        ".word 0x4fafe1bb  // sdot v27.4s, v13.16b, v15.4b[1]\n"
+        ".inst 0x4f8ee9b5  // sdot v21.4s, v13.16b, v14.4b[2]\n"
+        ".inst 0x4faee9b7  // sdot v23.4s, v13.16b, v14.4b[3]\n"
+        ".inst 0x4f8fe1b9  // sdot v25.4s, v13.16b, v15.4b[0]\n"
+        ".inst 0x4fafe1bb  // sdot v27.4s, v13.16b, v15.4b[1]\n"
         "cmp w1, w3\n"
-        ".word 0x4f8fe9bd  // sdot v29.4s, v13.16b, v15.4b[2]\n"
-        ".word 0x4fafe9bf  // sdot v31.4s, v13.16b, v15.4b[3]\n"
+        ".inst 0x4f8fe9bd  // sdot v29.4s, v13.16b, v15.4b[2]\n"
+        ".inst 0x4fafe9bf  // sdot v31.4s, v13.16b, v15.4b[3]\n"
         "ldr q13, [%[lhs_ptr], #-16]\n"
-        ".word 0x4f8ee190  // sdot v16.4s, v12.16b, v14.4b[0]\n"
-        ".word 0x4faee192  // sdot v18.4s, v12.16b, v14.4b[1]\n"
+        ".inst 0x4f8ee190  // sdot v16.4s, v12.16b, v14.4b[0]\n"
+        ".inst 0x4faee192  // sdot v18.4s, v12.16b, v14.4b[1]\n"
         "ldr q15, [%[rhs_ptr], #-16]\n"
-        ".word 0x4f8ee994  // sdot v20.4s, v12.16b, v14.4b[2]\n"
-        ".word 0x4faee996  // sdot v22.4s, v12.16b, v14.4b[3]\n"
+        ".inst 0x4f8ee994  // sdot v20.4s, v12.16b, v14.4b[2]\n"
+        ".inst 0x4faee996  // sdot v22.4s, v12.16b, v14.4b[3]\n"
         "ldr q12, [%[lhs_ptr], #-32]\n"
 
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
         "ldr q14, [%[rhs_ptr], #-32]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         "blt 81b\n"
 
-        ".word 0x4f87e098  // sdot v24.4s, v4.16b, v7.4b[0]\n"
-        ".word 0x4fa7e09a  // sdot v26.4s, v4.16b, v7.4b[1]\n"
-        ".word 0x4f87e89c  // sdot v28.4s, v4.16b, v7.4b[2]\n"
-        ".word 0x4fa7e89e  // sdot v30.4s, v4.16b, v7.4b[3]\n"
-        ".word 0x4f86e0b1  // sdot v17.4s, v5.16b, v6.4b[0]\n"
-        ".word 0x4fa6e0b3  // sdot v19.4s, v5.16b, v6.4b[1]\n"
-        ".word 0x4f86e8b5  // sdot v21.4s, v5.16b, v6.4b[2]\n"
-        ".word 0x4fa6e8b7  // sdot v23.4s, v5.16b, v6.4b[3]\n"
-        ".word 0x4f87e0b9  // sdot v25.4s, v5.16b, v7.4b[0]\n"
-        ".word 0x4fa7e0bb  // sdot v27.4s, v5.16b, v7.4b[1]\n"
-        ".word 0x4f87e8bd  // sdot v29.4s, v5.16b, v7.4b[2]\n"
-        ".word 0x4fa7e8bf  // sdot v31.4s, v5.16b, v7.4b[3]\n"
-        ".word 0x4f86e090  // sdot v16.4s, v4.16b, v6.4b[0]\n"
-        ".word 0x4fa6e092  // sdot v18.4s, v4.16b, v6.4b[1]\n"
-        ".word 0x4f86e894  // sdot v20.4s, v4.16b, v6.4b[2]\n"
-        ".word 0x4fa6e896  // sdot v22.4s, v4.16b, v6.4b[3]\n"
+        ".inst 0x4f87e098  // sdot v24.4s, v4.16b, v7.4b[0]\n"
+        ".inst 0x4fa7e09a  // sdot v26.4s, v4.16b, v7.4b[1]\n"
+        ".inst 0x4f87e89c  // sdot v28.4s, v4.16b, v7.4b[2]\n"
+        ".inst 0x4fa7e89e  // sdot v30.4s, v4.16b, v7.4b[3]\n"
+        ".inst 0x4f86e0b1  // sdot v17.4s, v5.16b, v6.4b[0]\n"
+        ".inst 0x4fa6e0b3  // sdot v19.4s, v5.16b, v6.4b[1]\n"
+        ".inst 0x4f86e8b5  // sdot v21.4s, v5.16b, v6.4b[2]\n"
+        ".inst 0x4fa6e8b7  // sdot v23.4s, v5.16b, v6.4b[3]\n"
+        ".inst 0x4f87e0b9  // sdot v25.4s, v5.16b, v7.4b[0]\n"
+        ".inst 0x4fa7e0bb  // sdot v27.4s, v5.16b, v7.4b[1]\n"
+        ".inst 0x4f87e8bd  // sdot v29.4s, v5.16b, v7.4b[2]\n"
+        ".inst 0x4fa7e8bf  // sdot v31.4s, v5.16b, v7.4b[3]\n"
+        ".inst 0x4f86e090  // sdot v16.4s, v4.16b, v6.4b[0]\n"
+        ".inst 0x4fa6e092  // sdot v18.4s, v4.16b, v6.4b[1]\n"
+        ".inst 0x4f86e894  // sdot v20.4s, v4.16b, v6.4b[2]\n"
+        ".inst 0x4fa6e896  // sdot v22.4s, v4.16b, v6.4b[3]\n"
 
-        ".word 0x4f8be118  // sdot v24.4s, v8.16b, v11.4b[0]\n"
-        ".word 0x4fabe11a  // sdot v26.4s, v8.16b, v11.4b[1]\n"
-        ".word 0x4f8be91c  // sdot v28.4s, v8.16b, v11.4b[2]\n"
-        ".word 0x4fabe91e  // sdot v30.4s, v8.16b, v11.4b[3]\n"
-        ".word 0x4f8ae131  // sdot v17.4s, v9.16b, v10.4b[0]\n"
-        ".word 0x4faae133  // sdot v19.4s, v9.16b, v10.4b[1]\n"
-        ".word 0x4f8ae935  // sdot v21.4s, v9.16b, v10.4b[2]\n"
-        ".word 0x4faae937  // sdot v23.4s, v9.16b, v10.4b[3]\n"
-        ".word 0x4f8be139  // sdot v25.4s, v9.16b, v11.4b[0]\n"
-        ".word 0x4fabe13b  // sdot v27.4s, v9.16b, v11.4b[1]\n"
-        ".word 0x4f8be93d  // sdot v29.4s, v9.16b, v11.4b[2]\n"
-        ".word 0x4fabe93f  // sdot v31.4s, v9.16b, v11.4b[3]\n"
-        ".word 0x4f8ae110  // sdot v16.4s, v8.16b, v10.4b[0]\n"
-        ".word 0x4faae112  // sdot v18.4s, v8.16b, v10.4b[1]\n"
-        ".word 0x4f8ae914  // sdot v20.4s, v8.16b, v10.4b[2]\n"
-        ".word 0x4faae916  // sdot v22.4s, v8.16b, v10.4b[3]\n"
+        ".inst 0x4f8be118  // sdot v24.4s, v8.16b, v11.4b[0]\n"
+        ".inst 0x4fabe11a  // sdot v26.4s, v8.16b, v11.4b[1]\n"
+        ".inst 0x4f8be91c  // sdot v28.4s, v8.16b, v11.4b[2]\n"
+        ".inst 0x4fabe91e  // sdot v30.4s, v8.16b, v11.4b[3]\n"
+        ".inst 0x4f8ae131  // sdot v17.4s, v9.16b, v10.4b[0]\n"
+        ".inst 0x4faae133  // sdot v19.4s, v9.16b, v10.4b[1]\n"
+        ".inst 0x4f8ae935  // sdot v21.4s, v9.16b, v10.4b[2]\n"
+        ".inst 0x4faae937  // sdot v23.4s, v9.16b, v10.4b[3]\n"
+        ".inst 0x4f8be139  // sdot v25.4s, v9.16b, v11.4b[0]\n"
+        ".inst 0x4fabe13b  // sdot v27.4s, v9.16b, v11.4b[1]\n"
+        ".inst 0x4f8be93d  // sdot v29.4s, v9.16b, v11.4b[2]\n"
+        ".inst 0x4fabe93f  // sdot v31.4s, v9.16b, v11.4b[3]\n"
+        ".inst 0x4f8ae110  // sdot v16.4s, v8.16b, v10.4b[0]\n"
+        ".inst 0x4faae112  // sdot v18.4s, v8.16b, v10.4b[1]\n"
+        ".inst 0x4f8ae914  // sdot v20.4s, v8.16b, v10.4b[2]\n"
+        ".inst 0x4faae916  // sdot v22.4s, v8.16b, v10.4b[3]\n"
 
-        ".word 0x4f8fe198  // sdot v24.4s, v12.16b, v15.4b[0]\n"
-        ".word 0x4fafe19a  // sdot v26.4s, v12.16b, v15.4b[1]\n"
-        ".word 0x4f8fe99c  // sdot v28.4s, v12.16b, v15.4b[2]\n"
-        ".word 0x4fafe99e  // sdot v30.4s, v12.16b, v15.4b[3]\n"
-        ".word 0x4f8ee1b1  // sdot v17.4s, v13.16b, v14.4b[0]\n"
-        ".word 0x4faee1b3  // sdot v19.4s, v13.16b, v14.4b[1]\n"
-        ".word 0x4f8ee9b5  // sdot v21.4s, v13.16b, v14.4b[2]\n"
-        ".word 0x4faee9b7  // sdot v23.4s, v13.16b, v14.4b[3]\n"
-        ".word 0x4f8fe1b9  // sdot v25.4s, v13.16b, v15.4b[0]\n"
-        ".word 0x4fafe1bb  // sdot v27.4s, v13.16b, v15.4b[1]\n"
-        ".word 0x4f8fe9bd  // sdot v29.4s, v13.16b, v15.4b[2]\n"
-        ".word 0x4fafe9bf  // sdot v31.4s, v13.16b, v15.4b[3]\n"
-        ".word 0x4f8ee190  // sdot v16.4s, v12.16b, v14.4b[0]\n"
-        ".word 0x4faee192  // sdot v18.4s, v12.16b, v14.4b[1]\n"
-        ".word 0x4f8ee994  // sdot v20.4s, v12.16b, v14.4b[2]\n"
-        ".word 0x4faee996  // sdot v22.4s, v12.16b, v14.4b[3]\n"
+        ".inst 0x4f8fe198  // sdot v24.4s, v12.16b, v15.4b[0]\n"
+        ".inst 0x4fafe19a  // sdot v26.4s, v12.16b, v15.4b[1]\n"
+        ".inst 0x4f8fe99c  // sdot v28.4s, v12.16b, v15.4b[2]\n"
+        ".inst 0x4fafe99e  // sdot v30.4s, v12.16b, v15.4b[3]\n"
+        ".inst 0x4f8ee1b1  // sdot v17.4s, v13.16b, v14.4b[0]\n"
+        ".inst 0x4faee1b3  // sdot v19.4s, v13.16b, v14.4b[1]\n"
+        ".inst 0x4f8ee9b5  // sdot v21.4s, v13.16b, v14.4b[2]\n"
+        ".inst 0x4faee9b7  // sdot v23.4s, v13.16b, v14.4b[3]\n"
+        ".inst 0x4f8fe1b9  // sdot v25.4s, v13.16b, v15.4b[0]\n"
+        ".inst 0x4fafe1bb  // sdot v27.4s, v13.16b, v15.4b[1]\n"
+        ".inst 0x4f8fe9bd  // sdot v29.4s, v13.16b, v15.4b[2]\n"
+        ".inst 0x4fafe9bf  // sdot v31.4s, v13.16b, v15.4b[3]\n"
+        ".inst 0x4f8ee190  // sdot v16.4s, v12.16b, v14.4b[0]\n"
+        ".inst 0x4faee192  // sdot v18.4s, v12.16b, v14.4b[1]\n"
+        ".inst 0x4f8ee994  // sdot v20.4s, v12.16b, v14.4b[2]\n"
+        ".inst 0x4faee996  // sdot v22.4s, v12.16b, v14.4b[3]\n"
 
         "78:\n"
 
@@ -3267,29 +3267,29 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // Because of the data that we have already loaded, we can start the
         // loop body right away with some multiply-adds.
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
         // Each iteration of this loop advances by 4 levels of depth.
         "add w1, w1, #4\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
         "ld1 {v0.16b}, [%[lhs_ptr]], #16\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
         // Loop termination condition.
         "cmp w1, w12\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
         "ld1 {v2.16b}, [%[rhs_ptr]], #16\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
         "ld1 {v3.16b}, [%[rhs_ptr]], #16\n"
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         "ld1 {v1.16b}, [%[lhs_ptr]], #16\n"
 
         "blt 2b\n"
@@ -3299,18 +3299,18 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         // multiply-adds of the last 4 levels of depth, for which the LHS
         // and RHS data is already loaded.
 
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
 
         // End of accumulation. The registers v16 -- v31 contain the final
         // int32 accumulator values of the current 8x8 destination block.
@@ -3823,10 +3823,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -3998,10 +3998,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -4170,10 +4170,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -4323,10 +4323,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -4503,10 +4503,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // Perform the first few multiply-adds on the data that we have already
         // loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // Main loop of the whole GEMM, over rows and columns of the
         // destination matrix.
@@ -4522,29 +4522,29 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // Because of the data that we have already loaded, we can start the
         // loop body right away with some multiply-adds.
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
         // Each iteration of this loop advances by 4 levels of depth.
         "add w1, w1, #4\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
         "ld1 {v0.16b}, [%[lhs_ptr]], #16\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
         // Loop termination condition.
         "cmp w1, w12\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
         "ld1 {v2.16b}, [%[rhs_ptr]], #16\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
         "ld1 {v3.16b}, [%[rhs_ptr]], #16\n"
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         "ld1 {v1.16b}, [%[lhs_ptr]], #16\n"
 
         "blt 2b\n"
@@ -4554,18 +4554,18 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
         // multiply-adds of the last 4 levels of depth, for which the LHS
         // and RHS data is already loaded.
 
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
 
         // End of accumulation. The registers v16 -- v31 contain the final
         // int32 accumulator values of the current 8x8 destination block.
@@ -5078,10 +5078,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -5253,10 +5253,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -5425,10 +5425,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -5578,10 +5578,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -5746,7 +5746,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // Perform the first few multiply-adds on the data that we have already
         // loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
 
         // Main loop of the whole GEMM, over rows and columns of the
         // destination matrix.
@@ -5767,12 +5767,12 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
         // Each iteration of this loop advances by 4 levels of depth.
         "add w1, w1, #4\n"
         "ld1 {v0.16b}, [%[lhs_ptr]], #16\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
         // Loop termination condition.
         "cmp w1, w12\n"
         "ld1 {v2.8b}, [%[rhs_ptr]]\n"
         "add %[rhs_ptr], %[rhs_ptr], #32\n"
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
         "ld1 {v1.16b}, [%[lhs_ptr]], #16\n"
 
         "blt 2b\n"
@@ -5782,7 +5782,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
         // multiply-adds of the last 4 levels of depth, for which the LHS
         // and RHS data is already loaded.
 
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
 
         // End of accumulation. The registers v16 -- v31 contain the final
         // int32 accumulator values of the current 8x8 destination block.
@@ -6013,7 +6013,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -6108,7 +6108,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -6194,7 +6194,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
 
         // If all of the 8x1 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -6278,7 +6278,7 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -6441,13 +6441,13 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_MAKE_ZERO(v27)
         // Perform the first few multiply-adds on the data that we have already
         // loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
         RUY_MAKE_ZERO(v28)
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
         RUY_MAKE_ZERO(v29)
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
         RUY_MAKE_ZERO(v30)
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         RUY_MAKE_ZERO(v31)
 
 
@@ -6461,55 +6461,55 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
 
         // Main accumulation loop
         "2:\n"
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
         "ldr x1, [%[lhs_ptr], #8]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
         "ldr x3, [%[rhs_ptr], #8]\n"
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
         "ldr x4, [%[rhs_ptr], #24]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
         "ldr d0, [%[lhs_ptr], #0]\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
         "ins v0.d[1], x1\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
         "ldr x2, [%[lhs_ptr], #24]\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
         "add %[lhs_ptr], %[lhs_ptr], #32\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
         "ldr d2, [%[rhs_ptr], #0]\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
         "ins v2.d[1], x3\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
         "cmp %[lhs_ptr], x5\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
         "add %[rhs_ptr], %[rhs_ptr], #32\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
         "ldr d3, [%[rhs_ptr], #-16]\n"
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
         "ldr d1, [%[lhs_ptr], #-16]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
         "ins v3.d[1], x4\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
         "ins v1.d[1], x2\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         "blt 2b\n"
 
         // Last accumulation steps, nothing left to load.
         "79:\n"
-        ".word 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
+        ".inst 0x4f83e018  // sdot v24.4s, v0.16b, v3.4b[0]\n"
         "ldr x5, [%[params], #" RUY_STR(RUY_OFFSET_LHS_BASE_PTR) "]\n"
-        ".word 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
+        ".inst 0x4fa3e01a  // sdot v26.4s, v0.16b, v3.4b[1]\n"
         "cmp %w[row], w7\n"  // Have we finished the last row?
-        ".word 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
-        ".word 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
-        ".word 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
-        ".word 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
-        ".word 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
-        ".word 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
-        ".word 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
-        ".word 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
-        ".word 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
-        ".word 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
+        ".inst 0x4f83e81c  // sdot v28.4s, v0.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e81e  // sdot v30.4s, v0.16b, v3.4b[3]\n"
+        ".inst 0x4f82e031  // sdot v17.4s, v1.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e033  // sdot v19.4s, v1.16b, v2.4b[1]\n"
+        ".inst 0x4f82e835  // sdot v21.4s, v1.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e837  // sdot v23.4s, v1.16b, v2.4b[3]\n"
+        ".inst 0x4f83e039  // sdot v25.4s, v1.16b, v3.4b[0]\n"
+        ".inst 0x4fa3e03b  // sdot v27.4s, v1.16b, v3.4b[1]\n"
+        ".inst 0x4f83e83d  // sdot v29.4s, v1.16b, v3.4b[2]\n"
+        ".inst 0x4fa3e83f  // sdot v31.4s, v1.16b, v3.4b[3]\n"
 
         // End of accumulation. The registers v16 -- v31 contain the final
         // int32 accumulator values of the current 8x8 destination block.
@@ -7038,11 +7038,11 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_MAKE_ZERO(v20)
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v17.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v17)
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v21.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v21)
@@ -7052,11 +7052,11 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v22.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v22)
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v19.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v19)
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v23.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v23)
@@ -7212,11 +7212,11 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_MAKE_ZERO(v20)
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v17.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v17)
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v21.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v21)
@@ -7226,11 +7226,11 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v22.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v22)
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v19.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v19)
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
         RUY_PREFETCH_STORE("prfm pstl1strm, [x3]\n")
         "st1 {v23.8b}, [x3], x4\n"
         RUY_MAKE_ZERO(v23)
@@ -7403,10 +7403,10 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
@@ -7554,10 +7554,10 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
 
         // For the next block: perform the first few multiply-adds on the data
         // that we have already loaded.
-        ".word 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
-        ".word 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
-        ".word 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
-        ".word 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
+        ".inst 0x4f82e010  // sdot v16.4s, v0.16b, v2.4b[0]\n"
+        ".inst 0x4fa2e012  // sdot v18.4s, v0.16b, v2.4b[1]\n"
+        ".inst 0x4f82e814  // sdot v20.4s, v0.16b, v2.4b[2]\n"
+        ".inst 0x4fa2e816  // sdot v22.4s, v0.16b, v2.4b[3]\n"
 
         // If all of the 8x8 block fits, we just finished writing it to the
         // destination, so we skip the next part.
