@@ -4,8 +4,8 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
-load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
+load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 
 package(
     default_applicable_licenses = ["//third_party/ruy:license"],
