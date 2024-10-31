@@ -4,8 +4,8 @@ load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
-load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
+load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
 
 package(
     default_applicable_licenses = ["//third_party/ruy:license"],
@@ -1229,7 +1229,7 @@ cc_test(
 )
 
 bzl_library(
-    name = "ruy_test_ext.oss_bzl",
+    name = "ruy_test_ext.google3_bzl",
     srcs = ["ruy_test_ext.oss.bzl"],
     visibility = ["//visibility:private"],
 )
@@ -1241,7 +1241,7 @@ bzl_library(
 )
 
 bzl_library(
-    name = "build_defs.oss_bzl",
+    name = "build_defs.google3_bzl",
     srcs = ["build_defs.oss.bzl"],
     visibility = ["//visibility:private"],
 )
