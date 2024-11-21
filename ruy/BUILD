@@ -1229,7 +1229,7 @@ cc_test(
 )
 
 bzl_library(
-    name = "ruy_test_ext.oss_bzl",
+    name = "ruy_test_ext.google3_bzl",
     srcs = ["ruy_test_ext.oss.bzl"],
     visibility = ["//visibility:private"],
 )
@@ -1241,7 +1241,7 @@ bzl_library(
 )
 
 bzl_library(
-    name = "build_defs.oss_bzl",
+    name = "build_defs.google3_bzl",
     srcs = ["build_defs.oss.bzl"],
     visibility = ["//visibility:private"],
 )
