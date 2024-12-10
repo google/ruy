@@ -18,6 +18,7 @@ limitations under the License.
 
 #ifdef RUY_PROFILER
 #include <stdlib.h>
+#include <cstdint>
 #include <cstdio>
 #include <mutex>
 #include <string>
