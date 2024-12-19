@@ -811,10 +811,16 @@ void EvalGemmlowp(const Matrix<LhsScalar>& lhs, const Matrix<RhsScalar>& rhs,
   quantize_down_stage_pc.result_offset_after_shift = dst->zero_point();
   using ColVectorMap =
       gemmlowp::VectorMap<const std::int32_t, gemmlowp::VectorShape::Col>;
-  quantize_down_stage_pc.result_fixedpoint_multiplier = ColVectorMap(
-      mul_params.multiplier_fixedpoint_perchannel(), lhs.layout().rows());
-  quantize_down_stage_pc.result_exponent = ColVectorMap(
-      mul_params.multiplier_exponent_perchannel(), lhs.layout().rows());
+  quantize_down_stage_pc.result_fixedpoint_multiplier =
+      ColVectorMap(mul_params.multiplier_fixedpoint_perchannel(),
+                   mul_params.multiplier_fixedpoint_perchannel() != nullptr
+                       ? lhs.layout().rows()
+                       : 0);
+  quantize_down_stage_pc.result_exponent =
+      ColVectorMap(mul_params.multiplier_exponent_perchannel(),
+                   mul_params.multiplier_exponent_perchannel() != nullptr
+                       ? lhs.layout().rows()
+                       : 0);
 
   gemmlowp::OutputStageClamp clamp_stage;
   clamp_stage.min = mul_params.clamp_min();
