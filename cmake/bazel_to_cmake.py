@@ -85,6 +85,8 @@ def generate_cmake_select(select_name, dict):
       condition = 'CMAKE_SYSTEM_NAME STREQUAL Fuchsia'
     elif re.search(r':arm32_assuming_neon$', key):
       condition = 'CMAKE_SYSTEM_PROCESSOR STREQUAL arm'
+    elif re.search(r':arm64_compiles_sme', key):
+      condition = ('CMAKE_SYSTEM_PROCESSOR STREQUAL arm64 AND OPT_RUY_COMPILE_ARM64_SME')
     elif re.search(r':do_not_want_O3$', key):
       # Ruy is a specialist library: we always want code to be compiled
       # with -O3 unless the build type is Debug or the compiler does not

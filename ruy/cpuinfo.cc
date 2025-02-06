@@ -110,6 +110,10 @@ bool CpuInfo::NeonDotprod() {
   return EnsureInitialized() && cpuinfo_has_arm_neon_dot();
 }
 
+bool CpuInfo::Arm64Sme() {
+  return EnsureInitialized() && cpuinfo_has_arm_sme2();
+}
+
 bool CpuInfo::Sse42() {
   return EnsureInitialized() && cpuinfo_has_x86_sse4_2();
 }
@@ -178,6 +182,7 @@ bool CpuInfo::EnsureInitialized() {
   return true;
 }
 bool CpuInfo::NeonDotprod() { return false; }
+bool CpuInfo::Arm64Sme() { return false; }
 bool CpuInfo::Sse42() { return false; }
 bool CpuInfo::Avx() { return false; }
 bool CpuInfo::Avx2Fma() { return false; }

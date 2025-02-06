@@ -28,6 +28,7 @@ class CpuInfo final {
 
   // ARM features
   bool NeonDotprod();
+  bool Arm64Sme();
 
   // X86 features
   bool Sse42();

@@ -608,6 +608,136 @@ struct PackImpl<Path::kNeon,
 };
 #endif
 
+#if RUY_PLATFORM_ARM64_SME
+
+RUY_INHERIT_PACK(Path::kNeon, Path::kArm64Sme)
+
+#if RUY_OPT(ASM)
+
+template <>
+struct PackedTypeImpl<Path::kArm64Sme, std::uint8_t> {
+  using Type = std::int8_t;
+};
+
+void PackFloatColMajorForSme(const float *src_ptr, float *packed_ptr, int src_cols, int depth, int src_stride, int packed_stride);
+void PackFloatRowMajorForSme(const float *src_ptr, float *packed_ptr, int src_rows, int depth, int src_stride, int packed_stride);
+
+void PackInt8ColMajorForSme(const std::int8_t *src_ptr, std::int8_t *packed_ptr, std::int32_t *sums_ptr, int src_cols, int depth, int packed_depth, int src_stride, int packed_stride, char xor_val, char zero_point = 0);
+void PackInt8RowMajorForSme(const std::int8_t *src_ptr, std::int8_t *packed_ptr, std::int32_t *sums_ptr, int src_rows, int depth, int packed_depth, int src_stride, int packed_stride, char xor_val, char zero_point = 0);
+
+template <>
+struct PackImpl<Path::kArm64Sme, FixedKernelLayout<Order::kRowMajor, 1, 16>, float,
+                float, float, Order::kColMajor> {
+  using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
+
+  static void Run(Tuning tuning, const Mat<float> &src_matrix,
+                  PMat<float> *packed_matrix, int start_col, int end_col)
+  {
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+    (void)tuning;
+
+    int depth = src_matrix.layout.rows;
+    int num_cols = std::min(src_matrix.layout.cols, end_col) - start_col;
+    float *packed_ptr = packed_matrix->data + start_col;
+    const float *src_ptr = src_matrix.data.get() + src_matrix.layout.stride * start_col;
+    PackFloatColMajorForSme(src_ptr, packed_ptr, num_cols, depth, src_matrix.layout.stride, packed_matrix->layout.cols);
+  }
+};
+
+
+
+template <>
+struct PackImpl<Path::kArm64Sme, FixedKernelLayout<Order::kRowMajor, 1, 16>, float,
+                float, float, Order::kRowMajor> {
+  using Layout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
+
+  static void Run(Tuning tuning, const Mat<float>& src_matrix,
+                  PMat<float>* packed_matrix, int start_col, int end_col) {
+    RUY_DCHECK(IsRowMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+
+    (void)tuning;
+    int depth = src_matrix.layout.rows;
+    float *packed_ptr = packed_matrix->data + start_col;
+    const float *src_ptr = src_matrix.data.get() + start_col;
+    int num_rows = std::min(src_matrix.layout.cols, end_col) - start_col;
+
+    PackFloatRowMajorForSme(src_ptr, packed_ptr, num_rows, depth, src_matrix.layout.stride, packed_matrix->layout.cols);
+  }
+};
+
+template <typename Scalar>
+struct PackImpl<Path::kArm64Sme, FixedKernelLayout<Order::kColMajor, 4, 16>, Scalar,
+                std::int8_t, std::int32_t, Order::kColMajor>
+{
+  using Layout = FixedKernelLayout<Order::kRowMajor, 4, 16>;
+
+  static_assert(std::is_same<Scalar, std::int8_t>::value ||
+                    std::is_same<Scalar, std::uint8_t>::value,
+                "");
+
+  static void Run(Tuning tuning, const Mat<Scalar> &src_matrix,
+                  PMat<std::int8_t> *packed_matrix, int start_col, int end_col)
+  {
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+
+    (void)tuning;
+    static constexpr char kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+
+    int depth = src_matrix.layout.rows;
+    int num_cols = std::min(src_matrix.layout.cols, end_col) - start_col;
+    std::int8_t *packed_ptr = packed_matrix->data + start_col*4;
+    const std::int8_t *src_ptr = (const std::int8_t *)src_matrix.data.get() + src_matrix.layout.stride * start_col;
+    std::int32_t *sums_ptr = packed_matrix->sums + start_col;
+    PackInt8ColMajorForSme(src_ptr, packed_ptr, sums_ptr, num_cols, depth, packed_matrix->layout.rows, src_matrix.layout.stride, packed_matrix->layout.cols, kInputXor, src_matrix.zero_point);
+  }
+};
+
+template <typename Scalar>
+struct PackImpl<Path::kArm64Sme, FixedKernelLayout<Order::kColMajor, 4, 16>, Scalar,
+                std::int8_t, std::int32_t, Order::kRowMajor>
+{
+  using Layout = FixedKernelLayout<Order::kRowMajor, 4, 16>;
+
+  static_assert(std::is_same<Scalar, std::int8_t>::value ||
+                    std::is_same<Scalar, std::uint8_t>::value,
+                "");
+
+  static void Run(Tuning tuning, const Mat<Scalar> &src_matrix,
+                  PMat<std::int8_t> *packed_matrix, int start_col, int end_col)
+  {
+    RUY_DCHECK(IsRowMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ((end_col - start_col) % Layout::kCols, 0);
+    RUY_DCHECK_EQ(start_col % Layout::kCols, 0);
+
+    (void)tuning;
+    static constexpr char kInputXor =
+        std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+
+    int depth = src_matrix.layout.rows;
+    std::int8_t *packed_ptr = packed_matrix->data + start_col*4;
+    std::int32_t *sums_ptr = packed_matrix->sums + start_col;
+    const std::int8_t *src_ptr = (const std::int8_t *)src_matrix.data.get() + start_col;
+    int num_rows = std::min(src_matrix.layout.cols, end_col) - start_col;
+  
+    PackInt8RowMajorForSme(src_ptr, packed_ptr, sums_ptr, num_rows, depth,  packed_matrix->layout.rows, src_matrix.layout.stride, packed_matrix->layout.cols, kInputXor, src_matrix.zero_point);
+  }
+};
+
+#endif // RUY_OPT(ASM)
+#endif // RUY_PLATFORM_ARM64_SME
+
+
 }  // namespace ruy
 
 #endif  // RUY_RUY_PACK_ARM_H_

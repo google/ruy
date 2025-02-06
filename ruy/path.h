@@ -74,7 +74,10 @@ enum class Path : std::uint8_t {
   // Optimized path making use of ARM NEON dot product instructions that are
   // available on newer ARM cores.
   kNeonDotprod = 0x20,
-#endif  // RUY_PLATFORM_ARM
+  // Optimized path making use of ARM SME instructions that are
+  // available on newer ARM cores.
+  kArm64Sme = 0x40,
+#endif // RUY_PLATFORM_ARM
 
 #if RUY_PLATFORM_X86
   // Optimized for AVX
@@ -142,7 +145,12 @@ constexpr Path kNonArchPaths = Path::kStandardCpp;
 // for most users.
 
 #if RUY_PLATFORM_NEON_64
+#if RUY_PLATFORM_ARM64_SME
+constexpr Path kDefaultArchPaths = Path::kNeon | Path::kNeonDotprod | Path::kArm64Sme;
+#else 
 constexpr Path kDefaultArchPaths = Path::kNeon | Path::kNeonDotprod;
+#endif // RUY_PLATFORM_ARM64_SME
+
 constexpr Path kExtraArchPaths = Path::kNone;
 #elif RUY_PLATFORM_NEON_32
 constexpr Path kDefaultArchPaths = Path::kNeon;

@@ -42,6 +42,25 @@ include(cmake/ruy_cc_library.cmake)
 include(cmake/ruy_cc_binary.cmake)
 include(cmake/ruy_cc_test.cmake)
 
+# Check if we can compile the ARM64 SME path
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm64)
+  include(CheckCXXCompilerFlag)
+  check_cxx_compiler_flag("-march=armv8.6-a+sve2+sme2" CXX_SUPPORT_ARM64_SME_FLAG)
+  if (CXX_SUPPORT_ARM64_SME_FLAG)
+    include(cmake/ruy_test_compile_ARM64_SME.cmake)
+    ruy_test_compile_arm64_sme(RUY_TEST_COMPILE_ARM64_SME_FLAG)
+    if (RUY_TEST_COMPILE_ARM64_SME_FLAG)
+      message (STATUS "ARM64 SME path is enabled")
+      set(OPT_RUY_COMPILE_ARM64_SME 1)
+      add_compile_definitions(RUY_COMPILE_ARM64_SME)
+    else ()
+      message (STATUS "ARM64 SME path is disabled")
+    endif()
+  else ()
+    message (STATUS "Compiler does not support ARM64 SME")
+  endif()
+endif()
+
 option(RUY_FIND_CPUINFO "Use find_package to find cpuinfo" OFF)
 
 # Skip cpuinfo if it was already generated, which can happen when ruy is

@@ -123,6 +123,13 @@ Path DetectRuntimeSupportedPaths(Path paths_to_detect, CpuInfo* cpuinfo) {
   // encode dotprod instructions, so we don't actually rely on toolchain support
   // for them.
   maybe_add(Path::kNeonDotprod, [=]() { return cpuinfo->NeonDotprod(); });
+
+  // ARM64SME path currently require both runtime detection, and detection of
+  // whether we're building the path at all.
+  #if RUY_PLATFORM_ARM64_SME
+  maybe_add(Path::kArm64Sme, [=]() { return HaveBuiltPathForArm64_SME() && cpuinfo->Arm64Sme(); });
+  #endif // RUY_PLATFORM_ARM64_SME
+
 #elif RUY_PLATFORM_X86
   // x86 SIMD paths currently require both runtime detection, and detection of
   // whether we're building the path at all.

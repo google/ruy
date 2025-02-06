@@ -2,7 +2,7 @@
 
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load(":build_defs.bzl", "ruy_copts",  "ruy_copts_arm64_sme", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
+load(":build_defs.bzl", "ruy_copts", "ruy_copts_avx", "ruy_copts_avx2_fma", "ruy_copts_avx512")
 load(":build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
 load(":ruy_test.bzl", "ruy_benchmark", "ruy_test")
 load(":ruy_test_ext.oss.bzl", "ruy_test_ext_defines", "ruy_test_ext_deps")
@@ -17,31 +17,6 @@ config_setting(
     name = "arm32_assuming_neon",
     constraint_values = [
         "@platforms//cpu:armv7",
-    ],
-)
-
-config_setting(
-    name = "armeabi-v8a",
-    constraint_values = [
-        "@platforms//cpu",
-        "@platforms//armeabi-v8a"
-        ],
-)
-
-config_setting(
-    name = "armv8a",
-    constraint_values =  [
-        "@platforms//cpu",
-        "@platforms//armv8a"
-        ],
-)
-
-# Detect ARM 64-bit targets where we are going to just assume NEON support.
-selects.config_setting_group(
-    name = "arm64_assuming_neon",
-    match_any = [
-        ":armeabi-v8a",
-        ":armv8a",
     ],
 )
 
@@ -603,34 +578,6 @@ cc_library(
     ],
 )
 
-
-
-cc_library(
-    name = "kernel_arm64_sme",
-    srcs = [
-        "kernel_arm64_sme_fixed_point.cc",
-        "kernel_arm64_sme_floating_point.cc",
-    ],
-    hdrs = ["kernel_arm.h", "arm64_sme_common.h"],
-    copts = ruy_copts() + ruy_copts_arm64_sme(),
-    deps = [
-        ":asm_helpers",
-        ":check_macros",
-        ":kernel_common",
-        ":kernel_arm",
-        ":mat",
-        ":mul_params",
-        ":opt_set",
-        ":path",
-        ":platform",
-        ":side_pair",
-        ":size_util",
-        ":tune",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-
 cc_library(
     name = "pack_arm",
     srcs = [
@@ -652,43 +599,6 @@ cc_library(
         "//ruy/profiler:instrumentation",
     ],
 )
-
-
-cc_library(
-    name = "pack_arm64_sme",
-    srcs = [
-        "pack_arm64_sme.cc",
-    ],
-    hdrs = ["pack_arm.h", "arm64_sme_common.h"],
-    copts = ruy_copts() + ruy_copts_arm64_sme(),
-    deps = [
-        ":asm_helpers",
-        ":check_macros",
-        ":mat",
-        ":opt_set",
-        ":pack_common",
-        ":path",
-        ":platform",
-        ":tune",
-        "//ruy/profiler:instrumentation",
-    ],
-)
-
-cc_library(
-    name = "have_built_path_for_arm64_sme",
-    srcs = [
-        "have_built_path_for_arm64_sme.cc",
-    ],
-    hdrs = [
-        "have_built_path_for.h",
-    ],
-    copts = ruy_copts_arm64_sme(),
-    deps = [
-        ":opt_set",
-        ":platform",
-    ],
-)
-
 
 cc_library(
     name = "kernel_avx512",
@@ -874,7 +784,6 @@ cc_library(
         ":apply_multiplier",
         ":check_macros",
         ":kernel_arm",  # fixdeps: keep
-        ":kernel_arm64_sme",
         ":kernel_avx",
         ":kernel_avx2_fma",  # fixdeps: keep
         ":kernel_avx512",  # fixdeps: keep
@@ -905,7 +814,6 @@ cc_library(
         ":matrix",
         ":opt_set",
         ":pack_arm",  # fixdeps: keep
-        ":pack_arm64_sme",
         ":pack_avx",  # fixdeps: keep
         ":pack_avx2_fma",  # fixdeps: keep
         ":pack_avx512",  # fixdeps: keep
@@ -924,7 +832,6 @@ cc_library(
         "have_built_path_for.h",
     ],
     deps = [
-        ":have_built_path_for_arm64_sme",
         ":have_built_path_for_avx",
         ":have_built_path_for_avx2_fma",
         ":have_built_path_for_avx512",

@@ -35,6 +35,13 @@ def ruy_copts_neon():
     })
 
 # Helper for ruy_copts().
+# Returns flags to use to enable Arm64 SME if applicable, for all ruy code.
+def ruy_copts_arm64_sme():
+    return select({
+        "//ruy:arm64_compiles_sme": ["-march=armv8.6-a+sve2+sme2"],
+        "//conditions:default": [],
+    })
+
 # Returns optimization flags to use for all ruy code.
 def ruy_copts_optimize():
     return select({

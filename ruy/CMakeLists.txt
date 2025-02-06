@@ -433,9 +433,9 @@ ruy_cc_library(
     ${ruy_4_Wno_undef}
     ${ruy_5_DRUY_HAVE_CPUINFO}
   DEPS
-    ruy_platform
     ruy_check_macros
     ruy_cpu_cache_params
+    ruy_platform
     ${ruy_6_cpuinfo_cpuinfo}
 )
 
@@ -473,6 +473,18 @@ ruy_cc_library(
     ruy_performance_advisory
   HDRS
     performance_advisory.h
+  COPTS
+    ${ruy_0_Wall_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+  PUBLIC
+)
+
+ruy_cc_library(
+  NAME
+    ruy_strategy_controls
+  HDRS
+    strategy_controls.h
   COPTS
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
@@ -667,6 +679,42 @@ ruy_cc_library(
     ruy_profiler_instrumentation
 )
 
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm64 AND OPT_RUY_COMPILE_ARM64_SME)
+  set(ruy_7_march_armv8_6_a_sve2_sme2 "-march=armv8.6-a+sve2+sme2")
+else()
+  set(ruy_7_march_armv8_6_a_sve2_sme2 "")
+endif()
+
+ruy_cc_library(
+  NAME
+    ruy_kernel_arm64_sme
+  SRCS
+    kernel_arm64_sme_fixed_point.cc
+    kernel_arm64_sme_floating_point.cc
+  HDRS
+    kernel_arm.h
+    arm64_sme_common.h
+  COPTS
+    ${ruy_0_Wall_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+    ${ruy_7_march_armv8_6_a_sve2_sme2}
+  DEPS
+    ruy_asm_helpers
+    ruy_check_macros
+    ruy_kernel_common
+    ruy_kernel_arm
+    ruy_mat
+    ruy_mul_params
+    ruy_opt_set
+    ruy_path
+    ruy_platform
+    ruy_side_pair
+    ruy_size_util
+    ruy_tune
+    ruy_profiler_instrumentation
+)
+
 ruy_cc_library(
   NAME
     ruy_pack_arm
@@ -690,12 +738,51 @@ ruy_cc_library(
     ruy_profiler_instrumentation
 )
 
+ruy_cc_library(
+  NAME
+    ruy_pack_arm64_sme
+  SRCS
+    pack_arm64_sme.cc
+  HDRS
+    pack_arm.h
+    arm64_sme_common.h
+  COPTS
+    ${ruy_0_Wall_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+    ${ruy_7_march_armv8_6_a_sve2_sme2}
+  DEPS
+    ruy_asm_helpers
+    ruy_check_macros
+    ruy_mat
+    ruy_opt_set
+    ruy_pack_common
+    ruy_path
+    ruy_platform
+    ruy_tune
+    ruy_profiler_instrumentation
+)
+
+ruy_cc_library(
+  NAME
+    ruy_have_built_path_for_arm64_sme
+  SRCS
+    have_built_path_for_arm64_sme.cc
+  HDRS
+    have_built_path_for.h
+  COPTS
+    ${ruy_7_march_armv8_6_a_sve2_sme2}
+  DEPS
+    ruy_opt_set
+    ruy_platform
+)
+
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
-  set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
+  set(ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
 elseif(MSVC)
-  set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "/arch:AVX512")
+  set(ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "/arch:AVX512")
 else()
-  set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "")
+  set(ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "")
 endif()
 
 ruy_cc_library(
@@ -709,7 +796,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
+    ${ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
   DEPS
     ruy_check_macros
     ruy_kernel_common
@@ -733,7 +820,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
+    ${ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
   DEPS
     ruy_check_macros
     ruy_mat
@@ -756,18 +843,18 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
+    ${ruy_8_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512}
   DEPS
     ruy_opt_set
     ruy_platform
 )
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
-  set(ruy_8_mavx2_mfma_arch_AVX2 "-mavx2;-mfma")
+  set(ruy_9_mavx2_mfma_arch_AVX2 "-mavx2;-mfma")
 elseif(MSVC)
-  set(ruy_8_mavx2_mfma_arch_AVX2 "/arch:AVX2")
+  set(ruy_9_mavx2_mfma_arch_AVX2 "/arch:AVX2")
 else()
-  set(ruy_8_mavx2_mfma_arch_AVX2 "")
+  set(ruy_9_mavx2_mfma_arch_AVX2 "")
 endif()
 
 ruy_cc_library(
@@ -781,7 +868,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_8_mavx2_mfma_arch_AVX2}
+    ${ruy_9_mavx2_mfma_arch_AVX2}
   DEPS
     ruy_check_macros
     ruy_kernel_common
@@ -805,7 +892,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_8_mavx2_mfma_arch_AVX2}
+    ${ruy_9_mavx2_mfma_arch_AVX2}
   DEPS
     ruy_check_macros
     ruy_mat
@@ -828,18 +915,18 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_8_mavx2_mfma_arch_AVX2}
+    ${ruy_9_mavx2_mfma_arch_AVX2}
   DEPS
     ruy_opt_set
     ruy_platform
 )
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
-  set(ruy_9_mavx_arch_AVX "-mavx")
+  set(ruy_10_mavx_arch_AVX "-mavx")
 elseif(MSVC)
-  set(ruy_9_mavx_arch_AVX "/arch:AVX")
+  set(ruy_10_mavx_arch_AVX "/arch:AVX")
 else()
-  set(ruy_9_mavx_arch_AVX "")
+  set(ruy_10_mavx_arch_AVX "")
 endif()
 
 ruy_cc_library(
@@ -853,7 +940,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_9_mavx_arch_AVX}
+    ${ruy_10_mavx_arch_AVX}
   DEPS
     ruy_check_macros
     ruy_kernel_common
@@ -877,7 +964,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_9_mavx_arch_AVX}
+    ${ruy_10_mavx_arch_AVX}
   DEPS
     ruy_check_macros
     ruy_mat
@@ -900,7 +987,7 @@ ruy_cc_library(
     ${ruy_0_Wall_Wextra_Wundef}
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
-    ${ruy_9_mavx_arch_AVX}
+    ${ruy_10_mavx_arch_AVX}
   DEPS
     ruy_opt_set
     ruy_platform
@@ -919,6 +1006,7 @@ ruy_cc_library(
     ruy_apply_multiplier
     ruy_check_macros
     ruy_kernel_arm
+    ruy_kernel_arm64_sme
     ruy_kernel_avx
     ruy_kernel_avx2_fma
     ruy_kernel_avx512
@@ -951,6 +1039,7 @@ ruy_cc_library(
     ruy_matrix
     ruy_opt_set
     ruy_pack_arm
+    ruy_pack_arm64_sme
     ruy_pack_avx
     ruy_pack_avx2_fma
     ruy_pack_avx512
@@ -968,6 +1057,7 @@ ruy_cc_library(
   HDRS
     have_built_path_for.h
   DEPS
+    ruy_have_built_path_for_arm64_sme
     ruy_have_built_path_for_avx
     ruy_have_built_path_for_avx2_fma
     ruy_have_built_path_for_avx512
@@ -994,6 +1084,7 @@ ruy_cc_library(
     ruy_performance_advisory
     ruy_platform
     ruy_prepacked_cache
+    ruy_strategy_controls
     ruy_thread_pool
     ruy_tune
 )
@@ -1013,6 +1104,7 @@ ruy_cc_test(
     ruy_path
     ruy_platform
     ruy_prepacked_cache
+    ruy_strategy_controls
     ruy_tune
 )
 
@@ -1045,6 +1137,7 @@ ruy_cc_library(
     ruy_performance_advisory
     ruy_platform
     ruy_prepacked_cache
+    ruy_strategy_controls
     ruy_thread_pool
     ruy_trace
     ruy_tune
@@ -1080,6 +1173,7 @@ ruy_cc_test(
     ruy_gtest_wrapper
     ruy_path
     ruy_platform
+    ruy_strategy_controls
 )
 
 ruy_cc_library(
@@ -1124,6 +1218,7 @@ ruy_cc_library(
     ruy_opt_set
     ruy_side_pair
     ruy_size_util
+    ruy_strategy_controls
     ruy_thread_pool
     ruy_trace
     ruy_trmul_params
@@ -1298,9 +1393,9 @@ ruy_cc_library(
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Windows)
-  set(ruy_10_lm "")
+  set(ruy_11_lm "")
 else()
-  set(ruy_10_lm "-lm")
+  set(ruy_11_lm "-lm")
 endif()
 
 ruy_cc_library(
@@ -1314,22 +1409,22 @@ ruy_cc_library(
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   LINKOPTS
-    ${ruy_10_lm}
+    ${ruy_11_lm}
   DEPS
     ruy_allocator
-    ruy_size_util
-    ruy_reference_mul
-    ruy_matrix
-    ruy_pmu
-    ruy
-    ruy_mul_params
-    ruy_time
-    ruy_gtest_wrapper
-    ruy_platform
     ruy_context
-    ruy_ctx
     ruy_context_get_ctx
+    ruy_ctx
+    ruy_gtest_wrapper
+    ruy_matrix
+    ruy_mul_params
     ruy_pack_common
+    ruy_platform
+    ruy_pmu
+    ruy_reference_mul
+    ruy
+    ruy_size_util
+    ruy_time
     ruy_profiler_profiler
 )
 

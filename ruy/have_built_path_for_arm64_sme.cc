@@ -13,21 +13,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#ifndef RUY_RUY_HAVE_BUILT_PATH_FOR_H_
-#define RUY_RUY_HAVE_BUILT_PATH_FOR_H_
-
-#include "ruy/platform.h"
+#include "ruy/have_built_path_for.h"
+#include "ruy/opt_set.h"
 
 namespace ruy {
 
-#if RUY_PLATFORM_X86
-bool HaveBuiltPathForAvx();
-bool HaveBuiltPathForAvx2Fma();
-bool HaveBuiltPathForAvx512();
-#elif RUY_PLATFORM_ARM_64
-bool HaveBuiltPathForArm64_SME();
-#endif  // RUY_PLATFORM_X86
+#if RUY_PLATFORM_ARM
+// IMPORTANT:
+// These patterns must match those in the pack and kernel cc files.
+#if !RUY_PLATFORM_ARM64_SME
+
+bool HaveBuiltPathForArm64_SME() { return false; }
+#else  // RUY_PLATFORM_ARM64_SME
+bool HaveBuiltPathForArm64_SME() { return true; }
+
+#endif  // !RUY_PLATFORM_ARM64_SME
+#endif  // RUY_PLATFORM_ARM
 
 }  // namespace ruy
-
-#endif  // RUY_RUY_HAVE_BUILT_PATH_FOR_H_

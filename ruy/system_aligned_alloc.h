@@ -17,6 +17,7 @@ limitations under the License.
 #define RUY_RUY_SYSTEM_ALIGNED_ALLOC_H_
 
 #include <cstddef>
+#include "ruy/platform.h"
 
 namespace ruy {
 
@@ -39,7 +40,12 @@ namespace detail {
 //    ARM reference manual mentions that this granule size may be as large
 //    as 2048 bytes, in practice we observe it to be 64 bytes. It can
 //    be queried cheaply, at runtime, from userspace, if needed.
+#if RUY_PLATFORM_ARM64_SME
+// SME buffers load/store perform best having alignment of 256 bytes.
+constexpr std::ptrdiff_t kMinimumBlockAlignment = 256;
+#else 
 constexpr std::ptrdiff_t kMinimumBlockAlignment = 64;
+#endif // RUY_PLATFORM_ARM64_SME
 
 // Primitive allocation functions obtaining aligned memory from the
 // operating system.

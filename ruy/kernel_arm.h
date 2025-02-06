@@ -213,8 +213,74 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
   }
 };
 
-#endif  // RUY_PLATFORM_NEON && RUY_OPT(ASM)
+#if RUY_PLATFORM_ARM64_SME
 
-}  // namespace ruy
+  RUY_INHERIT_KERNEL(Path::kNeon, Path::kArm64Sme)
+
+  void Kernel8bitArm64SME(const KernelParams8bit<16, 16> &params, int num_rows, int num_cols);
+  void KernelFloatArm64SME(const KernelParamsFloat<16, 16> &params, int num_rows, int num_cols);
+
+  template <typename DstScalar>
+  struct Kernel<Path::kArm64Sme, std::int8_t, std::int8_t, std::int32_t, DstScalar>
+  {
+    static constexpr Path kPath = Path::kArm64Sme;
+    using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
+    using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 16>;
+    Tuning tuning = Tuning::kAuto;
+    explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+    void Run(const PMat<std::int8_t> &lhs, const PMat<std::int8_t> &rhs,
+             const MulParams<std::int32_t, DstScalar> &mul_params, int start_row,
+             int start_col, int end_row, int end_col, Mat<DstScalar> *dst) const
+    {
+      KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+      MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
+                           end_col, dst, &params);
+
+      int num_rows = std::min(end_row - start_row, dst->layout.rows - start_row);
+      int num_cols = std::min(end_col - start_col, dst->layout.cols - start_col);
+      params.lhs_base_ptr = lhs.data + start_row * 4;
+      params.rhs_base_ptr = rhs.data + start_col * 4;
+      params.lhs_stride = lhs.layout.cols << 2;
+      params.rhs_stride = rhs.layout.cols << 2;
+      params.dst_stride = dst->layout.stride;
+
+      Kernel8bitArm64SME(params, num_rows, num_cols);
+    }
+  };
+
+  // A Float kernel for ARM64 SME.
+  template <>
+  struct Kernel<Path::kArm64Sme, float, float, float, float>
+  {
+    static constexpr Path kPath = Path::kArm64Sme;
+    Tuning tuning = Tuning::kAuto;
+    using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
+    using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 16>;
+    explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+    void Run(const PMat<float> &lhs, const PMat<float> &rhs,
+             const MulParams<float, float> &mul_params, int start_row,
+             int start_col, int end_row, int end_col, Mat<float> *dst) const
+    {
+      KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
+      MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
+                            end_col, dst, &params);
+
+      int num_rows = std::min(end_row - start_row, dst->layout.rows - start_row);
+      int num_cols = std::min(end_col - start_col, dst->layout.cols - start_col);
+
+      params.lhs_base_ptr = lhs.data + start_row;
+      params.rhs_base_ptr = rhs.data + start_col;
+      params.lhs_stride = lhs.layout.cols << 2;
+      params.rhs_stride = rhs.layout.cols << 2;
+      params.dst_stride = dst->layout.stride;
+
+      KernelFloatArm64SME(params, num_rows, num_cols);
+    }
+  };
+#endif // RUY_PLATFORM_ARM64_SME
+
+#endif // RUY_PLATFORM_NEON && RUY_OPT(ASM)
+
+} // namespace ruy
 
 #endif  // RUY_RUY_KERNEL_ARM_H_

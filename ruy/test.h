@@ -104,6 +104,7 @@ inline const char* PathName(Path path) {
 #if RUY_PLATFORM_NEON
     RUY_PATHNAME_CASE(kNeon)
     RUY_PATHNAME_CASE(kNeonDotprod)
+    RUY_PATHNAME_CASE(kArm64Sme)
 #elif RUY_PLATFORM_X86
     RUY_PATHNAME_CASE(kAvx2Fma)
     RUY_PATHNAME_CASE(kAvx512)

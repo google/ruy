@@ -98,6 +98,13 @@ limitations under the License.
 // It still allows some conveyance of intent.
 #define RUY_PLATFORM_NEON_64 (RUY_PLATFORM_NEON && RUY_PLATFORM_ARM_64)
 
+// Define ARM 64-bit NEON SME (scalable matrix extension).
+#if RUY_PLATFORM_NEON_64 && defined(RUY_COMPILE_ARM64_SME)
+#define RUY_PLATFORM_ARM64_SME 1
+#else
+#define RUY_PLATFORM_ARM64_SME 0
+#endif
+
 // Determine whether to enable X86 non-portable performance improvements,
 // typically x86 SIMD paths (AVX, etc).
 #if defined(RUY_FORCE_ENABLE_X86_ENHANCEMENTS)
