@@ -1,9 +1,12 @@
 # Provides the ruy_test macro for type-parametrized tests.
 """ruy_test is a macro for building a test with multiple paths corresponding to tuples of types for LHS, RHS, accumulator and destination."""
 
+load("//third_party/bazel_rules/rules_cc/cc:cc_binary.bzl", "cc_binary")
+load("//third_party/bazel_rules/rules_cc/cc:cc_test.bzl", "cc_test")
+
 def ruy_test(name, srcs, lhs_rhs_accum_dst, copts, tags = [], deps = None):
     for (lhs, rhs, accum, dst) in lhs_rhs_accum_dst:
-        native.cc_test(
+        cc_test(
             name = "%s_%s_%s_%s_%s" % (name, lhs, rhs, accum, dst),
             srcs = srcs,
             copts = copts + [
@@ -19,7 +22,7 @@ def ruy_test(name, srcs, lhs_rhs_accum_dst, copts, tags = [], deps = None):
 def ruy_benchmark(name, srcs, lhs_rhs_accum_dst, copts, deps = None):
     tags = ["req_dep=//third_party/gemmlowp:profiler"]
     for (lhs, rhs, accum, dst) in lhs_rhs_accum_dst:
-        native.cc_binary(
+        cc_binary(
             name = "%s_%s_%s_%s_%s" % (name, lhs, rhs, accum, dst),
             testonly = True,
             srcs = srcs,
