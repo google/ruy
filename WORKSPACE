@@ -19,26 +19,56 @@ workspace(name = "com_google_ruy")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
-maybe(
-    local_repository,
-    name = "com_google_googletest",
-    path = "third_party/googletest",
+http_archive(
+    name = "bazel_features",
+    sha256 = "06a9691becc357c1e4af011b9fb3239097503ce00607d9eb6b11ea0fac304039",
+    strip_prefix = "bazel_features-1.35.0",
+    url = "https://github.com/bazel-contrib/bazel_features/releases/download/v1.35.0/bazel_features-v1.35.0.tar.gz",
 )
 
-maybe(
-    new_local_repository,
-    name = "cpuinfo",
-    path = "third_party/cpuinfo",
-    build_file = "@//third_party:cpuinfo.BUILD",
-)
+load("@bazel_features//:deps.bzl", "bazel_features_deps")
+
+bazel_features_deps()
 
 # skylib utility for additional bazel functionality.
-skylib_version = "0.9.0"
 http_archive(
     name = "bazel_skylib",
-    type = "tar.gz",
-    url = "https://github.com/bazelbuild/bazel-skylib/releases/download/{}/bazel_skylib-{}.tar.gz".format (skylib_version, skylib_version),
-    sha256 = "1dde365491125a3db70731e25658dfdd3bc5dbdfd11b840b3e987ecf043c7ca0",
+    sha256 = "51b5105a760b353773f904d2bbc5e664d0987fbaf22265164de65d43e910d8ac",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.8.1/bazel-skylib-1.8.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.8.1/bazel-skylib-1.8.1.tar.gz",
+    ],
 )
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
 load("@bazel_skylib//lib:versions.bzl", "versions")
+
 versions.check(minimum_bazel_version = "2.0.0")
+
+http_archive(
+    name = "rules_cc",
+    sha256 = "e50f24506011841e2ac83d9733a0c7e058eb3a10a6e3e10baa9c7942ff5f4767",
+    strip_prefix = "rules_cc-0.2.2",
+    url = "https://github.com/bazelbuild/rules_cc/releases/download/0.2.2/rules_cc-0.2.2.tar.gz",
+)
+
+load("@rules_cc//cc:extensions.bzl", "compatibility_proxy_repo")
+
+compatibility_proxy_repo()
+
+http_archive(
+    name = "com_google_googletest",
+    sha256 = "65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c",
+    strip_prefix = "googletest-1.17.0",
+    url = "https://github.com/google/googletest/releases/download/v1.17.0/googletest-1.17.0.tar.gz",
+)
+
+http_archive(
+    name = "cpuinfo",
+    sha256 = "87fc79472eb30b734cbe700dfe3edc0bdb96c33e3ce44e48ab327bbd8783f07f",
+    strip_prefix = "cpuinfo-3c8b1533ac03dd6531ab6e7b9245d488f13a82a5",
+    url = "https://github.com/pytorch/cpuinfo/archive/3c8b1533ac03dd6531ab6e7b9245d488f13a82a5.tar.gz",
+)

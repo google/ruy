@@ -489,8 +489,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
   }
 };
 #endif  // (RUY_PLATFORM_NEON_32)
-#endif  // (RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
-        // RUY_OPT(ASM)
+#endif  // (RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && RUY_OPT(ASM)
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 

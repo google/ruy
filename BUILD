@@ -1,9 +1,9 @@
 # Ruy is not BLAS
 
-load("//tools/build_defs/license:license.bzl", "license")
+load("@rules_license//rules:license.bzl", "license")
 
 package(
-    default_applicable_licenses = ["//third_party/ruy:license"],
+    default_applicable_licenses = ["@com_google_ruy//:license"],
     licenses = ["notice"],  # Apache 2.0
 )
 

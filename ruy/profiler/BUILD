@@ -1,11 +1,11 @@
 # A minimalistic profiler sampling pseudo-stacks
 
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("//ruy:build_defs.oss.bzl", "ruy_linkopts_thread_standard_library")
-load("//third_party/bazel_rules/rules_cc/cc:cc_library.bzl", "cc_library")
-load("//third_party/bazel_rules/rules_cc/cc:cc_test.bzl", "cc_test")
 
 package(
-    default_applicable_licenses = ["//third_party/ruy:license"],
+    default_applicable_licenses = ["@com_google_ruy//:license"],
     licenses = ["notice"],  # Apache 2.0
 )
 

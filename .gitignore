@@ -16,6 +16,7 @@ build-*/
 
 # Bazel artifacts
 **/bazel-*
+MODULE.bazel.lock
 
 # Emacs autosaves
 *~
