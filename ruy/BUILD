@@ -23,10 +23,26 @@ config_setting(
 )
 
 config_setting(
-    name = "x86_64_and_not_msvc",
+    name = "x86_64_android",
+    constraint_values = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:android",
+    ],
+)
+
+config_setting(
+    name = "x86_64_linux",
     constraint_values = [
         "@platforms//cpu:x86_64",
         "@platforms//os:linux",
+    ],
+)
+
+selects.config_setting_group(
+    name = "x86_64_and_not_msvc",
+    match_any = [
+        ":x86_64_android",
+        ":x86_64_linux",
     ],
 )
 
