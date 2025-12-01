@@ -1,0 +1,3 @@
+common --enable_bzlmod
+build --cxxopt='-std=c++17'
+build:windows --cxxopt='/std:c++17'
