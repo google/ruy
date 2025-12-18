@@ -3,7 +3,7 @@
 load("//tools/build_defs/license:license.bzl", "license")
 
 package(
-    default_applicable_licenses = ["//third_party/ruy:license"],
+    default_applicable_licenses = [":license"],
     licenses = ["notice"],  # Apache 2.0
 )
 
