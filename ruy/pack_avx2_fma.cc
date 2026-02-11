@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 
@@ -595,9 +596,9 @@ void PackFloatColMajorForAvx2(const float* src_ptr, const float* zerobuf,
       src_ptr, zerobuf, src_stride, remaining_src_cols, src_rows, packed_ptr,
       trailing_buf);
 
-  const int trailing_rows = src_rows & (kPackRows - 1);
+  const std::ptrdiff_t trailing_rows = src_rows & (kPackRows - 1);
   if (trailing_rows > 0) {
-    const int non_trailing_rows = src_rows & ~(kPackRows - 1);
+    const std::ptrdiff_t non_trailing_rows = src_rows & ~(kPackRows - 1);
     memcpy(packed_ptr + kPackCols * non_trailing_rows, trailing_buf,
            kPackCols * trailing_rows * sizeof(float));
   }
