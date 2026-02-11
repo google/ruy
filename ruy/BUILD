@@ -1006,6 +1006,7 @@ cc_library(
     copts = ruy_copts(),
     deps = [
         ":allocator",
+        ":check_macros",
         ":ctx",
         ":matrix",
         ":prepacked_cache",

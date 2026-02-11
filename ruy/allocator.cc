@@ -37,6 +37,9 @@ void* Allocator::AllocateFast(std::ptrdiff_t num_bytes) {
 
 void* Allocator::AllocateSlow(std::ptrdiff_t num_bytes) {
   void* p = detail::SystemAlignedAlloc(num_bytes);
+  if (p == nullptr) {
+    return nullptr;
+  }
   fallback_blocks_total_size_ += num_bytes;
   fallback_blocks_.push_back(p);
   return p;
@@ -76,6 +79,9 @@ void* Allocator::AllocateBytesAvoidingAliasingWith(std::ptrdiff_t num_bytes,
   static constexpr std::uint32_t kMinPeriod = 1024;
   static_assert(is_pot(kMinPeriod), "");
   void* p = AllocateBytes(num_bytes + kMinPeriod);
+  if (p == nullptr) {
+    return nullptr;
+  }
   auto unsigned_low_bits = [](const void* p) {
     return static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(p));
   };

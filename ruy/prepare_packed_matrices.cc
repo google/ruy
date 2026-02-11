@@ -16,6 +16,7 @@ limitations under the License.
 #include "ruy/prepare_packed_matrices.h"
 
 #include "ruy/allocator.h"
+#include "ruy/check_macros.h"
 #include "ruy/ctx.h"
 #include "ruy/matrix.h"
 #include "ruy/prepacked_cache.h"
@@ -86,7 +87,9 @@ void PreparePackedMatrices(Ctx* ctx, TrMulParams* params) {
       Allocator* allocator = ctx->GetMainAllocator();
       packed_matrix.data = allocator->AllocateBytesAvoidingAliasingWith(
           DataBytes(packed_matrix), params->src[side].data);
+      RUY_CHECK(packed_matrix.data != nullptr);
       packed_matrix.sums = allocator->AllocateBytes(SumsBytes(packed_matrix));
+      RUY_CHECK(packed_matrix.sums != nullptr);
     }
   }
 }
