@@ -159,4 +159,18 @@ limitations under the License.
 #define RUY_PLATFORM_EMSCRIPTEN 0
 #endif
 
+// Disables UBSan's integer-overflow checks for an annotated function. Only use
+// this where the overflow merely yields a wrong numeric result and poses no
+// safety risk. Expands to nothing on compilers without the attribute.
+#if defined(__clang__) && defined(__has_attribute)
+#if __has_attribute(no_sanitize)
+#define RUY_NO_SANITIZE_INTEGER_OVERFLOW                  \
+    __attribute__((no_sanitize("signed-integer-overflow", \
+                               "unsigned-integer-overflow")))
+#endif
+#endif
+#ifndef RUY_NO_SANITIZE_INTEGER_OVERFLOW
+#define RUY_NO_SANITIZE_INTEGER_OVERFLOW
+#endif
+
 #endif  // RUY_RUY_PLATFORM_H_

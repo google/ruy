@@ -130,12 +130,11 @@ struct KernelParams8bit {
 };
 
 template <typename RhsScalar, typename DstScalar, int LhsCols, int RhsCols>
-void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
-                          const PMat<RhsScalar>& rhs,
-                          const MulParams<std::int32_t, DstScalar>& mul_params,
-                          int start_row, int start_col, int end_row,
-                          int end_col, Mat<DstScalar>* dst,
-                          KernelParams8bit<LhsCols, RhsCols>* params) {
+RUY_NO_SANITIZE_INTEGER_OVERFLOW void MakeKernelParams8bit(
+    const PMat<std::int8_t> &lhs, const PMat<RhsScalar> &rhs,
+    const MulParams<std::int32_t, DstScalar> &mul_params, int start_row,
+    int start_col, int end_row, int end_col, Mat<DstScalar> *dst,
+    KernelParams8bit<LhsCols, RhsCols> *params) {
   using Params = KernelParams8bit<LhsCols, RhsCols>;
 
   static_assert(sizeof(DstScalar) <= Params::kMaxDstTypeSize, "");
