@@ -130,11 +130,12 @@ struct KernelParams8bit {
 };
 
 template <typename RhsScalar, typename DstScalar, int LhsCols, int RhsCols>
-RUY_NO_SANITIZE_INTEGER_OVERFLOW void MakeKernelParams8bit(
-    const PMat<std::int8_t> &lhs, const PMat<RhsScalar> &rhs,
-    const MulParams<std::int32_t, DstScalar> &mul_params, int start_row,
-    int start_col, int end_row, int end_col, Mat<DstScalar> *dst,
-    KernelParams8bit<LhsCols, RhsCols> *params) {
+void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
+                          const PMat<RhsScalar>& rhs,
+                          const MulParams<std::int32_t, DstScalar>& mul_params,
+                          int start_row, int start_col, int end_row,
+                          int end_col, Mat<DstScalar>* dst,
+                          KernelParams8bit<LhsCols, RhsCols>* params) {
   using Params = KernelParams8bit<LhsCols, RhsCols>;
 
   static_assert(sizeof(DstScalar) <= Params::kMaxDstTypeSize, "");
@@ -176,7 +177,13 @@ RUY_NO_SANITIZE_INTEGER_OVERFLOW void MakeKernelParams8bit(
   params->rhs_zero_point = rhs.zero_point;
   params->dst_zero_point = dst->zero_point;
   params->depth = depth;
-  params->prod_zp_depth = lhs.zero_point * rhs.zero_point * depth;
+  // prod_zp_depth intentionally relies on two's-complement wraparound to match
+  // the wrapping arithmetic performed by the asm kernels. Compute it in unsigned
+  // so the overflow is well-defined.
+  params->prod_zp_depth = static_cast<std::int32_t>(
+      static_cast<std::uint32_t>(lhs.zero_point) *
+      static_cast<std::uint32_t>(rhs.zero_point) *
+      static_cast<std::uint32_t>(depth));
   params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
   if (mul_params.multiplier_fixedpoint_perchannel()) {
     // Temporary release-assert to debug some crashes in an application.
