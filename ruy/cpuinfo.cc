@@ -48,6 +48,9 @@ bool QueryCacheParams(CpuCacheParams* cache_params) {
     int local_cache_size = 0;
     int last_level_cache_size = 0;
     const cpuinfo_processor* processor = cpuinfo_get_processor(i);
+    if (!processor) {
+      continue;
+    }
     // Loop over cache levels. Ignoring L4 for now: it seems that in CPUs that
     // have L4, we would still prefer to stay in lower-latency L3.
     for (const cpuinfo_cache* cache :
