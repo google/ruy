@@ -121,7 +121,16 @@ void PrepackedCache::EjectOne() {
     }
   }
   const PEMat& packed_matrix = oldest->second.packed_matrix;
-  buffers_bytes_ -= DataBytes(packed_matrix) + SumsBytes(packed_matrix);
+  // Mirror the accounting done in AllocateBuffers: floating-point matrices do
+  // not allocate a `sums` buffer, so only their `data` bytes were ever added
+  // to buffers_bytes_. Unconditionally subtracting SumsBytes here would
+  // over-subtract for float matrices (whose sums_type still has nonzero size),
+  // letting buffers_bytes_ drift below the true usage and the cache overshoot
+  // its cap.
+  buffers_bytes_ -= DataBytes(packed_matrix);
+  if (!packed_matrix.sums_type.is_floating_point) {
+    buffers_bytes_ -= SumsBytes(packed_matrix);
+  }
   FreeBuffers(packed_matrix);
   cache_.erase(oldest);
 }
