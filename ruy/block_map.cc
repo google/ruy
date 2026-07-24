@@ -136,9 +136,14 @@ BlockMapTraversalOrder GetTraversalOrder(
     int rhs_scalar_size, const CpuCacheParams& cpu_cache_params) {
   static constexpr bool kAnyFractal =
       RUY_OPT(FRACTAL_Z) | RUY_OPT(FRACTAL_U) | RUY_OPT(FRACTAL_HILBERT);
-  const int working_set_size =
-      (lhs_scalar_size * rows_after_rectangularness_division +
-       rhs_scalar_size * cols_after_rectangularness_division) *
+  // Promote to int64 before multiplying: for a large matmul this product
+  // (bytes touched) exceeds INT_MAX, and a plain int computation would
+  // overflow (UB) and wrap negative, wrongly selecting a linear traversal for
+  // a working set that does not fit in cache. Mirrors GetTentativeThreadCount
+  // in trmul.cc, which promotes the same rows*cols*depth product to int64.
+  const std::int64_t working_set_size =
+      (std::int64_t{lhs_scalar_size} * rows_after_rectangularness_division +
+       std::int64_t{rhs_scalar_size} * cols_after_rectangularness_division) *
       depth;
   if (kAnyFractal && (working_set_size > cpu_cache_params.local_cache_size)) {
     if (RUY_OPT(FRACTAL_HILBERT) &&
@@ -258,9 +263,13 @@ int GetCacheLocalityScore(int block_size_log2, int rows, int cols, int depth,
   }
   const int block_rows = std::min(1 << block_size_log2, rows);
   const int block_cols = std::min(1 << block_size_log2, cols);
-  const int total_read_bytes =
-      (lhs_scalar_size * block_rows + rhs_scalar_size * block_cols) * depth;
-  const int total_read_bytes_log2 = ceil_log2(total_read_bytes);
+  // Promote to int64 before multiplying to avoid signed overflow (UB) for a
+  // large depth; the result only feeds ceil_log2 below (see GetTraversalOrder).
+  const std::int64_t total_read_bytes =
+      (std::int64_t{lhs_scalar_size} * block_rows +
+       std::int64_t{rhs_scalar_size} * block_cols) *
+      depth;
+  const int total_read_bytes_log2 = static_cast<int>(ceil_log2(total_read_bytes));
   const int nonlocality_log2 =
       total_read_bytes_log2 - floor_log2(cpu_cache_params.local_cache_size);
   // The values here have been tuned on ARM Cortex-A55.
