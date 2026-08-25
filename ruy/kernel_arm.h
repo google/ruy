@@ -38,6 +38,13 @@ namespace ruy {
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
 
+// MSVC on Windows ARM64 does not support AT&T-style inline assembly.
+// The asm-based kernel function declarations and their calling template
+// specializations are excluded under MSVC. The RUY_INHERIT_KERNEL chain above
+// means kNeon and kNeonDotprod fall back to kStandardCpp on MSVC ARM64.
+// MSVC-compatible NEON intrinsic kernels are provided in kernel_arm64_msvc.cc.
+#if !defined(_MSC_VER)
+
 #if RUY_PLATFORM_NEON_64
 void Kernel8bitNeon(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params);
@@ -212,6 +219,180 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
     }
   }
 };
+
+#endif  // !defined(_MSC_VER)
+
+#if defined(_MSC_VER) && defined(_M_ARM64)
+
+#if RUY_PLATFORM_NEON_64
+void Kernel8bitNeon(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params);
+// Mixed-precision NEON kernels: i8×i16 and i16×i8, tile 4×4, depth step 8.
+void Kernel8bitNeonMixedInt16Lhs(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonMixedInt16Rhs(const KernelParams8bit<4, 4>& params);
+
+template <typename DstScalar>
+struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
+  static constexpr Path kPath = Path::kNeon;
+  using LhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
+  using RhsLayout = FixedKernelLayout<Order::kColMajor, 16, 4>;
+  Tuning tuning = Tuning::kAuto;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
+           const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
+    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
+                         end_col, dst, &params);
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
+      Kernel8bitNeon1Col(params);
+      return;
+    }
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      Kernel8bitNeonA55ish(params);
+    } else {
+      Kernel8bitNeon(params);
+    }
+  }
+};
+
+template <typename DstScalar>
+struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
+              DstScalar> {
+  static constexpr Path kPath = Path::kNeonDotprod;
+  Tuning tuning = Tuning::kAuto;
+  using LhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
+  using RhsLayout = FixedKernelLayout<Order::kColMajor, 4, 8>;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int8_t>& rhs,
+           const MulParams<std::int32_t, DstScalar>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<DstScalar>* dst) const {
+    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col, end_row,
+                         end_col, dst, &params);
+    if (dst->layout.cols == 1 &&
+        mul_params.channel_dimension() == ChannelDimension::kRow) {
+      Kernel8bitNeonDotprod1Col(params);
+    } else if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      Kernel8bitNeonDotprodA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      Kernel8bitNeonDotprodX1(params);
+    } else {
+      Kernel8bitNeonDotprod(params);
+    }
+  }
+};
+#endif  // RUY_PLATFORM_NEON_64
+
+void KernelFloatNeon(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonX1(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params);
+
+#if RUY_PLATFORM_NEON_64
+template <>
+struct Kernel<Path::kNeon, float, float, float, float> {
+  static constexpr Path kPath = Path::kNeon;
+  Tuning tuning = Tuning::kAuto;
+  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
+           const MulParams<float, float>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
+    KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
+                          end_col, dst, &params);
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      KernelFloatNeonA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      KernelFloatNeonX1(params);
+    } else {
+      KernelFloatNeon(params);
+    }
+  }
+};
+
+template <>
+struct Kernel<Path::kNeonDotprod, float, float, float, float> {
+  static constexpr Path kPath = Path::kNeonDotprod;
+  Tuning tuning = Tuning::kAuto;
+  using LhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  using RhsLayout = FixedKernelLayout<Order::kRowMajor, 1, 8>;
+  using Base = Kernel<Path::kNeon, float, float, float, float>;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<float>& lhs, const PMat<float>& rhs,
+           const MulParams<float, float>& mul_params, int start_row,
+           int start_col, int end_row, int end_col, Mat<float>* dst) const {
+    KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
+                          end_col, dst, &params);
+    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+      KernelFloatNeonDotprodA55ish(params);
+    } else if (tuning == Tuning::kX1) {
+      KernelFloatNeonX1(params);
+    } else {
+      KernelFloatNeon(params);
+    }
+  }
+};
+#endif  // RUY_PLATFORM_NEON_64
+
+// ---------------------------------------------------------------------------
+// Mixed-precision kNeon specializations: i8×i16→i16 and i16×i8→i16.
+// Layout kColMajor/8/4: 8 int16 depth values × 4 cols.
+// ---------------------------------------------------------------------------
+#if RUY_PLATFORM_NEON_64
+
+// i8(LHS) × i16(RHS) → i16 output
+template <>
+struct Kernel<Path::kNeon, std::int8_t, std::int16_t, std::int32_t,
+              std::int16_t> {
+  static constexpr Path kPath = Path::kNeon;
+  using LhsLayout = FixedKernelLayout<Order::kColMajor, 8, 4>;
+  using RhsLayout = FixedKernelLayout<Order::kColMajor, 8, 4>;
+  Tuning tuning = Tuning::kAuto;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<std::int8_t>& lhs, const PMat<std::int16_t>& rhs,
+           const MulParams<std::int32_t, std::int16_t>& mul_params,
+           int start_row, int start_col, int end_row, int end_col,
+           Mat<std::int16_t>* dst) const {
+    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParams8bit(lhs, rhs, mul_params, start_row, start_col,
+                         end_row, end_col, dst, &params);
+    Kernel8bitNeonMixedInt16Rhs(params);
+  }
+};
+
+// i16(LHS) × i8(RHS) → i16 output
+template <>
+struct Kernel<Path::kNeon, std::int16_t, std::int8_t, std::int32_t,
+              std::int16_t> {
+  static constexpr Path kPath = Path::kNeon;
+  using LhsLayout = FixedKernelLayout<Order::kColMajor, 8, 4>;
+  using RhsLayout = FixedKernelLayout<Order::kColMajor, 8, 4>;
+  Tuning tuning = Tuning::kAuto;
+  explicit Kernel(Tuning tuning_) : tuning(tuning_) {}
+  void Run(const PMat<std::int16_t>& lhs, const PMat<std::int8_t>& rhs,
+           const MulParams<std::int32_t, std::int16_t>& mul_params,
+           int start_row, int start_col, int end_row, int end_col,
+           Mat<std::int16_t>* dst) const {
+    KernelParams8bit<LhsLayout::kCols, RhsLayout::kCols> params;
+    MakeKernelParams8bitMixed(lhs, rhs, mul_params, start_row, start_col,
+                              end_row, end_col, dst, &params);
+    Kernel8bitNeonMixedInt16Lhs(params);
+  }
+};
+
+#endif  // RUY_PLATFORM_NEON_64
+
+#endif  // defined(_MSC_VER) && defined(_M_ARM64)
 
 #endif  // RUY_PLATFORM_NEON && RUY_OPT(ASM)
 

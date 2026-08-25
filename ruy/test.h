@@ -17,7 +17,6 @@ limitations under the License.
 #define RUY_RUY_TEST_H_
 
 #include <math.h>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
@@ -36,6 +35,11 @@ limitations under the License.
 #include <tuple>
 #include <type_traits>
 #include <vector>
+
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 #include "ruy/allocator.h"
 #include "ruy/context.h"
@@ -420,6 +424,16 @@ struct SeparateMappingAllocator {
     void* buffer =
         static_cast<void*>(static_cast<char*>(mapping) + buffer_offset);
     return static_cast<T*>(buffer);
+#elif defined(_WIN32)
+    // On Windows, use VirtualAlloc so that each allocation gets a fresh
+    // virtual address that won't be reused after VirtualFree.  This prevents
+    // the PreparedCache from returning a stale hit when the bump-allocator
+    // reuses a src-data pointer across different TestSet instances.
+    std::size_t buffer_size = n * sizeof(T);
+    void* p = VirtualAlloc(nullptr, buffer_size,
+                           MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    RUY_CHECK_NE(p, nullptr);
+    return static_cast<T*>(p);
 #else
     T* ret = new T[n];
     std::memset(ret, 0, n * sizeof(T));
@@ -437,6 +451,9 @@ struct SeparateMappingAllocator {
     void* mapping = reinterpret_cast<void*>(p_addr & ~(page_size - 1));
     int ret = munmap(mapping, rounded_buffer_size);
     RUY_CHECK_EQ(ret, 0);
+#elif defined(_WIN32)
+    (void)n;
+    VirtualFree(p, 0, MEM_RELEASE);
 #else
     (void)n;
     delete[] p;

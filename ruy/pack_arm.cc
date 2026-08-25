@@ -29,7 +29,11 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+// MSVC on Windows ARM64 does not support AT&T-style GCC inline assembly
+// (asm volatile). All asm-based NEON pack functions below are guarded out
+// under MSVC. The scalar C++ reference path is used instead for MSVC builds.
+// MSVC-compatible NEON intrinsic pack functions are provided in kernel_arm64_msvc.cc.
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
                              const void* src_ptr2, const void* src_ptr3,
@@ -211,10 +215,9 @@ void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
         "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24", "v25", "v26",
         "v27", "v28", "v29", "v30", "v31");
 }
-#endif
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
-
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 #define RUY_OFFSET_SRC_PTR0 0
 #define RUY_OFFSET_SRC_PTR1 4
 #define RUY_OFFSET_SRC_PTR2 8
@@ -622,9 +625,9 @@ void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params) {
 #undef RUY_OFFSET_SRC_ZERO_POINT
 #undef RUY_OFFSET_INPUT_XOR
 
-#endif  //  RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+#endif  //  RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
                                    const void* src_ptr2, const void* src_ptr3,
@@ -1879,9 +1882,9 @@ void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
         "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21", "v22",
         "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
-#endif
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
                               const float* src_ptr2, const float* src_ptr3,
                               int src_inc, int src_rows, float* packed_ptr,
@@ -2061,9 +2064,9 @@ void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
         "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11");
 }
 
-#endif  // (RUY_PLATFORM_NEON_32
+#endif  // RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
                                     const float* src_ptr1,
                                     const float* src_ptr2,
@@ -2216,7 +2219,7 @@ void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
             "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21",
             "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
-#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 #if RUY_PLATFORM_NEON
 

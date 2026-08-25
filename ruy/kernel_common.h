@@ -171,7 +171,7 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
   params->last_row = end_row - LhsCols;
   params->last_col = end_col - RhsCols;
   params->lhs_stride = lhs.layout.stride;
-  params->rhs_stride = params->rhs_scalar_size * rhs.layout.stride;
+  params->rhs_stride = static_cast<std::int32_t>(params->rhs_scalar_size * rhs.layout.stride);
   params->dst_stride = sizeof(DstScalar) * dst->layout.stride;
   params->lhs_zero_point = lhs.zero_point;
   params->rhs_zero_point = rhs.zero_point;
@@ -213,6 +213,91 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
       dst->data.get() + start_col * dst->layout.stride + start_row;
 
   // Temporary release-asserts to debug some crashes in an application.
+  RUY_CHECK(params->multiplier_fixedpoint);
+  RUY_CHECK(params->multiplier_exponent);
+  RUY_CHECK(params->bias);
+}
+
+// Variant of MakeKernelParams8bit for int16_t LHS (i16 x int8 RHS).
+// KernelParams8bit::lhs_base_ptr is typed const int8_t* but is used here as a
+// raw byte pointer — the kernel casts it back to const int16_t*.
+// lhs_stride is stored in int16 elements (not bytes); the kernel multiplies by 2.
+template <typename RhsScalar, typename DstScalar, int LhsCols, int RhsCols>
+void MakeKernelParams8bitMixed(const PMat<std::int16_t>& lhs,
+                               const PMat<RhsScalar>& rhs,
+                               const MulParams<std::int32_t, DstScalar>& mul_params,
+                               int start_row, int start_col, int end_row,
+                               int end_col, Mat<DstScalar>* dst,
+                               KernelParams8bit<LhsCols, RhsCols>* params) {
+  using Params = KernelParams8bit<LhsCols, RhsCols>;
+  static_assert(sizeof(DstScalar) <= Params::kMaxDstTypeSize, "");
+
+  const int depth = lhs.layout.rows;
+  RUY_DCHECK_EQ(start_row % LhsCols, 0);
+  RUY_DCHECK_EQ(start_col % RhsCols, 0);
+  RUY_DCHECK_EQ(end_row % LhsCols, 0);
+  RUY_DCHECK_EQ(end_col % RhsCols, 0);
+
+  // lhs_base_ptr typed as int8* but points to int16 data. Kernel casts it back.
+  params->lhs_base_ptr = reinterpret_cast<const std::int8_t*>(
+      lhs.data + start_row * lhs.layout.stride);
+  params->rhs_scalar_size = sizeof(RhsScalar);
+  params->rhs_base_ptr = rhs.data + start_col * rhs.layout.stride;
+  params->flags = 0;
+  params->bias = params->zero_data;
+  if (mul_params.bias()) {
+    params->bias = mul_params.bias();
+    params->flags |= RUY_ASM_FLAG_HAS_BIAS;
+  }
+  if (lhs.sums) {
+    params->lhs_sums = lhs.sums;
+    params->flags |= RUY_ASM_FLAG_HAS_LHS_SUMS;
+  }
+  if (rhs.sums) {
+    params->rhs_sums = rhs.sums;
+    params->flags |= RUY_ASM_FLAG_HAS_RHS_SUMS;
+  }
+  if (mul_params.channel_dimension() == ChannelDimension::kCol) {
+    params->flags |= RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL;
+  }
+  params->start_row = start_row;
+  params->start_col = start_col;
+  params->last_row = end_row - LhsCols;
+  params->last_col = end_col - RhsCols;
+  // lhs_stride in int16 elements; kernel multiplies by sizeof(int16_t).
+  params->lhs_stride = lhs.layout.stride;
+  params->rhs_stride = static_cast<std::int32_t>(params->rhs_scalar_size * rhs.layout.stride);
+  params->dst_stride = sizeof(DstScalar) * dst->layout.stride;
+  params->lhs_zero_point = lhs.zero_point;
+  params->rhs_zero_point = rhs.zero_point;
+  params->dst_zero_point = dst->zero_point;
+  params->depth = depth;
+  params->prod_zp_depth = static_cast<std::int32_t>(
+      static_cast<std::uint32_t>(lhs.zero_point) *
+      static_cast<std::uint32_t>(rhs.zero_point) *
+      static_cast<std::uint32_t>(depth));
+  params->flags |= RUY_ASM_FLAG_NEEDS_LEFT_SHIFT;
+  if (mul_params.multiplier_fixedpoint_perchannel()) {
+    RUY_CHECK(mul_params.multiplier_exponent_perchannel());
+    params->flags |= RUY_ASM_FLAG_HAS_PERCHANNEL;
+    params->multiplier_fixedpoint =
+        mul_params.multiplier_fixedpoint_perchannel();
+    params->multiplier_exponent = mul_params.multiplier_exponent_perchannel();
+  } else {
+    params->multiplier_fixedpoint = params->multiplier_fixedpoint_buf;
+    params->multiplier_exponent = params->multiplier_exponent_buf;
+    for (int i = 0; i < LhsCols; i++) {
+      params->multiplier_fixedpoint_buf[i] = mul_params.multiplier_fixedpoint();
+      params->multiplier_exponent_buf[i] = mul_params.multiplier_exponent();
+    }
+  }
+  params->clamp_min = mul_params.clamp_min();
+  params->clamp_max = mul_params.clamp_max();
+  params->dst_rows = dst->layout.rows;
+  params->dst_cols = dst->layout.cols;
+  params->dst_type_id = DstTypeId<DstScalar>::kValue;
+  params->dst_base_ptr =
+      dst->data.get() + start_col * dst->layout.stride + start_row;
   RUY_CHECK(params->multiplier_fixedpoint);
   RUY_CHECK(params->multiplier_exponent);
   RUY_CHECK(params->bias);
