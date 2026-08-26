@@ -24,7 +24,10 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+// MSVC on Windows ARM64 does not support AT&T-style GCC inline assembly
+// (asm volatile). The asm-based kernels below are guarded out under MSVC;
+// MSVC-compatible NEON intrinsic kernels follow after the closing #endif.
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 #define RUY_ASM_LABEL_STORE_UINT8 91
 #define RUY_ASM_LABEL_STORE_INT8 92
@@ -9798,6 +9801,1408 @@ void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params) {
 #undef RUY_OFFSET_RHS_BASE_PTR
 #undef RUY_OFFSET_DST_BASE_PTR
 
-#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 }  // namespace ruy
+
+// MSVC ARM64 NEON intrinsic kernel/pack implementations for ruy.
+//
+// These replace the GAS-asm kernels in kernel_arm64.cc and pack_arm.cc, which
+// are guarded with !defined(_MSC_VER) / !(_MSC_VER && _M_ARM64).
+//
+// Data layout notes (packed matrices):
+//
+// Float kernel  (FixedKernelLayout<kRowMajor, 1, 8>):
+//   lhs_base_ptr = lhs.data + start_row * lhs.layout.stride  (floats)
+//   lhs_stride   = sizeof(float) * lhs.layout.stride  (bytes between tiles/8)
+//   Per depth step d: 8 floats at lhs_ptr[d*8 .. d*8+7]  (advance +8 floats)
+//   Row-tile advance: lhs_ptr += lhs_stride/sizeof(float) * 8  (8 x depth)
+//
+// Int8 dotprod  (FixedKernelLayout<kColMajor, 4, 8>):
+//   lhs_base_ptr = lhs.data + start_row * lhs.layout.stride  (int8 units)
+//   lhs_stride   = lhs.layout.stride  (int8 units = depth, NOT bytes)
+//   Per 4-depth step: 32 bytes = 2 x int8x16 (advance +32 bytes in ptr)
+//   Row-tile advance: lhs_ptr += lhs_stride * 8  (in int8 units)
+//
+// dst_base_ptr = dst.data + start_col * dst.layout.stride + start_row (elems)
+//   dst_stride = sizeof(DstScalar) * dst.layout.stride  (bytes per column)
+
+#if defined(_MSC_VER) && defined(_M_ARM64)
+
+#include <algorithm>
+#include <cstring>
+
+#define NOMINMAX  // Prevent windows.h from defining min/max macros.
+#include <arm_neon.h>
+#include <windows.h>
+
+#include "ruy/apply_multiplier.h"
+
+namespace ruy {
+
+// Transpose 4 int8x16 vectors and store at stride 32.
+// After transpose, output[4k..4k+15] = {col0[k*4..k*4+3], col1[k*4..k*4+3],
+//                                        col2[k*4..k*4+3], col3[k*4..k*4+3]}
+// for k = 0,1,2,3 (corresponding to depths 0..3, 4..7, 8..11, 12..15).
+// Strides (GAS uses {0, 32, 64, 96}); we store 4 groups out of 4.
+#define RUY_DOTPROD_PACK_TRANSPOSE_STORE(v0_, v1_, v2_, v3_, p_, do_sums)    \
+    do {                                                                      \
+        /* XOR for uint8→int8 conversion */                                   \
+        uint8x16_t e0_ = veorq_u8((v0_), xorv);                              \
+        uint8x16_t e1_ = veorq_u8((v1_), xorv);                              \
+        uint8x16_t e2_ = veorq_u8((v2_), xorv);                              \
+        uint8x16_t e3_ = veorq_u8((v3_), xorv);                              \
+        /* Transpose: trn1/trn2 at int32 granularity */                       \
+        /* Then combine halves to get 4-depth groups */                        \
+        int32x4_t i0_ = vreinterpretq_s32_u8(e0_);                           \
+        int32x4_t i1_ = vreinterpretq_s32_u8(e1_);                           \
+        int32x4_t i2_ = vreinterpretq_s32_u8(e2_);                           \
+        int32x4_t i3_ = vreinterpretq_s32_u8(e3_);                           \
+        int32x4x2_t t01_ = vtrnq_s32(i0_, i1_);                              \
+        int32x4x2_t t23_ = vtrnq_s32(i2_, i3_);                              \
+        /* Group 0 (depths 0..3): low halves */                               \
+        int8x16_t g0_ = vreinterpretq_s8_s64(vcombine_s64(                   \
+            vget_low_s64(vreinterpretq_s64_s32(t01_.val[0])),                 \
+            vget_low_s64(vreinterpretq_s64_s32(t23_.val[0]))));               \
+        /* Group 1 (depths 4..7): low halves of t01_[1] and t23_[1] */       \
+        int8x16_t g1_ = vreinterpretq_s8_s64(vcombine_s64(                   \
+            vget_low_s64(vreinterpretq_s64_s32(t01_.val[1])),                 \
+            vget_low_s64(vreinterpretq_s64_s32(t23_.val[1]))));               \
+        /* Group 2 (depths 8..11): high halves of t01_[0] and t23_[0] */     \
+        int8x16_t g2_ = vreinterpretq_s8_s64(vcombine_s64(                   \
+            vget_high_s64(vreinterpretq_s64_s32(t01_.val[0])),                \
+            vget_high_s64(vreinterpretq_s64_s32(t23_.val[0]))));              \
+        /* Group 3 (depths 12..15): high halves of t01_[1] and t23_[1] */    \
+        int8x16_t g3_ = vreinterpretq_s8_s64(vcombine_s64(                   \
+            vget_high_s64(vreinterpretq_s64_s32(t01_.val[1])),                \
+            vget_high_s64(vreinterpretq_s64_s32(t23_.val[1]))));              \
+        /* Accumulate per-row sums using sdot-with-ones on TRANSPOSED groups. */ \
+        /* sum_rows[j] += sum(g_k[4j..4j+3]) for each group k processed.     */ \
+        /* This matches GAS: sdot v28.4s, v20.16b, v27.16b (v27=ones).       */ \
+        if (do_sums) {                                                        \
+            sum_rows = vdotq_s32(sum_rows, g0_, ones);                        \
+            sum_rows = vdotq_s32(sum_rows, g1_, ones);                        \
+            sum_rows = vdotq_s32(sum_rows, g2_, ones);                        \
+            sum_rows = vdotq_s32(sum_rows, g3_, ones);                        \
+        }                                                                     \
+        vst1q_s8((p_),       g0_);                                            \
+        vst1q_s8((p_) + 32,  g1_);                                            \
+        vst1q_s8((p_) + 64,  g2_);                                            \
+        vst1q_s8((p_) + 96,  g3_);                                            \
+        (p_) += 128;  /* advance past 4 groups × 32-byte stride */            \
+    } while (0)
+
+// Transpose a 4x4 float block and store each row at stride 8 floats (32 bytes).
+// v0..v3 are the 4 columns (each = 4 depth values).
+// row k = {col0[k], col1[k], col2[k], col3[k]} is stored at p + k*8.
+// Uses vtrnq_f32 (available in MSVC ARM NEON) which returns float32x4x2_t.
+// Note: no lambda to avoid MSVC lambda capture of void* issues.
+#define RUY_PACK_FLOAT_TRANSPOSE_STORE(v0_, v1_, v2_, v3_, p_)           \
+    do {                                                                  \
+        float32x4x2_t trn01_ = vtrnq_f32((v0_), (v1_));                  \
+        float32x4x2_t trn23_ = vtrnq_f32((v2_), (v3_));                  \
+        /* row0 = {v0[0],v1[0],v2[0],v3[0]} */                           \
+        float32x4_t r0_ = vcombine_f32(vget_low_f32(trn01_.val[0]),       \
+                                       vget_low_f32(trn23_.val[0]));      \
+        float32x4_t r1_ = vcombine_f32(vget_low_f32(trn01_.val[1]),       \
+                                       vget_low_f32(trn23_.val[1]));      \
+        float32x4_t r2_ = vcombine_f32(vget_high_f32(trn01_.val[0]),      \
+                                       vget_high_f32(trn23_.val[0]));     \
+        float32x4_t r3_ = vcombine_f32(vget_high_f32(trn01_.val[1]),      \
+                                       vget_high_f32(trn23_.val[1]));     \
+        vst1q_f32((p_),      r0_);                                        \
+        vst1q_f32((p_) + 8,  r1_);                                        \
+        vst1q_f32((p_) + 16, r2_);                                        \
+        vst1q_f32((p_) + 24, r3_);                                        \
+        (p_) += 32;                                                       \
+    } while (0)
+
+// Returns true if the CPU supports the ARM v8.2 dot-product extension.
+static bool HasDotprod() {
+  static const bool cached =
+      IsProcessorFeaturePresent(PF_ARM_V82_DP_INSTRUCTIONS_AVAILABLE) != FALSE;
+  return cached;
+}
+
+// Applies (fixedpoint, exponent) multiplier per element in a 4-wide int32
+// vector.  Calls MultiplyByQuantizedMultiplier element-by-element for
+// bit-exact match with the reference and the GAS asm paths.
+static inline int32x4_t ApplyMultiplierVec4(int32x4_t v, int32x4_t fp,
+                                             int32x4_t ep) {
+  // Use the reference implementation element-by-element to guarantee bit-exact
+  // match with MultiplyByQuantizedMultiplier (which is the reference for ARM).
+  // This is what all our ARM code paths must match (tolerated_max_diff = 0).
+  int32_t v0[4], fp0[4], ep0[4], out[4];
+  vst1q_s32(v0, v);
+  vst1q_s32(fp0, fp);
+  vst1q_s32(ep0, ep);
+  for (int i = 0; i < 4; ++i)
+    out[i] = detail::MultiplyByQuantizedMultiplier(v0[i], fp0[i], ep0[i]);
+  return vld1q_s32(out);
+}
+
+// KernelFloatNeon: 8x8 float32 GEMM tile using NEON FMA intrinsics.
+static void KernelFloatNeonImpl(const KernelParamsFloat<8, 8>& params) {
+  // lhs_stride and rhs_stride are in bytes.
+  const int lhs_stride_bytes = params.lhs_stride;
+  const int rhs_stride_bytes = params.rhs_stride;
+  const int dst_stride_elems =
+      params.dst_stride / static_cast<int>(sizeof(float));
+
+  // lhs_tile_stride: advance in float elements to go from one 8-row tile to
+  // the next.  lhs_stride_bytes/sizeof(float) = depth, so:
+  //   row tile r   starts at lhs.data + r * depth
+  //   row tile r+8 starts at lhs.data + (r+8) * depth
+  //   delta = 8 * depth = 8 * (lhs_stride_bytes / sizeof(float))
+  const int lhs_tile_stride_elems =
+      8 * (lhs_stride_bytes / static_cast<int>(sizeof(float)));
+  const int rhs_tile_stride_elems =
+      8 * (rhs_stride_bytes / static_cast<int>(sizeof(float)));
+
+  const float* lhs_col_ptr = params.lhs_base_ptr;  // start_row tile
+  const float* rhs_col_base = params.rhs_base_ptr;  // start_col tile
+  float* dst_base = params.dst_base_ptr;
+
+  for (int row = params.start_row; row <= params.last_row; row += 8) {
+    const float* rhs_col_ptr = rhs_col_base;
+    // dst_base_ptr = dst.data + start_col * dst_stride + start_row (elements)
+    // For the current row tile, offset from start_row is (row - start_row).
+    float* dst_row_ptr = dst_base + (row - params.start_row);
+
+    for (int col = params.start_col; col <= params.last_col; col += 8) {
+      float32x4_t lo[8], hi[8];
+      for (int c = 0; c < 8; ++c) {
+        lo[c] = vdupq_n_f32(0.f);
+        hi[c] = vdupq_n_f32(0.f);
+      }
+
+      // Inner loop: one depth step = 8 floats per operand (FixedKernelLayout row=1, cols=8).
+      const float* ld = lhs_col_ptr;
+      const float* rd = rhs_col_ptr;
+      for (int d = 0; d < params.depth; ++d, ld += 8, rd += 8) {
+        float32x4_t l0 = vld1q_f32(ld);
+        float32x4_t l1 = vld1q_f32(ld + 4);
+        float32x4_t r0 = vld1q_f32(rd);
+        float32x4_t r1 = vld1q_f32(rd + 4);
+        lo[0] = vfmaq_laneq_f32(lo[0], l0, r0, 0);
+        hi[0] = vfmaq_laneq_f32(hi[0], l1, r0, 0);
+        lo[1] = vfmaq_laneq_f32(lo[1], l0, r0, 1);
+        hi[1] = vfmaq_laneq_f32(hi[1], l1, r0, 1);
+        lo[2] = vfmaq_laneq_f32(lo[2], l0, r0, 2);
+        hi[2] = vfmaq_laneq_f32(hi[2], l1, r0, 2);
+        lo[3] = vfmaq_laneq_f32(lo[3], l0, r0, 3);
+        hi[3] = vfmaq_laneq_f32(hi[3], l1, r0, 3);
+        lo[4] = vfmaq_laneq_f32(lo[4], l0, r1, 0);
+        hi[4] = vfmaq_laneq_f32(hi[4], l1, r1, 0);
+        lo[5] = vfmaq_laneq_f32(lo[5], l0, r1, 1);
+        hi[5] = vfmaq_laneq_f32(hi[5], l1, r1, 1);
+        lo[6] = vfmaq_laneq_f32(lo[6], l0, r1, 2);
+        hi[6] = vfmaq_laneq_f32(hi[6], l1, r1, 2);
+        lo[7] = vfmaq_laneq_f32(lo[7], l0, r1, 3);
+        hi[7] = vfmaq_laneq_f32(hi[7], l1, r1, 3);
+      }
+
+      // Post-accumulation: optional bias, then clamp.
+      const std::uint8_t flags = params.flags;
+      bool ch_col = (flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) != 0;
+      if (flags & RUY_ASM_FLAG_HAS_BIAS) {
+        if (ch_col) {
+          for (int c = 0; c < 8; ++c) {
+            float32x4_t b = vdupq_n_f32(params.bias[col + c]);
+            lo[c] = vaddq_f32(lo[c], b);
+            hi[c] = vaddq_f32(hi[c], b);
+          }
+        } else {
+          float32x4_t b0 = vld1q_f32(params.bias + row);
+          float32x4_t b1 = vld1q_f32(params.bias + row + 4);
+          for (int c = 0; c < 8; ++c) {
+            lo[c] = vaddq_f32(lo[c], b0);
+            hi[c] = vaddq_f32(hi[c], b1);
+          }
+        }
+      }
+      float32x4_t cmin = vdupq_n_f32(params.clamp_min);
+      float32x4_t cmax = vdupq_n_f32(params.clamp_max);
+      for (int c = 0; c < 8; ++c) {
+        lo[c] = vmaxq_f32(vminq_f32(lo[c], cmax), cmin);
+        hi[c] = vmaxq_f32(vminq_f32(hi[c], cmax), cmin);
+      }
+
+      // Store to dst (column-major).
+      // dst_base_ptr = dst.data + start_col * dst_stride + start_row
+      // For col offset c_abs = col - start_col (= 0, 8, 16, ...):
+      //   dst for col c_abs = dst_base + c_abs * dst_stride_elems
+      // For row offset r_abs = row - start_row:
+      //   already included in dst_row_ptr
+      int c_abs = col - params.start_col;
+      float* dst_col_ptr = dst_row_ptr + c_abs * dst_stride_elems;
+
+      int fit_r = std::min(params.dst_rows - row, 8);
+      int fit_c = std::min(params.dst_cols - col, 8);
+      bool full = (fit_r == 8) && (fit_c == 8);
+      float tmp[8 * 8];
+      float* wb = full ? dst_col_ptr : tmp;
+      int ws = full ? dst_stride_elems : 8;
+      for (int c = 0; c < 8; ++c) {
+        vst1q_f32(wb + c * ws,     lo[c]);
+        vst1q_f32(wb + c * ws + 4, hi[c]);
+      }
+      if (!full) {
+        for (int c = 0; c < fit_c; ++c)
+          std::memcpy(dst_col_ptr + c * dst_stride_elems, tmp + c * 8,
+                      fit_r * sizeof(float));
+      }
+
+      rhs_col_ptr += rhs_tile_stride_elems;
+    }  // col
+
+    lhs_col_ptr += lhs_tile_stride_elems;
+  }  // row
+}
+
+void KernelFloatNeon(const KernelParamsFloat<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon, MSVC NEON f32)");
+  KernelFloatNeonImpl(params);
+}
+void KernelFloatNeonX1(const KernelParamsFloat<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonX1, MSVC NEON f32)");
+  KernelFloatNeonImpl(params);
+}
+void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonA55ish, MSVC NEON f32)");
+  KernelFloatNeonImpl(params);
+}
+void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprodA55ish, MSVC NEON f32)");
+  KernelFloatNeonImpl(params);
+}
+
+// Kernel8bitNeonDotprod: 8x8 int8 GEMM tile using vdotq_laneq_s32.
+// vdotq_laneq_s32(acc, a, b, lane) computes acc[i] += dot4(a[4i..], b[4*lane..])
+// for each i, accumulating 4 int8 products into each int32 lane per call.
+static void Kernel8bitNeonDotprodImpl(const KernelParams8bit<8, 8>& params) {
+  const int depth = params.depth;
+  RUY_DCHECK_EQ(depth % 4, 0);
+
+  // lhs_stride is in int8 units (= depth).
+  // Row-tile advance = 8 * lhs_stride int8 units.
+  // Per 4-depth step: advance 32 bytes = 32 int8 units.
+  const int lhs_tile_stride = 8 * params.lhs_stride;  // int8 units per row tile
+  const int rhs_tile_stride = 8 * params.rhs_stride;  // bytes per col tile
+  const int dst_stride_bytes = params.dst_stride;
+
+  const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
+  const std::int8_t* rhs_col_base =
+      static_cast<const std::int8_t*>(params.rhs_base_ptr);
+
+  for (int row = params.start_row; row <= params.last_row; row += 8) {
+    const std::int8_t* rhs_col_ptr = rhs_col_base;
+
+    for (int col = params.start_col; col <= params.last_col; col += 8) {
+      int32x4_t lo[8], hi[8];
+      for (int c = 0; c < 8; ++c) {
+        lo[c] = vdupq_n_s32(0);
+        hi[c] = vdupq_n_s32(0);
+      }
+
+      // Inner loop: 4 depth elements per step, 32 bytes each side.
+      const std::int8_t* ld = lhs_col_ptr;
+      const std::int8_t* rd = rhs_col_ptr;
+      for (int d = 0; d < depth; d += 4, ld += 32, rd += 32) {
+        int8x16_t l0 = vld1q_s8(ld);       // rows 0..3, depths d..d+3
+        int8x16_t l1 = vld1q_s8(ld + 16);  // rows 4..7, depths d..d+3
+        int8x16_t r0 = vld1q_s8(rd);       // cols 0..3, depths d..d+3
+        int8x16_t r1 = vld1q_s8(rd + 16);  // cols 4..7, depths d..d+3
+
+        lo[0] = vdotq_laneq_s32(lo[0], l0, r0, 0);
+        hi[0] = vdotq_laneq_s32(hi[0], l1, r0, 0);
+        lo[1] = vdotq_laneq_s32(lo[1], l0, r0, 1);
+        hi[1] = vdotq_laneq_s32(hi[1], l1, r0, 1);
+        lo[2] = vdotq_laneq_s32(lo[2], l0, r0, 2);
+        hi[2] = vdotq_laneq_s32(hi[2], l1, r0, 2);
+        lo[3] = vdotq_laneq_s32(lo[3], l0, r0, 3);
+        hi[3] = vdotq_laneq_s32(hi[3], l1, r0, 3);
+        lo[4] = vdotq_laneq_s32(lo[4], l0, r1, 0);
+        hi[4] = vdotq_laneq_s32(hi[4], l1, r1, 0);
+        lo[5] = vdotq_laneq_s32(lo[5], l0, r1, 1);
+        hi[5] = vdotq_laneq_s32(hi[5], l1, r1, 1);
+        lo[6] = vdotq_laneq_s32(lo[6], l0, r1, 2);
+        hi[6] = vdotq_laneq_s32(hi[6], l1, r1, 2);
+        lo[7] = vdotq_laneq_s32(lo[7], l0, r1, 3);
+        hi[7] = vdotq_laneq_s32(hi[7], l1, r1, 3);
+      }
+
+      // Post-accumulation.
+      const std::uint8_t flags = params.flags;
+      bool ch_col = (flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) != 0;
+
+      // Step 1: add prod_zp_depth, add bias.
+      {
+        int32x4_t pzd = vdupq_n_s32(params.prod_zp_depth);
+        if (flags & RUY_ASM_FLAG_HAS_BIAS) {
+          if (ch_col) {
+            for (int c = 0; c < 8; ++c) {
+              int32x4_t b = vdupq_n_s32(params.bias[col + c]);
+              lo[c] = vaddq_s32(vaddq_s32(lo[c], pzd), b);
+              hi[c] = vaddq_s32(vaddq_s32(hi[c], pzd), b);
+            }
+          } else {
+            int32x4_t b0 = vld1q_s32(params.bias + row);
+            int32x4_t b1 = vld1q_s32(params.bias + row + 4);
+            for (int c = 0; c < 8; ++c) {
+              lo[c] = vaddq_s32(vaddq_s32(lo[c], pzd), b0);
+              hi[c] = vaddq_s32(vaddq_s32(hi[c], pzd), b1);
+            }
+          }
+        } else {
+          for (int c = 0; c < 8; ++c) {
+            lo[c] = vaddq_s32(lo[c], pzd);
+            hi[c] = vaddq_s32(hi[c], pzd);
+          }
+        }
+      }
+
+      // Step 2: subtract lhs_zero_point * rhs_sums[col+c]
+      if (flags & RUY_ASM_FLAG_HAS_RHS_SUMS) {
+        int32x4_t lzp = vdupq_n_s32(params.lhs_zero_point);
+        for (int c = 0; c < 8; ++c) {
+          int32x4_t sub =
+              vmulq_s32(lzp, vdupq_n_s32(params.rhs_sums[col + c]));
+          lo[c] = vsubq_s32(lo[c], sub);
+          hi[c] = vsubq_s32(hi[c], sub);
+        }
+      }
+
+      // Step 3: subtract rhs_zero_point * lhs_sums[row..row+7]
+      if (flags & RUY_ASM_FLAG_HAS_LHS_SUMS) {
+        int32x4_t rzp = vdupq_n_s32(params.rhs_zero_point);
+        int32x4_t ls0 = vmulq_s32(rzp, vld1q_s32(params.lhs_sums + row));
+        int32x4_t ls1 = vmulq_s32(rzp, vld1q_s32(params.lhs_sums + row + 4));
+        for (int c = 0; c < 8; ++c) {
+          lo[c] = vsubq_s32(lo[c], ls0);
+          hi[c] = vsubq_s32(hi[c], ls1);
+        }
+      }
+
+      // Compute tile dst pointer.
+      // dst_base_ptr = dst.data + start_col * dst_stride + start_row (in elems)
+      // Tile at (row, col): col offset = (col - start_col) * dst_stride_bytes
+      //                     row offset = (row - start_row) * elem_size
+      int r_off = row - params.start_row;
+      int c_off = col - params.start_col;
+
+      int elem_size;
+      switch (params.dst_type_id) {
+        case RUY_ASM_TYPE_ID_INT32:  elem_size = 4; break;
+        case RUY_ASM_TYPE_ID_INT16:  elem_size = 2; break;
+        default:                     elem_size = 1; break;
+      }
+      std::uint8_t* tile_dst =
+          static_cast<std::uint8_t*>(params.dst_base_ptr) +
+          static_cast<std::ptrdiff_t>(c_off) * dst_stride_bytes +
+          static_cast<std::ptrdiff_t>(r_off) * elem_size;
+
+      int fit_r = std::min(params.dst_rows - row, 8);
+      int fit_c = std::min(params.dst_cols - col, 8);
+      bool full = (fit_r == 8) && (fit_c == 8);
+
+      if (params.dst_type_id == RUY_ASM_TYPE_ID_INT32) {
+        // No multiplier -- store int32 directly.
+        std::int32_t* dst32 = reinterpret_cast<std::int32_t*>(tile_dst);
+        int stride32 = dst_stride_bytes / sizeof(std::int32_t);
+        std::int32_t tmp[8 * 8];
+        std::int32_t* wb = full ? dst32 : tmp;
+        int ws = full ? stride32 : 8;
+        for (int c = 0; c < 8; ++c) {
+          vst1q_s32(wb + c * ws,     lo[c]);
+          vst1q_s32(wb + c * ws + 4, hi[c]);
+        }
+        if (!full) {
+          for (int c = 0; c < fit_c; ++c)
+            std::memcpy(dst32 + c * stride32, tmp + c * 8,
+                        fit_r * sizeof(std::int32_t));
+        }
+        rhs_col_ptr += rhs_tile_stride;
+        continue;
+      }
+
+      // Step 4: apply quantized multiplier.
+      bool is_perchannel = (flags & RUY_ASM_FLAG_HAS_PERCHANNEL) != 0;
+      if (ch_col) {
+        int off = is_perchannel ? col : 0;
+        for (int c = 0; c < 8; ++c) {
+          int32x4_t fp = vdupq_n_s32(params.multiplier_fixedpoint[off + c]);
+          int32x4_t ep = vdupq_n_s32(params.multiplier_exponent[off + c]);
+          lo[c] = ApplyMultiplierVec4(lo[c], fp, ep);
+          hi[c] = ApplyMultiplierVec4(hi[c], fp, ep);
+        }
+      } else {
+        int off = is_perchannel ? row : 0;
+        int32x4_t fp0 = vld1q_s32(params.multiplier_fixedpoint + off);
+        int32x4_t fp1 = vld1q_s32(params.multiplier_fixedpoint + off + 4);
+        int32x4_t ep0 = vld1q_s32(params.multiplier_exponent + off);
+        int32x4_t ep1 = vld1q_s32(params.multiplier_exponent + off + 4);
+        for (int c = 0; c < 8; ++c) {
+          lo[c] = ApplyMultiplierVec4(lo[c], fp0, ep0);
+          hi[c] = ApplyMultiplierVec4(hi[c], fp1, ep1);
+        }
+      }
+
+      // Step 5: add dst_zero_point.
+      {
+        int32x4_t dzp = vdupq_n_s32(params.dst_zero_point);
+        for (int c = 0; c < 8; ++c) {
+          lo[c] = vaddq_s32(lo[c], dzp);
+          hi[c] = vaddq_s32(hi[c], dzp);
+        }
+      }
+
+      // Step 6: clamp and quantize to output type.
+      if (params.dst_type_id == RUY_ASM_TYPE_ID_INT16) {
+        std::int16_t* dst16 = reinterpret_cast<std::int16_t*>(tile_dst);
+        int stride16 = dst_stride_bytes / sizeof(std::int16_t);
+        int32x4_t cmin32 = vdupq_n_s32(params.clamp_min);
+        int32x4_t cmax32 = vdupq_n_s32(params.clamp_max);
+        std::int16_t tmp[8 * 8];
+        std::int16_t* wb = full ? dst16 : tmp;
+        int ws = full ? stride16 : 8;
+        for (int c = 0; c < 8; ++c) {
+          int32x4_t cl0 = vmaxq_s32(vminq_s32(lo[c], cmax32), cmin32);
+          int32x4_t cl1 = vmaxq_s32(vminq_s32(hi[c], cmax32), cmin32);
+          int16x8_t s = vcombine_s16(vqmovn_s32(cl0), vqmovn_s32(cl1));
+          vst1q_s16(wb + c * ws, s);
+        }
+        if (!full) {
+          for (int c = 0; c < fit_c; ++c)
+            std::memcpy(dst16 + c * stride16, tmp + c * 8,
+                        fit_r * sizeof(std::int16_t));
+        }
+      } else {
+        // uint8 or int8 output.
+        bool is_s8 = (params.dst_type_id == RUY_ASM_TYPE_ID_INT8);
+        std::uint8_t tmp[8 * 8];
+        std::uint8_t* dst8 = tile_dst;
+        std::uint8_t* wb = full ? dst8 : tmp;
+        int ws = full ? dst_stride_bytes : 8;
+        auto cmin8 = static_cast<std::int8_t>(params.clamp_min);
+        auto cmax8 = static_cast<std::int8_t>(params.clamp_max);
+        auto ucmin8 = static_cast<std::uint8_t>(params.clamp_min);
+        auto ucmax8 = static_cast<std::uint8_t>(params.clamp_max);
+        for (int c = 0; c < 8; ++c) {
+          int16x8_t s = vcombine_s16(vqmovn_s32(lo[c]), vqmovn_s32(hi[c]));
+          if (is_s8) {
+            int8x8_t b = vqmovn_s16(s);
+            b = vmax_s8(b, vdup_n_s8(cmin8));
+            b = vmin_s8(b, vdup_n_s8(cmax8));
+            vst1_s8(reinterpret_cast<std::int8_t*>(wb + c * ws), b);
+          } else {
+            uint8x8_t b = vqmovun_s16(s);
+            b = vmax_u8(b, vdup_n_u8(ucmin8));
+            b = vmin_u8(b, vdup_n_u8(ucmax8));
+            vst1_u8(wb + c * ws, b);
+          }
+        }
+        if (!full) {
+          for (int c = 0; c < fit_c; ++c)
+            std::memcpy(dst8 + c * dst_stride_bytes, tmp + c * 8, fit_r);
+        }
+      }
+
+      rhs_col_ptr += rhs_tile_stride;
+    }  // col
+
+    lhs_col_ptr += lhs_tile_stride;
+  }  // row
+}
+
+void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprod, MSVC NEON)");
+  if (!HasDotprod()) return;
+  Kernel8bitNeonDotprodImpl(params);
+}
+void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprodX1, MSVC NEON)");
+  if (!HasDotprod()) return;
+  Kernel8bitNeonDotprodImpl(params);
+}
+void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprodA55ish, MSVC NEON)");
+  if (!HasDotprod()) return;
+  Kernel8bitNeonDotprodImpl(params);
+}
+void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonDotprod1Col, MSVC NEON)");
+  if (!HasDotprod()) return;
+  Kernel8bitNeonDotprodImpl(params);
+}
+
+// Kernel8bitNeon: 4x4 int8 GEMM tile without dotprod.
+// Uses vmull_s8 + vmlal_high_s8 + vpadalq_s16, mirroring the GAS kernel.
+//
+// Used when DotProd is not available.  NEON intrinsic inner loop using
+// vmull_s8 / vmlal_high_s8 / vpadalq_s16 — mirrors the GAS kernel exactly.
+
+// Mixed-precision kernel: i8×i16→i16 and i16×i8→i16, tile 4×4, depth step 8.
+// Inner loop widens the int8 operand via vmovl_s8, then uses vmull_s16 +
+// vmlal_high_s16 for 8 int16 products per step into a 4-wide int32 accumulator.
+
+// Multiply-accumulate: 8 int16 products (low 4 via vmull_s16, high 4 via
+// vmlal_high_s16) folded into a 4-wide int32 accumulator.
+#define RUY_MIX_MAC(acc_, ln_, rn_)                                    \
+    do {                                                                \
+        int32x4_t p_ = vmull_s16(vget_low_s16(ln_),                    \
+                                 vget_low_s16(rn_));                    \
+        p_ = vmlal_high_s16(p_, ln_, rn_);                             \
+        acc_ = vaddq_s32(acc_, p_);                                     \
+    } while (0)
+
+// lhs_is_int8 = true  → LHS packed as int8  (i8×i16 case)
+// lhs_is_int8 = false → LHS packed as int16 (i16×i8 case)
+template <bool lhs_is_int8>
+static void Kernel8bitNeonMixedImpl(const KernelParams8bit<4, 4>& params) {
+  const int depth = params.depth;
+  const int dst_stride_bytes = params.dst_stride;
+
+  // For int8 LHS: lhs_base_ptr is const int8*,  stride in int8 elements.
+  // For int16 LHS: lhs_base_ptr reinterprets int16* as int8*; stride is in
+  //   int16 elements — multiply by sizeof(int16_t) to get bytes.
+  const int lhs_elem_bytes = lhs_is_int8 ? 1 : 2;
+
+  const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
+  const std::int8_t* rhs_col_base =
+      static_cast<const std::int8_t*>(params.rhs_base_ptr);
+
+  for (int row = params.start_row; row <= params.last_row; row += 4) {
+    const std::int8_t* rhs_col_ptr = rhs_col_base;
+    for (int col = params.start_col; col <= params.last_col; col += 4) {
+      // 16 int32 accumulators (4 rows × 4 cols), each a 4-element partial sum.
+      int32x4_t acc00=vdupq_n_s32(0), acc01=vdupq_n_s32(0);
+      int32x4_t acc02=vdupq_n_s32(0), acc03=vdupq_n_s32(0);
+      int32x4_t acc10=vdupq_n_s32(0), acc11=vdupq_n_s32(0);
+      int32x4_t acc12=vdupq_n_s32(0), acc13=vdupq_n_s32(0);
+      int32x4_t acc20=vdupq_n_s32(0), acc21=vdupq_n_s32(0);
+      int32x4_t acc22=vdupq_n_s32(0), acc23=vdupq_n_s32(0);
+      int32x4_t acc30=vdupq_n_s32(0), acc31=vdupq_n_s32(0);
+      int32x4_t acc32=vdupq_n_s32(0), acc33=vdupq_n_s32(0);
+
+      const std::int8_t* lhs_ptr = lhs_col_ptr;
+      const std::int8_t* rhs_ptr = rhs_col_ptr;
+
+      // Depth loop: 8 elements per step (each col = 8 int16 = 16 bytes).
+      for (int d = 0; d < depth; d += 8) {
+        int16x8_t l0, l1, l2, l3;  // LHS rows 0..3, 8 int16 values each
+        int16x8_t r0, r1, r2, r3;  // RHS cols 0..3
+
+        if (lhs_is_int8) {
+          // LHS: load 8 int8, sign-extend to int16.
+          // Packed layout: 4 rows × 8 int8 = 32 bytes per depth block.
+          int8x8_t lb0 = vld1_s8(lhs_ptr);      lhs_ptr += 8;
+          int8x8_t lb1 = vld1_s8(lhs_ptr);      lhs_ptr += 8;
+          int8x8_t lb2 = vld1_s8(lhs_ptr);      lhs_ptr += 8;
+          int8x8_t lb3 = vld1_s8(lhs_ptr);      lhs_ptr += 8;
+          l0 = vmovl_s8(lb0);
+          l1 = vmovl_s8(lb1);
+          l2 = vmovl_s8(lb2);
+          l3 = vmovl_s8(lb3);
+          // RHS: load 8 int16 per col (4 cols × 16 bytes = 64 bytes).
+          r0 = vld1q_s16(reinterpret_cast<const std::int16_t*>(rhs_ptr));
+          rhs_ptr += 16;
+          r1 = vld1q_s16(reinterpret_cast<const std::int16_t*>(rhs_ptr));
+          rhs_ptr += 16;
+          r2 = vld1q_s16(reinterpret_cast<const std::int16_t*>(rhs_ptr));
+          rhs_ptr += 16;
+          r3 = vld1q_s16(reinterpret_cast<const std::int16_t*>(rhs_ptr));
+          rhs_ptr += 16;
+        } else {
+          // LHS: load 8 int16 per row (4 rows × 16 bytes = 64 bytes).
+          l0 = vld1q_s16(reinterpret_cast<const std::int16_t*>(lhs_ptr));
+          lhs_ptr += 16;
+          l1 = vld1q_s16(reinterpret_cast<const std::int16_t*>(lhs_ptr));
+          lhs_ptr += 16;
+          l2 = vld1q_s16(reinterpret_cast<const std::int16_t*>(lhs_ptr));
+          lhs_ptr += 16;
+          l3 = vld1q_s16(reinterpret_cast<const std::int16_t*>(lhs_ptr));
+          lhs_ptr += 16;
+          // RHS: load 8 int8, sign-extend to int16.
+          int8x8_t rb0 = vld1_s8(rhs_ptr);      rhs_ptr += 8;
+          int8x8_t rb1 = vld1_s8(rhs_ptr);      rhs_ptr += 8;
+          int8x8_t rb2 = vld1_s8(rhs_ptr);      rhs_ptr += 8;
+          int8x8_t rb3 = vld1_s8(rhs_ptr);      rhs_ptr += 8;
+          r0 = vmovl_s8(rb0);
+          r1 = vmovl_s8(rb1);
+          r2 = vmovl_s8(rb2);
+          r3 = vmovl_s8(rb3);
+        }
+
+        // MAC: vmull_s16 (low 4) + vmlal_high_s16 (high 4) = 8 products → int32.
+        // Each acc_rc accumulates 4 horizontal partial sums.
+        RUY_MIX_MAC(acc00, l0, r0); RUY_MIX_MAC(acc01, l0, r1);
+        RUY_MIX_MAC(acc02, l0, r2); RUY_MIX_MAC(acc03, l0, r3);
+        RUY_MIX_MAC(acc10, l1, r0); RUY_MIX_MAC(acc11, l1, r1);
+        RUY_MIX_MAC(acc12, l1, r2); RUY_MIX_MAC(acc13, l1, r3);
+        RUY_MIX_MAC(acc20, l2, r0); RUY_MIX_MAC(acc21, l2, r1);
+        RUY_MIX_MAC(acc22, l2, r2); RUY_MIX_MAC(acc23, l2, r3);
+        RUY_MIX_MAC(acc30, l3, r0); RUY_MIX_MAC(acc31, l3, r1);
+        RUY_MIX_MAC(acc32, l3, r2); RUY_MIX_MAC(acc33, l3, r3);
+      }
+
+      // Horizontal reduction: two rounds of vpaddq_s32 collapse 4×int32
+      // partial sums → [sum_row0, sum_row1, sum_row2, sum_row3] per column.
+      int32x4_t p00=vpaddq_s32(acc00,acc10), p20=vpaddq_s32(acc20,acc30);
+      int32x4_t p01=vpaddq_s32(acc01,acc11), p21=vpaddq_s32(acc21,acc31);
+      int32x4_t p02=vpaddq_s32(acc02,acc12), p22=vpaddq_s32(acc22,acc32);
+      int32x4_t p03=vpaddq_s32(acc03,acc13), p23=vpaddq_s32(acc23,acc33);
+      int32x4_t s0=vpaddq_s32(p00,p20), s1=vpaddq_s32(p01,p21);
+      int32x4_t s2=vpaddq_s32(p02,p22), s3=vpaddq_s32(p03,p23);
+
+      // Post-accumulation: prod_zp_depth, bias, zero-point sums.
+      const std::uint8_t flags = params.flags;
+      bool ch_col = (flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) != 0;
+
+      int32x4_t zp_depth = vdupq_n_s32(params.prod_zp_depth);
+      s0 = vaddq_s32(s0, zp_depth); s1 = vaddq_s32(s1, zp_depth);
+      s2 = vaddq_s32(s2, zp_depth); s3 = vaddq_s32(s3, zp_depth);
+
+      if (flags & RUY_ASM_FLAG_HAS_BIAS) {
+        if (ch_col) {
+          s0 = vaddq_s32(s0, vdupq_n_s32(params.bias[col + 0]));
+          s1 = vaddq_s32(s1, vdupq_n_s32(params.bias[col + 1]));
+          s2 = vaddq_s32(s2, vdupq_n_s32(params.bias[col + 2]));
+          s3 = vaddq_s32(s3, vdupq_n_s32(params.bias[col + 3]));
+        } else {
+          int32x4_t bias_vec = vld1q_s32(&params.bias[row]);
+          s0=vaddq_s32(s0,bias_vec); s1=vaddq_s32(s1,bias_vec);
+          s2=vaddq_s32(s2,bias_vec); s3=vaddq_s32(s3,bias_vec);
+        }
+      }
+
+      if (flags & RUY_ASM_FLAG_HAS_RHS_SUMS) {
+        int32x4_t lzp = vdupq_n_s32(params.lhs_zero_point);
+        s0 = vmlsq_s32(s0, lzp, vdupq_n_s32(params.rhs_sums[col + 0]));
+        s1 = vmlsq_s32(s1, lzp, vdupq_n_s32(params.rhs_sums[col + 1]));
+        s2 = vmlsq_s32(s2, lzp, vdupq_n_s32(params.rhs_sums[col + 2]));
+        s3 = vmlsq_s32(s3, lzp, vdupq_n_s32(params.rhs_sums[col + 3]));
+      }
+
+      if (flags & RUY_ASM_FLAG_HAS_LHS_SUMS) {
+        int32x4_t rzp = vdupq_n_s32(params.rhs_zero_point);
+        int32x4_t lhs_sums_vec = vld1q_s32(&params.lhs_sums[row]);
+        int32x4_t correction = vmulq_s32(rzp, lhs_sums_vec);
+        s0=vsubq_s32(s0,correction); s1=vsubq_s32(s1,correction);
+        s2=vsubq_s32(s2,correction); s3=vsubq_s32(s3,correction);
+      }
+
+      // Apply multiplier, dst_zero_point, clamp, and store.
+      // Mixed-precision output is always int16 — handle analogously to
+      // Kernel8bitNeonImpl's int16 branch (int32 domain, no int8 narrowing).
+      int fit_r = std::min(params.dst_rows - row, 4);
+      int fit_c = std::min(params.dst_cols - col, 4);
+      int r_off = row - params.start_row;
+      int c_off = col - params.start_col;
+
+      if (params.dst_type_id != RUY_ASM_TYPE_ID_INT32) {
+        bool is_perchannel = (flags & RUY_ASM_FLAG_HAS_PERCHANNEL) != 0;
+        if (is_perchannel && ch_col) {
+          s0 = ApplyMultiplierVec4(s0,
+               vdupq_n_s32(params.multiplier_fixedpoint[col+0]),
+               vdupq_n_s32(params.multiplier_exponent[col+0]));
+          s1 = ApplyMultiplierVec4(s1,
+               vdupq_n_s32(params.multiplier_fixedpoint[col+1]),
+               vdupq_n_s32(params.multiplier_exponent[col+1]));
+          s2 = ApplyMultiplierVec4(s2,
+               vdupq_n_s32(params.multiplier_fixedpoint[col+2]),
+               vdupq_n_s32(params.multiplier_exponent[col+2]));
+          s3 = ApplyMultiplierVec4(s3,
+               vdupq_n_s32(params.multiplier_fixedpoint[col+3]),
+               vdupq_n_s32(params.multiplier_exponent[col+3]));
+        } else if (is_perchannel && !ch_col) {
+          int32x4_t fp_vec = vld1q_s32(&params.multiplier_fixedpoint[row]);
+          int32x4_t ep_vec = vld1q_s32(&params.multiplier_exponent[row]);
+          s0=ApplyMultiplierVec4(s0,fp_vec,ep_vec);
+          s1=ApplyMultiplierVec4(s1,fp_vec,ep_vec);
+          s2=ApplyMultiplierVec4(s2,fp_vec,ep_vec);
+          s3=ApplyMultiplierVec4(s3,fp_vec,ep_vec);
+        } else {
+          int32x4_t fp_vec = vdupq_n_s32(params.multiplier_fixedpoint[0]);
+          int32x4_t ep_vec = vdupq_n_s32(params.multiplier_exponent[0]);
+          s0=ApplyMultiplierVec4(s0,fp_vec,ep_vec);
+          s1=ApplyMultiplierVec4(s1,fp_vec,ep_vec);
+          s2=ApplyMultiplierVec4(s2,fp_vec,ep_vec);
+          s3=ApplyMultiplierVec4(s3,fp_vec,ep_vec);
+        }
+
+        int32x4_t dzp32 = vdupq_n_s32(params.dst_zero_point);
+        int32x4_t cmin32 = vdupq_n_s32(params.clamp_min);
+        int32x4_t cmax32 = vdupq_n_s32(params.clamp_max);
+        auto clamp32 = [&](int32x4_t v) -> int32x4_t {
+          v = vaddq_s32(v, dzp32);
+          v = vmaxq_s32(v, cmin32);
+          v = vminq_s32(v, cmax32);
+          return v;
+        };
+        s0=clamp32(s0); s1=clamp32(s1); s2=clamp32(s2); s3=clamp32(s3);
+
+        std::uint8_t* base = static_cast<std::uint8_t*>(params.dst_base_ptr) +
+                             c_off * dst_stride_bytes + r_off * 2;
+        int32_t buf[4][4];
+        vst1q_s32(buf[0],s0); vst1q_s32(buf[1],s1);
+        vst1q_s32(buf[2],s2); vst1q_s32(buf[3],s3);
+        for (int c = 0; c < fit_c; ++c)
+          for (int r = 0; r < fit_r; ++r)
+            reinterpret_cast<std::int16_t*>(
+                base + c * dst_stride_bytes)[r] =
+                static_cast<std::int16_t>(buf[c][r]);
+      } else {
+        std::uint8_t* base = static_cast<std::uint8_t*>(params.dst_base_ptr) +
+                             c_off * dst_stride_bytes + r_off * 4;
+        int32_t buf[4][4];
+        vst1q_s32(buf[0],s0); vst1q_s32(buf[1],s1);
+        vst1q_s32(buf[2],s2); vst1q_s32(buf[3],s3);
+        for (int c = 0; c < fit_c; ++c)
+          for (int r = 0; r < fit_r; ++r)
+            reinterpret_cast<std::int32_t*>(
+                base + c * dst_stride_bytes)[r] = buf[c][r];
+      }
+
+      rhs_col_ptr += 4 * params.rhs_stride;
+    }
+    lhs_col_ptr += 4 * (params.lhs_stride * lhs_elem_bytes);
+  }
+}
+
+// One iteration of the depth loop: accumulate one 16-deep slice of a single
+// (row, col) cell into a 4×int32 partial-sum vector using the three-instruction
+// GAS pattern: smull (low 8 int8→int16), smlal2 (high 8), sadalp (→int32).
+// The *16* depth values of lhs_row and rhs_col are multiplied pairwise and
+// horizontally summed; the result accumulates into `acc`.
+#define RUY_NEON8BIT_MAC(acc_, lhs_row_, rhs_col_)                        \
+    do {                                                                   \
+        int16x8_t prod_ = vmull_s8(vget_low_s8(lhs_row_),                 \
+                                   vget_low_s8(rhs_col_));                 \
+        prod_ = vmlal_high_s8(prod_, lhs_row_, rhs_col_);                 \
+        acc_ = vpadalq_s16(acc_, prod_);                                   \
+    } while (0)
+
+static void Kernel8bitNeonImpl(const KernelParams8bit<4, 4>& params) {
+  const int depth = params.depth;
+  const int dst_stride_bytes = params.dst_stride;
+
+  const std::int8_t* lhs_col_ptr = params.lhs_base_ptr;
+  const std::int8_t* rhs_col_base =
+      static_cast<const std::int8_t*>(params.rhs_base_ptr);
+
+  for (int row = params.start_row; row <= params.last_row; row += 4) {
+    const std::int8_t* rhs_col_ptr = rhs_col_base;
+    for (int col = params.start_col; col <= params.last_col; col += 4) {
+      // 16 int32 accumulators: acc[r][c] holds partial sums for row r, col c.
+      // Each is a 4-element int32 vector; the four elements are horizontal
+      // partials that get reduced after the depth loop.
+      int32x4_t acc00 = vdupq_n_s32(0), acc01 = vdupq_n_s32(0);
+      int32x4_t acc02 = vdupq_n_s32(0), acc03 = vdupq_n_s32(0);
+      int32x4_t acc10 = vdupq_n_s32(0), acc11 = vdupq_n_s32(0);
+      int32x4_t acc12 = vdupq_n_s32(0), acc13 = vdupq_n_s32(0);
+      int32x4_t acc20 = vdupq_n_s32(0), acc21 = vdupq_n_s32(0);
+      int32x4_t acc22 = vdupq_n_s32(0), acc23 = vdupq_n_s32(0);
+      int32x4_t acc30 = vdupq_n_s32(0), acc31 = vdupq_n_s32(0);
+      int32x4_t acc32 = vdupq_n_s32(0), acc33 = vdupq_n_s32(0);
+
+      const std::int8_t* lhs_ptr = lhs_col_ptr;
+      const std::int8_t* rhs_ptr = rhs_col_ptr;
+
+      // Inner loop: 16 depth values per iteration.
+      // Layout: 4 rows × 16 bytes for LHS, 4 cols × 16 bytes for RHS.
+      for (int d = 0; d < depth; d += 16) {
+        int8x16_t l0 = vld1q_s8(lhs_ptr);       // row 0, depths [d..d+15]
+        int8x16_t l1 = vld1q_s8(lhs_ptr + 16);  // row 1
+        int8x16_t l2 = vld1q_s8(lhs_ptr + 32);  // row 2
+        int8x16_t l3 = vld1q_s8(lhs_ptr + 48);  // row 3
+        int8x16_t r0 = vld1q_s8(rhs_ptr);        // col 0
+        int8x16_t r1 = vld1q_s8(rhs_ptr + 16);   // col 1
+        int8x16_t r2 = vld1q_s8(rhs_ptr + 32);   // col 2
+        int8x16_t r3 = vld1q_s8(rhs_ptr + 48);   // col 3
+
+        RUY_NEON8BIT_MAC(acc00, l0, r0); RUY_NEON8BIT_MAC(acc01, l0, r1);
+        RUY_NEON8BIT_MAC(acc02, l0, r2); RUY_NEON8BIT_MAC(acc03, l0, r3);
+        RUY_NEON8BIT_MAC(acc10, l1, r0); RUY_NEON8BIT_MAC(acc11, l1, r1);
+        RUY_NEON8BIT_MAC(acc12, l1, r2); RUY_NEON8BIT_MAC(acc13, l1, r3);
+        RUY_NEON8BIT_MAC(acc20, l2, r0); RUY_NEON8BIT_MAC(acc21, l2, r1);
+        RUY_NEON8BIT_MAC(acc22, l2, r2); RUY_NEON8BIT_MAC(acc23, l2, r3);
+        RUY_NEON8BIT_MAC(acc30, l3, r0); RUY_NEON8BIT_MAC(acc31, l3, r1);
+        RUY_NEON8BIT_MAC(acc32, l3, r2); RUY_NEON8BIT_MAC(acc33, l3, r3);
+
+        lhs_ptr += 64;
+        rhs_ptr += 64;
+      }
+
+      // Horizontal reduction: collapse 4-element partial-sum vectors to scalars.
+      // Two rounds of addp give a single 4×int32 vector per column holding
+      // [sum_row0, sum_row1, sum_row2, sum_row3].
+      int32x4_t s0, s1, s2, s3;
+      // Round 1: pairwise-add adjacent rows within each column group
+      int32x4_t p00 = vpaddq_s32(acc00, acc10);
+      int32x4_t p20 = vpaddq_s32(acc20, acc30);
+      int32x4_t p01 = vpaddq_s32(acc01, acc11);
+      int32x4_t p21 = vpaddq_s32(acc21, acc31);
+      int32x4_t p02 = vpaddq_s32(acc02, acc12);
+      int32x4_t p22 = vpaddq_s32(acc22, acc32);
+      int32x4_t p03 = vpaddq_s32(acc03, acc13);
+      int32x4_t p23 = vpaddq_s32(acc23, acc33);
+      // Round 2: final horizontal reduction — each vector now holds
+      // [sum_row0, sum_row1, sum_row2, sum_row3] for one output column.
+      s0 = vpaddq_s32(p00, p20);  // col 0: [r0c0, r1c0, r2c0, r3c0]
+      s1 = vpaddq_s32(p01, p21);  // col 1
+      s2 = vpaddq_s32(p02, p22);  // col 2
+      s3 = vpaddq_s32(p03, p23);  // col 3
+
+      // Post-accumulation: prod_zp_depth, bias, zero-point sums.
+      const std::uint8_t flags = params.flags;
+      bool ch_col = (flags & RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL) != 0;
+
+      int32x4_t zp_depth = vdupq_n_s32(params.prod_zp_depth);
+      s0 = vaddq_s32(s0, zp_depth);
+      s1 = vaddq_s32(s1, zp_depth);
+      s2 = vaddq_s32(s2, zp_depth);
+      s3 = vaddq_s32(s3, zp_depth);
+
+      if (flags & RUY_ASM_FLAG_HAS_BIAS) {
+        if (ch_col) {
+          // Bias is per-column: each of s0..s3 gets a scalar bias value.
+          s0 = vaddq_s32(s0, vdupq_n_s32(params.bias[col + 0]));
+          s1 = vaddq_s32(s1, vdupq_n_s32(params.bias[col + 1]));
+          s2 = vaddq_s32(s2, vdupq_n_s32(params.bias[col + 2]));
+          s3 = vaddq_s32(s3, vdupq_n_s32(params.bias[col + 3]));
+        } else {
+          // Bias is per-row: all columns share the same 4-row bias vector.
+          int32x4_t bias_vec = vld1q_s32(&params.bias[row]);
+          s0 = vaddq_s32(s0, bias_vec);
+          s1 = vaddq_s32(s1, bias_vec);
+          s2 = vaddq_s32(s2, bias_vec);
+          s3 = vaddq_s32(s3, bias_vec);
+        }
+      }
+
+      if (flags & RUY_ASM_FLAG_HAS_RHS_SUMS) {
+        // Subtract lhs_zero_point * rhs_sums[col]
+        int32x4_t lzp = vdupq_n_s32(params.lhs_zero_point);
+        s0 = vmlsq_s32(s0, lzp, vdupq_n_s32(params.rhs_sums[col + 0]));
+        s1 = vmlsq_s32(s1, lzp, vdupq_n_s32(params.rhs_sums[col + 1]));
+        s2 = vmlsq_s32(s2, lzp, vdupq_n_s32(params.rhs_sums[col + 2]));
+        s3 = vmlsq_s32(s3, lzp, vdupq_n_s32(params.rhs_sums[col + 3]));
+      }
+
+      if (flags & RUY_ASM_FLAG_HAS_LHS_SUMS) {
+        // Subtract rhs_zero_point * lhs_sums[row..row+3]
+        int32x4_t rzp = vdupq_n_s32(params.rhs_zero_point);
+        int32x4_t lhs_sums_vec = vld1q_s32(&params.lhs_sums[row]);
+        int32x4_t correction = vmulq_s32(rzp, lhs_sums_vec);
+        s0 = vsubq_s32(s0, correction);
+        s1 = vsubq_s32(s1, correction);
+        s2 = vsubq_s32(s2, correction);
+        s3 = vsubq_s32(s3, correction);
+      }
+
+      // For non-int32 output: apply multiplier, add dst_zero_point, clamp.
+      if (params.dst_type_id != RUY_ASM_TYPE_ID_INT32) {
+        bool is_perchannel = (flags & RUY_ASM_FLAG_HAS_PERCHANNEL) != 0;
+
+        auto get_fp = [&](int idx) -> int32x4_t {
+          return vdupq_n_s32(params.multiplier_fixedpoint[idx]);
+        };
+        auto get_ep = [&](int idx) -> int32x4_t {
+          return vdupq_n_s32(params.multiplier_exponent[idx]);
+        };
+
+        if (is_perchannel) {
+          if (ch_col) {
+            // Per-column: each column has a distinct scalar multiplier.
+            s0 = ApplyMultiplierVec4(s0, get_fp(col+0), get_ep(col+0));
+            s1 = ApplyMultiplierVec4(s1, get_fp(col+1), get_ep(col+1));
+            s2 = ApplyMultiplierVec4(s2, get_fp(col+2), get_ep(col+2));
+            s3 = ApplyMultiplierVec4(s3, get_fp(col+3), get_ep(col+3));
+          } else {
+            // Per-row: each row has a distinct scalar multiplier; all columns
+            // use the same 4-element vector of per-row multipliers.
+            int32x4_t fp_vec = vld1q_s32(&params.multiplier_fixedpoint[row]);
+            int32x4_t ep_vec = vld1q_s32(&params.multiplier_exponent[row]);
+            s0 = ApplyMultiplierVec4(s0, fp_vec, ep_vec);
+            s1 = ApplyMultiplierVec4(s1, fp_vec, ep_vec);
+            s2 = ApplyMultiplierVec4(s2, fp_vec, ep_vec);
+            s3 = ApplyMultiplierVec4(s3, fp_vec, ep_vec);
+          }
+        } else {
+          int32x4_t fp_vec = vdupq_n_s32(params.multiplier_fixedpoint[0]);
+          int32x4_t ep_vec = vdupq_n_s32(params.multiplier_exponent[0]);
+          s0 = ApplyMultiplierVec4(s0, fp_vec, ep_vec);
+          s1 = ApplyMultiplierVec4(s1, fp_vec, ep_vec);
+          s2 = ApplyMultiplierVec4(s2, fp_vec, ep_vec);
+          s3 = ApplyMultiplierVec4(s3, fp_vec, ep_vec);
+        }
+
+        // Compute fit dims and destination base pointer (shared by all output types).
+        int fit_r = std::min(params.dst_rows - row, 4);
+        int fit_c = std::min(params.dst_cols - col, 4);
+        int r_off = row - params.start_row;
+        int c_off = col - params.start_col;
+
+        if (params.dst_type_id == RUY_ASM_TYPE_ID_INT16) {
+          // int16 output: add dst_zero_point and clamp in int32 domain, then
+          // narrow to int16 and store.  Keep the same scalar-equivalent path so
+          // results are bit-exact with the reference (no extra int8-saturation).
+          int32x4_t dzp32 = vdupq_n_s32(params.dst_zero_point);
+          int32x4_t cmin32 = vdupq_n_s32(params.clamp_min);
+          int32x4_t cmax32 = vdupq_n_s32(params.clamp_max);
+          auto clamp32 = [&](int32x4_t v) -> int32x4_t {
+            v = vaddq_s32(v, dzp32);
+            v = vmaxq_s32(v, cmin32);
+            v = vminq_s32(v, cmax32);
+            return v;
+          };
+          s0 = clamp32(s0); s1 = clamp32(s1);
+          s2 = clamp32(s2); s3 = clamp32(s3);
+
+          std::uint8_t* base = static_cast<std::uint8_t*>(params.dst_base_ptr) +
+                               c_off * dst_stride_bytes + r_off * 2;
+          int32_t buf[4][4];
+          vst1q_s32(buf[0], s0); vst1q_s32(buf[1], s1);
+          vst1q_s32(buf[2], s2); vst1q_s32(buf[3], s3);
+          for (int c = 0; c < fit_c; ++c)
+            for (int r = 0; r < fit_r; ++r)
+              reinterpret_cast<std::int16_t*>(
+                  base + c * dst_stride_bytes)[r] =
+                  static_cast<std::int16_t>(buf[c][r]);
+        } else {
+          // int8 / uint8 output: narrow int32 → int16 → int8 with saturating
+          // arithmetic, adding dst_zero_point in int16 domain to match GAS kernel.
+          int16x4_t n0 = vqmovn_s32(s0);  // 4×int32 → 4×int16 (saturating)
+          int16x4_t n1 = vqmovn_s32(s1);
+          int16x4_t n2 = vqmovn_s32(s2);
+          int16x4_t n3 = vqmovn_s32(s3);
+          int16x8_t w01 = vcombine_s16(n0, n1);
+          int16x8_t w23 = vcombine_s16(n2, n3);
+          int16x8_t dzp16 = vdupq_n_s16(
+              static_cast<std::int16_t>(params.dst_zero_point));
+          w01 = vqaddq_s16(w01, dzp16);
+          w23 = vqaddq_s16(w23, dzp16);
+          std::int16_t cmin16 = static_cast<std::int16_t>(params.clamp_min);
+          std::int16_t cmax16 = static_cast<std::int16_t>(params.clamp_max);
+          w01 = vmaxq_s16(w01, vdupq_n_s16(cmin16));
+          w01 = vminq_s16(w01, vdupq_n_s16(cmax16));
+          w23 = vmaxq_s16(w23, vdupq_n_s16(cmin16));
+          w23 = vminq_s16(w23, vdupq_n_s16(cmax16));
+
+          std::uint8_t* base = static_cast<std::uint8_t*>(params.dst_base_ptr) +
+                               c_off * dst_stride_bytes + r_off;
+          if (params.dst_type_id == RUY_ASM_TYPE_ID_UINT8) {
+            uint8x8_t u01 = vqmovun_s16(w01);
+            uint8x8_t u23 = vqmovun_s16(w23);
+            std::uint8_t buf[16];
+            vst1_u8(buf,     u01);
+            vst1_u8(buf + 8, u23);
+            for (int c = 0; c < fit_c; ++c)
+              for (int r = 0; r < fit_r; ++r)
+                (base + c * dst_stride_bytes)[r] = buf[c * 4 + r];
+          } else {
+            int8x8_t b01 = vqmovn_s16(w01);
+            int8x8_t b23 = vqmovn_s16(w23);
+            std::int8_t buf[16];
+            vst1_s8(buf,     b01);
+            vst1_s8(buf + 8, b23);
+            for (int c = 0; c < fit_c; ++c)
+              for (int r = 0; r < fit_r; ++r)
+                reinterpret_cast<std::int8_t*>(
+                    base + c * dst_stride_bytes)[r] = buf[c * 4 + r];
+          }
+        }
+      } else {
+        // int32 output: store raw accumulators, no multiplier.
+        int fit_r = std::min(params.dst_rows - row, 4);
+        int fit_c = std::min(params.dst_cols - col, 4);
+        int r_off = row - params.start_row;
+        int c_off = col - params.start_col;
+        std::uint8_t* base = static_cast<std::uint8_t*>(params.dst_base_ptr) +
+                             c_off * dst_stride_bytes + r_off * 4;
+        int32_t cols_buf[4][4];
+        vst1q_s32(cols_buf[0], s0);
+        vst1q_s32(cols_buf[1], s1);
+        vst1q_s32(cols_buf[2], s2);
+        vst1q_s32(cols_buf[3], s3);
+        for (int c = 0; c < fit_c; ++c)
+          for (int r = 0; r < fit_r; ++r)
+            reinterpret_cast<std::int32_t*>(
+                base + c * dst_stride_bytes)[r] = cols_buf[c][r];
+      }
+
+      rhs_col_ptr += 4 * params.rhs_stride;
+    }
+    lhs_col_ptr += 4 * params.lhs_stride;
+  }
+}
+
+void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon, MSVC 4x4)");
+  Kernel8bitNeonImpl(params);
+}
+void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon1Col, MSVC 4x4)");
+  Kernel8bitNeonImpl(params);
+}
+void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeonA55ish, MSVC 4x4)");
+  Kernel8bitNeonImpl(params);
+}
+
+// Mixed-precision kernels: i8×i16→i16 and i16×i8→i16.
+// Both use Kernel8bitNeonMixedImpl<> with tile 4×4 and depth step 8.
+void Kernel8bitNeonMixedInt16Lhs(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon mixed i16xint8, MSVC 4x4)");
+  Kernel8bitNeonMixedImpl<false>(params);  // LHS=int16, RHS=int8
+}
+void Kernel8bitNeonMixedInt16Rhs(const KernelParams8bit<4, 4>& params) {
+  profiler::ScopeLabel label("Kernel (kNeon mixed int8xi16, MSVC 4x4)");
+  Kernel8bitNeonMixedImpl<true>(params);   // LHS=int8,  RHS=int16
+}
+
+// Pack8bitColMajorForNeon / ForNeonDotprod:
+// Loads 16 bytes from each of 4 source ptrs, XORs with input_xor, stores
+// interleaved to packed_ptr, accumulates row sums.
+void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
+                              const void* src_ptr2, const void* src_ptr3,
+                              int src_inc0, int src_inc1, int src_inc2,
+                              int src_inc3, int src_rows, int src_zero_point,
+                              std::int8_t* packed_ptr, std::int32_t* sums_ptr,
+                              int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeon, MSVC NEON)");
+  const std::uint8_t* s0 = static_cast<const std::uint8_t*>(src_ptr0);
+  const std::uint8_t* s1 = static_cast<const std::uint8_t*>(src_ptr1);
+  const std::uint8_t* s2 = static_cast<const std::uint8_t*>(src_ptr2);
+  const std::uint8_t* s3 = static_cast<const std::uint8_t*>(src_ptr3);
+  uint8x16_t xorv = vdupq_n_u8(static_cast<std::uint8_t>(input_xor));
+
+  int32x4_t sum0 = vdupq_n_s32(0), sum1 = vdupq_n_s32(0);
+  int32x4_t sum2 = vdupq_n_s32(0), sum3 = vdupq_n_s32(0);
+
+  int r = 0;
+  for (; r + 16 <= src_rows; r += 16) {
+    uint8x16_t v0 = veorq_u8(vld1q_u8(s0), xorv);
+    uint8x16_t v1 = veorq_u8(vld1q_u8(s1), xorv);
+    uint8x16_t v2 = veorq_u8(vld1q_u8(s2), xorv);
+    uint8x16_t v3 = veorq_u8(vld1q_u8(s3), xorv);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr),      v0);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 16, v1);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 32, v2);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 48, v3);
+    packed_ptr += 64;
+    sum0 = vpadalq_s16(sum0, vpaddlq_s8(vreinterpretq_s8_u8(v0)));
+    sum1 = vpadalq_s16(sum1, vpaddlq_s8(vreinterpretq_s8_u8(v1)));
+    sum2 = vpadalq_s16(sum2, vpaddlq_s8(vreinterpretq_s8_u8(v2)));
+    sum3 = vpadalq_s16(sum3, vpaddlq_s8(vreinterpretq_s8_u8(v3)));
+    s0 += src_inc0;
+    s1 += src_inc1;
+    s2 += src_inc2;
+    s3 += src_inc3;
+  }
+  // Tail: depth rows remaining (< 16 per group, up to 15 valid depth elements).
+  // Must store a FULL 64-byte (4×16) block with zero-padding to match the
+  // GAS kernel's layout:
+  //   col i at packed_ptr + i*16 (16 bytes), depth element k at byte k (0-based).
+  // The GAS kernel zero-pads v0..v3 with src_zero_point, fills valid lanes,
+  // XORs, then str q4/q5/q6/q7 at {0,16,32,48}.
+  if (r < src_rows) {
+    int rem = src_rows - r;
+    // Build 4 zero-padded vectors (16 bytes each = 16 depth slots).
+    std::uint8_t zp = static_cast<std::uint8_t>(src_zero_point);
+    uint8x16_t zp16 = vdupq_n_u8(zp);
+    uint8x16_t w0 = zp16, w1 = zp16, w2 = zp16, w3 = zp16;
+    // Fill valid depth lanes from source.
+    std::uint8_t buf0[16], buf1[16], buf2[16], buf3[16];
+    vst1q_u8(buf0, zp16); vst1q_u8(buf1, zp16);
+    vst1q_u8(buf2, zp16); vst1q_u8(buf3, zp16);
+    const std::uint8_t* sp[4] = {s0, s1, s2, s3};
+    for (int k = 0; k < rem; ++k) {
+      buf0[k] = *sp[0]++;
+      buf1[k] = *sp[1]++;
+      buf2[k] = *sp[2]++;
+      buf3[k] = *sp[3]++;
+    }
+    // XOR and store.
+    w0 = veorq_u8(vld1q_u8(buf0), xorv);
+    w1 = veorq_u8(vld1q_u8(buf1), xorv);
+    w2 = veorq_u8(vld1q_u8(buf2), xorv);
+    w3 = veorq_u8(vld1q_u8(buf3), xorv);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr),      w0);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 16, w1);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 32, w2);
+    vst1q_u8(reinterpret_cast<std::uint8_t*>(packed_ptr) + 48, w3);
+    packed_ptr += 64;
+    if (sums_ptr) {
+      sum0 = vpadalq_s16(sum0, vpaddlq_s8(vreinterpretq_s8_u8(w0)));
+      sum1 = vpadalq_s16(sum1, vpaddlq_s8(vreinterpretq_s8_u8(w1)));
+      sum2 = vpadalq_s16(sum2, vpaddlq_s8(vreinterpretq_s8_u8(w2)));
+      sum3 = vpadalq_s16(sum3, vpaddlq_s8(vreinterpretq_s8_u8(w3)));
+    }
+  }
+  if (sums_ptr) {
+    // Use = (store), not += (add), because the sums buffer may contain
+    // uninitialized / stale values from a previous Mul call.  The allocator
+    // is a bump-allocator that resets its pointer without zeroing memory, so
+    // the sums buffer can hold garbage when we first write it.  The GAS and
+    // generic scalar pack functions both store (not add), so we must too.
+    sums_ptr[0] = vaddvq_s32(sum0);
+    sums_ptr[1] = vaddvq_s32(sum1);
+    sums_ptr[2] = vaddvq_s32(sum2);
+    sums_ptr[3] = vaddvq_s32(sum3);
+  }
+}
+
+void Pack8bitColMajorForNeonA55ish(
+    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
+    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
+    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
+    std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonA55ish, MSVC NEON)");
+  Pack8bitColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0,
+                           src_inc1, src_inc2, src_inc3, src_rows, src_zero_point,
+                           packed_ptr, sums_ptr, input_xor);
+}
+
+void Pack8bitColMajorForNeonDotprod(
+    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
+    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
+    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
+    std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonDotprod, MSVC NEON)");
+  // For each 4-depth group, store 16 bytes = {col0[d..d+3], col1[d..d+3], col2[d..d+3], col3[d..d+3]}.
+  // Output stride between consecutive 4-depth groups: 32 bytes (the companion
+  // group of 4 cols sits at offset+16 from the same base, leaving a 32-byte period).
+  //
+  // The GAS kernel implements this via 16-row transpose blocks:
+  //   For 16 depth rows loaded in v0..v3 (one 16-byte vector per col):
+  //   trn1/trn2 produces 4 transposed 4-depth groups, stored at {0, 32, 64, 96}, then += 128.
+
+  const std::uint8_t* s0 = static_cast<const std::uint8_t*>(src_ptr0);
+  const std::uint8_t* s1 = static_cast<const std::uint8_t*>(src_ptr1);
+  const std::uint8_t* s2 = static_cast<const std::uint8_t*>(src_ptr2);
+  const std::uint8_t* s3 = static_cast<const std::uint8_t*>(src_ptr3);
+  uint8x16_t xorv = vdupq_n_u8(static_cast<std::uint8_t>(input_xor));
+  // Per-row sums: sum[j] = sum of all packed bytes for GEMM row j (j=0..3).
+  // Matches GAS: sdot sum.4s, g_k.16b, ones.16b
+  //   where g_k[4j..4j+3] = row_j depths k*4..k*4+3.
+  // ones = {1,1,...,1}, so vdotq_s32(sum, g_k, ones)[j] += sum(g_k[4j..4j+3]).
+  int32x4_t sum_rows = vdupq_n_s32(0);  // 4 per-row sums (rows 0..3 of this 4-col block)
+  int8x16_t ones = vdupq_n_s8(1);
+
+  int r = 0;
+  for (; r + 16 <= src_rows; r += 16) {
+    uint8x16_t v0 = vld1q_u8(s0);
+    uint8x16_t v1 = vld1q_u8(s1);
+    uint8x16_t v2 = vld1q_u8(s2);
+    uint8x16_t v3 = vld1q_u8(s3);
+    RUY_DOTPROD_PACK_TRANSPOSE_STORE(v0, v1, v2, v3, packed_ptr,
+                                     (sums_ptr != nullptr));
+    s0 += src_inc0; s1 += src_inc1; s2 += src_inc2; s3 += src_inc3;
+  }
+  // Tail: remaining depth rows (< 16). Zero-pad with src_zero_point.
+  // The GAS kernel applies SDOT only for groups 0..ceil(rem/4)-1 (matches cmp/ble
+  // chain). We do the same: inline the tail without the macro so we can gate
+  // individual SDOT calls. The extra stored groups (kernel never reads them) are
+  // harmless but must NOT contribute to sums.
+  if (r < src_rows) {
+    int rem = src_rows - r;
+    int num_valid_groups = (rem + 3) / 4;  // 1..4
+    std::uint8_t zp = static_cast<std::uint8_t>(src_zero_point);
+    uint8x16_t zp16 = vdupq_n_u8(zp);
+    std::uint8_t buf0[16], buf1[16], buf2[16], buf3[16];
+    vst1q_u8(buf0, zp16); vst1q_u8(buf1, zp16);
+    vst1q_u8(buf2, zp16); vst1q_u8(buf3, zp16);
+    for (int k = 0; k < rem; ++k) {
+      buf0[k] = s0[k]; buf1[k] = s1[k];
+      buf2[k] = s2[k]; buf3[k] = s3[k];
+    }
+    // XOR and transpose — same logic as the macro body.
+    uint8x16_t e0t = veorq_u8(vld1q_u8(buf0), xorv);
+    uint8x16_t e1t = veorq_u8(vld1q_u8(buf1), xorv);
+    uint8x16_t e2t = veorq_u8(vld1q_u8(buf2), xorv);
+    uint8x16_t e3t = veorq_u8(vld1q_u8(buf3), xorv);
+    int32x4x2_t t01t = vtrnq_s32(vreinterpretq_s32_u8(e0t),
+                                   vreinterpretq_s32_u8(e1t));
+    int32x4x2_t t23t = vtrnq_s32(vreinterpretq_s32_u8(e2t),
+                                   vreinterpretq_s32_u8(e3t));
+    int8x16_t tg0 = vreinterpretq_s8_s64(vcombine_s64(
+      vget_low_s64(vreinterpretq_s64_s32(t01t.val[0])),
+      vget_low_s64(vreinterpretq_s64_s32(t23t.val[0]))));
+    int8x16_t tg1 = vreinterpretq_s8_s64(vcombine_s64(
+      vget_low_s64(vreinterpretq_s64_s32(t01t.val[1])),
+      vget_low_s64(vreinterpretq_s64_s32(t23t.val[1]))));
+    int8x16_t tg2 = vreinterpretq_s8_s64(vcombine_s64(
+      vget_high_s64(vreinterpretq_s64_s32(t01t.val[0])),
+      vget_high_s64(vreinterpretq_s64_s32(t23t.val[0]))));
+    int8x16_t tg3 = vreinterpretq_s8_s64(vcombine_s64(
+      vget_high_s64(vreinterpretq_s64_s32(t01t.val[1])),
+      vget_high_s64(vreinterpretq_s64_s32(t23t.val[1]))));
+    // Accumulate per-row sums only for groups that the kernel actually reads.
+    // Matches GAS cmp/ble chain: stop after group ceil(rem/4)-1.
+    if (sums_ptr) {
+      /* group 0 always valid */
+                               sum_rows = vdotq_s32(sum_rows, tg0, ones);
+      if (num_valid_groups >= 2) sum_rows = vdotq_s32(sum_rows, tg1, ones);
+      if (num_valid_groups >= 3) sum_rows = vdotq_s32(sum_rows, tg2, ones);
+      if (num_valid_groups >= 4) sum_rows = vdotq_s32(sum_rows, tg3, ones);
+    }
+    // Store only valid groups, matching GAS cmp/ble chain.
+    // For rem <= 4: only g0 written (16 bytes). No pointer advance.
+    // For rem <= 8: g0+g1. For rem <= 12: g0+g1+g2. For rem > 12: all 4 + advance.
+                                   vst1q_s8(packed_ptr,      tg0);
+    if (num_valid_groups >= 2)     vst1q_s8(packed_ptr + 32, tg1);
+    if (num_valid_groups >= 3)     vst1q_s8(packed_ptr + 64, tg2);
+    if (num_valid_groups >= 4) {
+                                   vst1q_s8(packed_ptr + 96, tg3);
+                                   packed_ptr += 128;
+    }
+  }
+
+  if (sums_ptr) {
+    // Store 4 per-row sums. Use vst1q (= store, not add) so stale allocator
+    // values from a prior Mul call are overwritten.
+    // Matches GAS: after sdot-with-ones on transposed groups,
+    //   stores {row0_sum, row1_sum, row2_sum, row3_sum}.
+    vst1q_s32(sums_ptr, sum_rows);
+  }
+}
+
+void Pack8bitColMajorForNeonDotprodA55ish(
+    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
+    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
+    int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
+    std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonDotprodA55ish, MSVC NEON)");
+  Pack8bitColMajorForNeonDotprod(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                  src_inc0, src_inc1, src_inc2, src_inc3,
+                                  src_rows, src_zero_point,
+                                  packed_ptr, sums_ptr, input_xor);
+}
+
+// Pack8bitRowMajorForNeonDotprod has an extra packed_stride parameter.
+// Output layout (matches GAS zip1/zip1/zip1.8h/zip2.8h + str q2/q3):
+//   For each group of 8 src columns at offset c:
+//     packed[0+4*j + i] = row_i[c+j]  for i in 0..3, j in 0..7
+//   i.e. column-major within each 4-row group of cols.
+//   Then packed_ptr advances by packed_stride * 8 bytes (to the next
+//   group of 8 depth columns).
+void Pack8bitRowMajorForNeonDotprod(
+    const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
+    const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
+    int src_inc3, int src_cols, int src_zero_point, std::int8_t* packed_ptr,
+    int packed_stride, std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeonDotprod row-major, MSVC NEON)");
+  const std::uint8_t* sp[4] = {
+      static_cast<const std::uint8_t*>(src_ptr0),
+      static_cast<const std::uint8_t*>(src_ptr1),
+      static_cast<const std::uint8_t*>(src_ptr2),
+      static_cast<const std::uint8_t*>(src_ptr3)};
+  const int inc[4] = {src_inc0, src_inc1, src_inc2, src_inc3};
+  const std::int8_t xorv = static_cast<std::int8_t>(input_xor);
+  const std::int8_t zp_xored = static_cast<std::int8_t>(src_zero_point ^ input_xor);
+  for (int c = 0; c < src_cols; c += 8) {
+    std::int8_t* col_ptr = packed_ptr;
+    for (int j = 0; j < 8; ++j) {
+      int ci = c + j;
+      for (int i = 0; i < 4; ++i) {
+        std::int8_t b;
+        if (ci < src_cols)
+          b = static_cast<std::int8_t>(sp[i][j] ^ xorv);
+        else
+          b = zp_xored;
+        col_ptr[j * 4 + i] = b;
+        if (sums_ptr && ci < src_cols) sums_ptr[ci] += b;
+      }
+    }
+    packed_ptr += packed_stride * 8;
+    for (int i = 0; i < 4; ++i) sp[i] += inc[i];
+  }
+}
+
+// PackFloatColMajorForNeon:
+// Packs float columns. Each call handles 4 src columns (4 src ptrs).
+// src_inc values are in bytes (16 or 0).
+//
+// Output layout (must match what KernelFloatNeonImpl and the GAS kernel expect):
+//   The kernel reads data as: at depth d, 8 consecutive floats = all 8 GEMM-rows.
+//   Two calls to this function cover cols 0..3 (at packed_base+0) and cols 4..7
+//   (at packed_base+4). Combined, packed[d*8 + c] = LHS[row_c, depth_d].
+//
+//   Within one 4-column call: output stride between depth steps = 8 floats (32 bytes),
+//   because the companion 4-column group occupies the interleaved float positions.
+//   We must TRANSPOSE the 4x4 block:
+//     Input per 4 depths: v0={col0:d0..d3}, v1={col1:d0..d3}, ...
+//     Output per depth:   row_d = {col0_d, col1_d, col2_d, col3_d} at packed_ptr + d*32 bytes
+//   The GAS kernel achieves this with trn1/trn2 + str-with-stride-32.
+void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
+                               const float* src_ptr2, const float* src_ptr3,
+                               int src_inc0, int src_inc1, int src_inc2,
+                               int src_inc3, int src_rows, float* packed_ptr) {
+  profiler::ScopeLabel label("Pack (Float kNeon, MSVC NEON)");
+  const float* s[4] = {src_ptr0, src_ptr1, src_ptr2, src_ptr3};
+  // src_inc values are in bytes; convert to float strides.
+  const int inc[4] = {src_inc0 / static_cast<int>(sizeof(float)),
+                      src_inc1 / static_cast<int>(sizeof(float)),
+                      src_inc2 / static_cast<int>(sizeof(float)),
+                      src_inc3 / static_cast<int>(sizeof(float))};
+
+  int r = 0;
+  for (; r + 4 <= src_rows; r += 4) {
+    float32x4_t v0 = vld1q_f32(s[0]);
+    float32x4_t v1 = vld1q_f32(s[1]);
+    float32x4_t v2 = vld1q_f32(s[2]);
+    float32x4_t v3 = vld1q_f32(s[3]);
+    RUY_PACK_FLOAT_TRANSPOSE_STORE(v0, v1, v2, v3, packed_ptr);
+    for (int i = 0; i < 4; ++i) s[i] += inc[i];
+  }
+  // Tail: < 4 remaining depth rows.  Zero-pad to 4, transpose, store only valid rows.
+  if (r < src_rows) {
+    int rem = src_rows - r;
+    float buf0[4] = {0.f,0.f,0.f,0.f}, buf1[4] = {0.f,0.f,0.f,0.f};
+    float buf2[4] = {0.f,0.f,0.f,0.f}, buf3[4] = {0.f,0.f,0.f,0.f};
+    for (int k = 0; k < rem; ++k) {
+      buf0[k] = s[0][k];
+      buf1[k] = s[1][k];
+      buf2[k] = s[2][k];
+      buf3[k] = s[3][k];
+    }
+    float32x4_t v0 = vld1q_f32(buf0);
+    float32x4_t v1 = vld1q_f32(buf1);
+    float32x4_t v2 = vld1q_f32(buf2);
+    float32x4_t v3 = vld1q_f32(buf3);
+    float32x4x2_t trn01 = vtrnq_f32(v0, v1);
+    float32x4x2_t trn23 = vtrnq_f32(v2, v3);
+    float32x4_t rows[4];
+    rows[0] = vcombine_f32(vget_low_f32(trn01.val[0]), vget_low_f32(trn23.val[0]));
+    rows[1] = vcombine_f32(vget_low_f32(trn01.val[1]), vget_low_f32(trn23.val[1]));
+    rows[2] = vcombine_f32(vget_high_f32(trn01.val[0]), vget_high_f32(trn23.val[0]));
+    rows[3] = vcombine_f32(vget_high_f32(trn01.val[1]), vget_high_f32(trn23.val[1]));
+    for (int k = 0; k < rem; ++k) {
+      vst1q_f32(packed_ptr, rows[k]);
+      packed_ptr += 8;
+    }
+  }
+
+}
+
+void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
+                                     const float* src_ptr1,
+                                     const float* src_ptr2,
+                                     const float* src_ptr3, int src_inc0,
+                                     int src_inc1, int src_inc2, int src_inc3,
+                                     int src_rows, float* packed_ptr) {
+  profiler::ScopeLabel label("Pack (Float kNeonA55ish, MSVC NEON)");
+  PackFloatColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0,
+                            src_inc1, src_inc2, src_inc3, src_rows, packed_ptr);
+}
+
+#undef RUY_NEON8BIT_MAC
+#undef RUY_MIX_MAC
+#undef RUY_PACK_FLOAT_TRANSPOSE_STORE
+#undef RUY_DOTPROD_PACK_TRANSPOSE_STORE
+
+}  // namespace ruy
+
+#endif  // defined(_MSC_VER) && defined(_M_ARM64)

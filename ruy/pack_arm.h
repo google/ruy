@@ -60,7 +60,8 @@ void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
                              int input_xor, int kernel_cols);
 #endif
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if (RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 
 void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
                              const void* src_ptr2, const void* src_ptr3,
@@ -92,8 +93,7 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
                                     int src_zero_point, std::int8_t* packed_ptr,
                                     int packed_stride, std::int32_t* sums_ptr,
                                     int input_xor);
-#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
-
+#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 struct PackParams8bit {
   const void* src_ptr0;
   const void* src_ptr1;
@@ -135,9 +135,10 @@ inline void MakePackParams8bit(const void* src_ptr0, const void* src_ptr1,
 void Pack8bitColMajorForNeon4Cols(const PackParams8bit& params);
 void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params);
 
-#endif  // (RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+#endif  // (RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
+#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 
 template <typename Scalar>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
@@ -219,7 +220,245 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
 #endif  // (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) &&
         // RUY_OPT(ASM)
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+#if defined(_MSC_VER) && defined(_M_ARM64)
+
+// Pack int16 source, col-major, with running int32 column sums.
+// 4 columns packed in parallel; each step: 8 int16 elements per col (=16 bytes).
+// Output is identical int16 layout (no conversion), just copied with zero-pad.
+template <>
+struct PackImpl<Path::kNeon,
+                FixedKernelLayout<Order::kColMajor, 8, 4>,
+                std::int16_t, std::int16_t, std::int32_t,
+                Order::kColMajor> {
+  static void Run(Tuning, const Mat<std::int16_t>& src_matrix,
+                  PMat<std::int16_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (int16 kNeon ColMajor)");
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ(start_col % 4, 0);
+
+    const int src_stride = src_matrix.layout.stride;
+    const int packed_stride = packed_matrix->layout.stride;
+    const int src_rows = src_matrix.layout.rows;
+    const int packed_rows = packed_matrix->layout.rows;
+    std::int32_t* sums = packed_matrix->sums;
+    const std::int16_t zero_pt = src_matrix.zero_point;
+
+    for (int block_col = start_col; block_col < end_col; block_col += 4) {
+      // Pointers to each of the 4 source columns (may be clamped to a zero buf)
+      std::int16_t zerobuf[8];
+      for (int i = 0; i < 8; i++) zerobuf[i] = zero_pt;
+
+      const std::int16_t* src0 = src_matrix.data.get() + src_stride * block_col;
+      const std::int16_t* src1 = src0 + src_stride;
+      const std::int16_t* src2 = src1 + src_stride;
+      const std::int16_t* src3 = src2 + src_stride;
+      int inc0 = 8, inc1 = 8, inc2 = 8, inc3 = 8;
+      if (block_col >= src_matrix.layout.cols - 3) {
+        if (block_col >= src_matrix.layout.cols)     { src0 = zerobuf; inc0 = 0; }
+        if (block_col >= src_matrix.layout.cols - 1) { src1 = zerobuf; inc1 = 0; }
+        if (block_col >= src_matrix.layout.cols - 2) { src2 = zerobuf; inc2 = 0; }
+        if (block_col >= src_matrix.layout.cols - 3) { src3 = zerobuf; inc3 = 0; }
+      }
+
+      std::int16_t* packed_ptr =
+          packed_matrix->data + packed_stride * block_col;
+      std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
+
+      int32x4_t sum_vec = vdupq_n_s32(0);  // accumulates sums for cols 0..3
+
+      int r = 0;
+      for (; r + 8 <= src_rows; r += 8) {
+        // Load 8 int16 from each of the 4 columns
+        int16x8_t v0 = vld1q_s16(src0); src0 += inc0;
+        int16x8_t v1 = vld1q_s16(src1); src1 += inc1;
+        int16x8_t v2 = vld1q_s16(src2); src2 += inc2;
+        int16x8_t v3 = vld1q_s16(src3); src3 += inc3;
+        // Store interleaved: col0[0..7], col1[0..7], col2[0..7], col3[0..7]
+        vst1q_s16(packed_ptr,      v0);
+        vst1q_s16(packed_ptr + 8,  v1);
+        vst1q_s16(packed_ptr + 16, v2);
+        vst1q_s16(packed_ptr + 24, v3);
+        packed_ptr += 32;
+        // Accumulate column sums: pairwise add int16→int32, then accumulate
+        // into a 4-element int32 vector (one per column).
+        int32x4_t s0 = vpaddlq_s16(v0);
+        int32x4_t s1 = vpaddlq_s16(v1);
+        int32x4_t s2 = vpaddlq_s16(v2);
+        int32x4_t s3 = vpaddlq_s16(v3);
+        // Reduce each to a scalar via horizontal add
+        int32x2_t r0 = vadd_s32(vget_low_s32(s0), vget_high_s32(s0));
+        int32x2_t r1 = vadd_s32(vget_low_s32(s1), vget_high_s32(s1));
+        int32x2_t r2 = vadd_s32(vget_low_s32(s2), vget_high_s32(s2));
+        int32x2_t r3 = vadd_s32(vget_low_s32(s3), vget_high_s32(s3));
+        // Combine to a 4-element int32 vector and accumulate
+        int32x2_t lo = vpadd_s32(r0, r1);  // [sum0, sum1]
+        int32x2_t hi = vpadd_s32(r2, r3);  // [sum2, sum3]
+        sum_vec = vaddq_s32(sum_vec, vcombine_s32(lo, hi));
+      }
+      // Tail: fewer than 8 depth rows remain — zero-pad to 8.
+      if (r < src_rows) {
+        std::int16_t buf0[8]={}, buf1[8]={}, buf2[8]={}, buf3[8]={};
+        int rem = src_rows - r;
+        for (int k = 0; k < rem; k++) {
+          buf0[k] = src0[k];
+          buf1[k] = src1[k];
+          buf2[k] = src2[k];
+          buf3[k] = src3[k];
+        }
+        int16x8_t v0 = vld1q_s16(buf0), v1 = vld1q_s16(buf1);
+        int16x8_t v2 = vld1q_s16(buf2), v3 = vld1q_s16(buf3);
+        vst1q_s16(packed_ptr,      v0);
+        vst1q_s16(packed_ptr + 8,  v1);
+        vst1q_s16(packed_ptr + 16, v2);
+        vst1q_s16(packed_ptr + 24, v3);
+        packed_ptr += 32;
+        int32x4_t s0 = vpaddlq_s16(v0); int32x4_t s1 = vpaddlq_s16(v1);
+        int32x4_t s2 = vpaddlq_s16(v2); int32x4_t s3 = vpaddlq_s16(v3);
+        int32x2_t r0 = vadd_s32(vget_low_s32(s0), vget_high_s32(s0));
+        int32x2_t r1 = vadd_s32(vget_low_s32(s1), vget_high_s32(s1));
+        int32x2_t r2 = vadd_s32(vget_low_s32(s2), vget_high_s32(s2));
+        int32x2_t r3 = vadd_s32(vget_low_s32(s3), vget_high_s32(s3));
+        int32x2_t lo = vpadd_s32(r0, r1);
+        int32x2_t hi = vpadd_s32(r2, r3);
+        sum_vec = vaddq_s32(sum_vec, vcombine_s32(lo, hi));
+      }
+
+      if (sums_ptr) {
+        // Extract 4 per-column sums and store.
+        int32_t tmp[4];
+        vst1q_s32(tmp, sum_vec);
+        for (int i = 0; i < 4 && (block_col + i) < src_matrix.layout.cols; i++)
+          sums_ptr[i] = tmp[i];
+      }
+    }
+  }
+};
+
+// Pack int8 (or uint8) source with kColMajor/8/4 layout for mixed-precision.
+// Used as LHS for i8×i16→i16 kernels. 4 rows × 8 int8 depth = 32 bytes/step.
+template <typename Scalar>
+struct PackImpl<Path::kNeon,
+                FixedKernelLayout<Order::kColMajor, 8, 4>,
+                Scalar, std::int8_t, std::int32_t,
+                Order::kColMajor> {
+  static_assert(std::is_same<Scalar, std::int8_t>::value ||
+                    std::is_same<Scalar, std::uint8_t>::value, "");
+  static constexpr int kInputXor =
+      std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
+
+  static void Run(Tuning, const Mat<Scalar>& src_matrix,
+                  PMat<std::int8_t>* packed_matrix, int start_col,
+                  int end_col) {
+    profiler::ScopeLabel label("Pack (int8 kNeon ColMajor 8x4)");
+    RUY_DCHECK(IsColMajor(src_matrix.layout));
+    RUY_DCHECK(IsColMajor(packed_matrix->layout));
+    RUY_DCHECK_EQ(start_col % 4, 0);
+
+    const int src_stride = src_matrix.layout.stride;
+    const int src_rows = src_matrix.layout.rows;
+    std::int32_t* sums = packed_matrix->sums;
+    Scalar zerobuf[8];
+    memset(zerobuf, static_cast<std::uint8_t>(src_matrix.zero_point),
+           sizeof(zerobuf));
+
+    for (int block_col = start_col; block_col < end_col; block_col += 4) {
+      const Scalar* src0 = src_matrix.data.get() + src_stride * block_col;
+      const Scalar* src1 = src0 + src_stride;
+      const Scalar* src2 = src1 + src_stride;
+      const Scalar* src3 = src2 + src_stride;
+      int inc0 = 8, inc1 = 8, inc2 = 8, inc3 = 8;
+      if (block_col >= src_matrix.layout.cols - 3) {
+        if (block_col >= src_matrix.layout.cols)     { src0 = zerobuf; inc0 = 0; }
+        if (block_col >= src_matrix.layout.cols - 1) { src1 = zerobuf; inc1 = 0; }
+        if (block_col >= src_matrix.layout.cols - 2) { src2 = zerobuf; inc2 = 0; }
+        if (block_col >= src_matrix.layout.cols - 3) { src3 = zerobuf; inc3 = 0; }
+      }
+
+      std::int8_t* packed_ptr =
+          packed_matrix->data + packed_matrix->layout.stride * block_col;
+      std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
+
+      int32x4_t sum_vec = vdupq_n_s32(0);
+
+      int r = 0;
+      for (; r + 8 <= src_rows; r += 8) {
+        int8x8_t v0 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(src0)),
+            vdup_n_u8(static_cast<std::uint8_t>(kInputXor))));
+        int8x8_t v1 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(src1)),
+            vdup_n_u8(static_cast<std::uint8_t>(kInputXor))));
+        int8x8_t v2 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(src2)),
+            vdup_n_u8(static_cast<std::uint8_t>(kInputXor))));
+        int8x8_t v3 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(src3)),
+            vdup_n_u8(static_cast<std::uint8_t>(kInputXor))));
+        src0 += inc0; src1 += inc1; src2 += inc2; src3 += inc3;
+        vst1_s8(packed_ptr,      v0);
+        vst1_s8(packed_ptr + 8,  v1);
+        vst1_s8(packed_ptr + 16, v2);
+        vst1_s8(packed_ptr + 24, v3);
+        packed_ptr += 32;
+        if (sums_ptr) {
+          // Column sums: reduce each int8x8 column to one int32.
+          // vpaddl(vpaddl(v)) gives 2-element int32; then vadd scalar.
+          int16x4_t ps0 = vpaddl_s8(v0), ps1 = vpaddl_s8(v1);
+          int16x4_t ps2 = vpaddl_s8(v2), ps3 = vpaddl_s8(v3);
+          int32x2_t qs0 = vpaddl_s16(ps0), qs1 = vpaddl_s16(ps1);
+          int32x2_t qs2 = vpaddl_s16(ps2), qs3 = vpaddl_s16(ps3);
+          // Combine: col0 in lane0 of lo, col1 in lane1, etc.
+          int32x2_t lo = vpadd_s32(qs0, qs1);
+          int32x2_t hi = vpadd_s32(qs2, qs3);
+          sum_vec = vaddq_s32(sum_vec, vcombine_s32(lo, hi));
+        }
+      }
+      if (r < src_rows) {
+        Scalar buf0[8]={}, buf1[8]={}, buf2[8]={}, buf3[8]={};
+        int rem = src_rows - r;
+        for (int k = 0; k < rem; k++) {
+          buf0[k] = src0[k]; buf1[k] = src1[k];
+          buf2[k] = src2[k]; buf3[k] = src3[k];
+        }
+        auto xorv = vdup_n_u8(static_cast<std::uint8_t>(kInputXor));
+        int8x8_t v0 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(buf0)), xorv));
+        int8x8_t v1 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(buf1)), xorv));
+        int8x8_t v2 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(buf2)), xorv));
+        int8x8_t v3 = vreinterpret_s8_u8(veor_u8(
+            vld1_u8(reinterpret_cast<const std::uint8_t*>(buf3)), xorv));
+        vst1_s8(packed_ptr,      v0);
+        vst1_s8(packed_ptr + 8,  v1);
+        vst1_s8(packed_ptr + 16, v2);
+        vst1_s8(packed_ptr + 24, v3);
+        if (sums_ptr) {
+          int16x4_t ps0 = vpaddl_s8(v0), ps1 = vpaddl_s8(v1);
+          int16x4_t ps2 = vpaddl_s8(v2), ps3 = vpaddl_s8(v3);
+          int32x2_t qs0 = vpaddl_s16(ps0), qs1 = vpaddl_s16(ps1);
+          int32x2_t qs2 = vpaddl_s16(ps2), qs3 = vpaddl_s16(ps3);
+          int32x2_t lo = vpadd_s32(qs0, qs1);
+          int32x2_t hi = vpadd_s32(qs2, qs3);
+          sum_vec = vaddq_s32(sum_vec, vcombine_s32(lo, hi));
+        }
+      }
+
+      if (sums_ptr) {
+        int32_t tmp[4];
+        vst1q_s32(tmp, sum_vec);
+        for (int i = 0; i < 4 && (block_col + i) < src_matrix.layout.cols; i++)
+          sums_ptr[i] = tmp[i];
+      }
+    }
+  }
+};
+
+#endif  // defined(_MSC_VER) && defined(_M_ARM64)
+
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 // The 32-bit float kernel is 4 rows X 2 columns, so we need an additional
 // partial specialization for the RHS, which has a FixedKernelLayout with 2
 // columns.
@@ -268,9 +507,10 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
     }
   }
 };
-#endif  // (RUY_PLATFORM_NEON_32) && RUY_OPT(ASM)
+#endif  // (RUY_PLATFORM_NEON_32) && RUY_OPT(ASM) && !defined(_MSC_VER)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 template <typename Scalar>
 struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
                 Scalar, std::int8_t, std::int32_t, Order::kColMajor> {
@@ -336,9 +576,10 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
     }
   }
 };
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && (!defined(_MSC_VER) || defined(_M_ARM64))
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
                               const float* src_ptr2, const float* src_ptr3,
                               int src_inc0, int src_inc1, int src_inc2,
@@ -350,14 +591,15 @@ void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
                                     int src_inc1, int src_inc2, int src_inc3,
                                     int src_rows, float* packed_ptr);
 
-#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+#elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
                               const float* src_ptr2, const float* src_ptr3,
                               int src_inc, int src_rows, float* packed_ptr,
                               int stride);
-#endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && (!defined(_MSC_VER) || defined(_M_ARM64))
 
-#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
+#if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 
 template <>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
@@ -492,7 +734,8 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
 #endif  // (RUY_PLATFORM_NEON_64 || RUY_PLATFORM_NEON_32) && \
         // RUY_OPT(ASM)
 
-#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && \
+    (!defined(_MSC_VER) || defined(_M_ARM64))
 
 template <typename Scalar>
 struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
@@ -570,7 +813,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
   }
 };
 
-#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_64 && RUY_OPT(ASM) && (!defined(_MSC_VER) || defined(_M_ARM64))
 
 #if RUY_PLATFORM_NEON
 

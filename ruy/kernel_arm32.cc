@@ -20,7 +20,10 @@ limitations under the License.
 
 namespace ruy {
 
-#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
+// MSVC on Windows does not support AT&T-style GCC inline assembly
+// (asm volatile). ARM32 (Thumb/Thumb2) is not a target for Windows ARM64 but
+// this guard keeps the file consistent and safe for any MSVC toolchain.
+#if RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 
 #define RUY_ASM_LABEL_STORE_UINT8 91
 #define RUY_ASM_LABEL_STORE_INT8 92
@@ -2525,5 +2528,5 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
 #undef RUY_STACK_OFFSET_LHS_COL_PTR
 #undef RUY_STACK_OFFSET_RHS_COL_PTR
 
-#endif  // RUY_PLATFORM_NEON_32 && (RUY_OPT(ASM)
+#endif  // RUY_PLATFORM_NEON_32 && RUY_OPT(ASM) && !defined(_MSC_VER)
 }  // namespace ruy
