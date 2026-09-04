@@ -39,9 +39,22 @@ bool CpuInfo::EnsureInitialized() {
 }
 
 namespace {
+bool IsValidCachePointer(const cpuinfo_cache* cache, const cpuinfo_cache* array,
+                         uint32_t count) {
+  return cache != nullptr && array != nullptr && cache >= array &&
+         cache < array + count;
+}
+
 bool QueryCacheParams(CpuCacheParams* cache_params) {
   const int processors_count = cpuinfo_get_processors_count();
   RUY_DCHECK_GT(processors_count, 0);
+  const cpuinfo_cache* l1d_caches = cpuinfo_get_l1d_caches();
+  const uint32_t l1d_count = cpuinfo_get_l1d_caches_count();
+  const cpuinfo_cache* l2_caches = cpuinfo_get_l2_caches();
+  const uint32_t l2_count = cpuinfo_get_l2_caches_count();
+  const cpuinfo_cache* l3_caches = cpuinfo_get_l3_caches();
+  const uint32_t l3_count = cpuinfo_get_l3_caches_count();
+
   int overall_local_cache_size = std::numeric_limits<int>::max();
   int overall_last_level_cache_size = std::numeric_limits<int>::max();
   for (int i = 0; i < processors_count; i++) {
@@ -53,8 +66,24 @@ bool QueryCacheParams(CpuCacheParams* cache_params) {
     }
     // Loop over cache levels. Ignoring L4 for now: it seems that in CPUs that
     // have L4, we would still prefer to stay in lower-latency L3.
-    for (const cpuinfo_cache* cache :
-         {processor->cache.l1d, processor->cache.l2, processor->cache.l3}) {
+    // Defensively check that each cache pointer actually points to an entry
+    // within the corresponding cache array exposed by cpuinfo. On some kernels
+    // / systems, cpuinfo can leave cache pointers uninitialized or corrupt
+    // (e.g. l2 + UINT32_MAX).
+    const cpuinfo_cache* l1d =
+        IsValidCachePointer(processor->cache.l1d, l1d_caches, l1d_count)
+            ? processor->cache.l1d
+            : nullptr;
+    const cpuinfo_cache* l2 =
+        IsValidCachePointer(processor->cache.l2, l2_caches, l2_count)
+            ? processor->cache.l2
+            : nullptr;
+    const cpuinfo_cache* l3 =
+        IsValidCachePointer(processor->cache.l3, l3_caches, l3_count)
+            ? processor->cache.l3
+            : nullptr;
+
+    for (const cpuinfo_cache* cache : {l1d, l2, l3}) {
       if (!cache) {
         continue;  // continue, not break, it is possible to have L1+L3 but no
                    // L2.
