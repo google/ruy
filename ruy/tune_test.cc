@@ -46,6 +46,19 @@ TEST(TuneTest, TuneTest) {
 #endif
 }
 
+TEST(TuneTest, CacheParamsSafelyInitialized) {
+  // Arrange
+  CpuInfo cpuinfo;
+
+  // Act
+  const CpuCacheParams& params = cpuinfo.CacheParams();
+
+  // Assert
+  EXPECT_GT(params.local_cache_size, 0);
+  EXPECT_GT(params.last_level_cache_size, 0);
+  EXPECT_GE(params.last_level_cache_size, params.local_cache_size);
+}
+
 }  // namespace
 }  // namespace ruy
 
