@@ -74,7 +74,8 @@ void PreparePackedMatrices(Ctx* ctx, TrMulParams* params) {
     if (ShouldCache(*params, side)) {
       // Use a cached packed matrix (possibly packing and caching now).
       auto* cache = ctx->GetPrepackedCache();
-      auto action = cache->Get(params->src[side].data, &packed_matrix);
+      auto action = cache->Get(params->src[side].data, params->src[side].layout,
+                              &packed_matrix);
       RUY_TRACE_INFO(PREPARE_PACKED_MATRICES_SHOULD_CACHE);
       if (action == PrepackedCache::Action::kInsertedNewEntry) {
         params->RunPack(side, ctx->GetMainThreadTuning(), 0,
