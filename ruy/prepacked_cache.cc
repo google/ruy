@@ -49,7 +49,7 @@ void FreeBuffers(const PEMat& packed_matrix) {
 std::size_t PrepackedCache::KeyHash::operator()(
     const PrepackedCache::Key& key) const {
   std::size_t src_data_hash = reinterpret_cast<std::size_t>(key.src_data);
-  // Naive hash of the layout. Based on some heuristic reasoning, not any
+  // Naive hash of the layouts. Based on some heuristic reasoning, not any
   // benchmarking.
   // A choice of hash function here is just an optimization matter
   // anyway, since a hash collision only results in some Key::operator== calls
@@ -67,7 +67,12 @@ std::size_t PrepackedCache::KeyHash::operator()(
       key.packed_layout.stride * 3 + key.packed_layout.kernel.rows * 5 +
       key.packed_layout.kernel.cols * 7 + key.packed_layout.rows * 11 +
       key.packed_layout.cols * 13;
-  return src_data_hash ^ packed_layout_hash;
+  std::size_t src_layout_hash =
+      static_cast<std::size_t>(key.src_layout.order) +
+      static_cast<std::size_t>(key.src_layout.rows) * 17 +
+      static_cast<std::size_t>(key.src_layout.cols) * 19 +
+      static_cast<std::size_t>(key.src_layout.stride) * 23;
+  return src_data_hash ^ packed_layout_hash ^ src_layout_hash;
 }
 
 PrepackedCache::~PrepackedCache() {
@@ -77,10 +82,12 @@ PrepackedCache::~PrepackedCache() {
 }
 
 PrepackedCache::Action PrepackedCache::Get(const void* src_data,
-                                           PEMat* packed_matrix) {
+                                         const MatLayout& src_layout,
+                                         PEMat* packed_matrix) {
   // Construct a Key and look up the cache.
   Key key;
   key.src_data = src_data;
+  key.src_layout = src_layout;
   key.packed_layout = packed_matrix->layout;
   key.zero_point = packed_matrix->zero_point;
   const auto& itr = cache_.find(key);

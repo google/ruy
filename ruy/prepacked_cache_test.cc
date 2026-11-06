@@ -51,29 +51,30 @@ void DummyPack(const std::vector<T>& data, PEMat* packed_matrix) {
   memcpy(packed_matrix->data, data.data(), data.size() * sizeof(T));
 }
 
+// DummyPack ignores the source layout, so dummy cache queries use an empty one.
 TEST(PrepackedCacheTest, TestCacheBasic) {
   PrepackedCache prepacked_cache(307);
   // Allocate the prepacked matrix.
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data1(10 * 20);
   PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kInsertedNewEntry);
   DummyPack(data1, &mat1);
 
   // DataBytes=15, SumsBytes=3*4=12, Total: 27 bytes
   std::vector<std::uint8_t> data2(5 * 3);
   PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 5, 3);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kInsertedNewEntry);
   DummyPack(data2, &mat2);
 
   // Both should now be in cache.
   EXPECT_EQ(prepacked_cache.MatrixCount(), 2);
   EXPECT_EQ(prepacked_cache.BuffersBytes(), 307);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kGotExistingEntry);
 }
 
@@ -83,23 +84,23 @@ TEST(PrepackedCacheTest, TestCacheBasicFloat) {
   // DataBytes=200*4, SumsBytes=0 because float, Total: 800 bytes
   std::vector<float> data1(10 * 20);
   PEMat mat1 = MakeDummyPEMat(Type::Create<float>(), 10, 20);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kInsertedNewEntry);
   DummyPack(data1, &mat1);
 
   // DataBytes=15*4, SumsBytes=0 because float, Total: 60 bytes
   std::vector<float> data2(5 * 3);
   PEMat mat2 = MakeDummyPEMat(Type::Create<float>(), 5, 3);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kInsertedNewEntry);
   DummyPack(data2, &mat2);
 
   // Both should now be in cache.
   EXPECT_EQ(prepacked_cache.MatrixCount(), 2);
   EXPECT_EQ(prepacked_cache.BuffersBytes(), 860);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kGotExistingEntry);
 }
 
@@ -109,31 +110,31 @@ TEST(PrepackedCacheTest, TestCacheEjection) {
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data1(10 * 20);
   PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  prepacked_cache.Get(data1.data(), &mat1);
+  prepacked_cache.Get(data1.data(), {}, &mat1);
   DummyPack(data1, &mat1);
 
   // DataBytes=15, SumsBytes=3*4=12, Total: 27 bytes
   std::vector<std::uint8_t> data2(5 * 3);
   PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 5, 3);
-  prepacked_cache.Get(data2.data(), &mat2);
+  prepacked_cache.Get(data2.data(), {}, &mat2);
   DummyPack(data2, &mat2);
 
   // The first matrix should have been ejected from the cache.
   // Only the second matrix should now be in cache.
   EXPECT_EQ(prepacked_cache.MatrixCount(), 1);
   EXPECT_EQ(prepacked_cache.BuffersBytes(), 27);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kInsertedNewEntry);
 
   // The second matrix should have been ejected from the cache.
   // Only the first matrix should now be in cache.
   EXPECT_EQ(prepacked_cache.MatrixCount(), 1);
   EXPECT_EQ(prepacked_cache.BuffersBytes(), 280);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kInsertedNewEntry);
 }
 
@@ -143,46 +144,46 @@ TEST(PrepackedCacheTest, TestCacheEjection2) {
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data1(10 * 20);
   PEMat mat1 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  prepacked_cache.Get(data1.data(), &mat1);
+  prepacked_cache.Get(data1.data(), {}, &mat1);
   DummyPack(data1, &mat1);
 
   // Allocate the prepacked matrix 2.
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data2(10 * 20);
   PEMat mat2 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  prepacked_cache.Get(data2.data(), &mat2);
+  prepacked_cache.Get(data2.data(), {}, &mat2);
   DummyPack(data2, &mat2);
 
   // Allocate the prepacked matrix 3.
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data3(10 * 20);
   PEMat mat3 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  prepacked_cache.Get(data3.data(), &mat3);
+  prepacked_cache.Get(data3.data(), {}, &mat3);
   DummyPack(data3, &mat3);
 
   // The next insertion will cause the cache size to go over the ejection
   // threshold. Touch matrix 1 and matrix 3 to make matrix 2 the oldest
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data3.data(), &mat3) ==
+  EXPECT_TRUE(prepacked_cache.Get(data3.data(), {}, &mat3) ==
               PrepackedCache::Action::kGotExistingEntry);
 
   // Allocate the prepacked matrix 4.
   // DataBytes=200, SumsBytes=20*4=80, Total: 280 bytes
   std::vector<std::uint8_t> data4(10 * 20);
   PEMat mat4 = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  prepacked_cache.Get(data4.data(), &mat4);
+  prepacked_cache.Get(data4.data(), {}, &mat4);
   DummyPack(data4, &mat4);
 
   // Ensure that mat2 was ejected, but mat1, mat3, and mat4 were not.
   EXPECT_EQ(prepacked_cache.MatrixCount(), 3);
-  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), {}, &mat1) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data3.data(), &mat3) ==
+  EXPECT_TRUE(prepacked_cache.Get(data3.data(), {}, &mat3) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data4.data(), &mat4) ==
+  EXPECT_TRUE(prepacked_cache.Get(data4.data(), {}, &mat4) ==
               PrepackedCache::Action::kGotExistingEntry);
-  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), {}, &mat2) ==
               PrepackedCache::Action::kInsertedNewEntry);
 }
 
@@ -191,39 +192,91 @@ TEST(PrepackedCacheTest, TestDistinguishSubtlyDifferentMatrices) {
 
   std::vector<std::uint8_t> data(10 * 20);
   PEMat mat = MakeDummyPEMat(Type::Create<std::uint8_t>(), 10, 20);
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   // Same layout, different source data pointer
-  EXPECT_EQ(prepacked_cache.Get(data.data() + 1, &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data() + 1, {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   // Layout tweaks
   mat.layout.rows = 9;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   mat.layout.cols = 19;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   mat.layout.order = Order::kRowMajor;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   mat.layout.kernel.rows = 2;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   mat.layout.kernel.cols = 2;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   mat.layout.kernel.order = Order::kRowMajor;
-  EXPECT_EQ(prepacked_cache.Get(data.data(), &mat),
+  EXPECT_EQ(prepacked_cache.Get(data.data(), {}, &mat),
             PrepackedCache::Action::kInsertedNewEntry);
 
   EXPECT_EQ(prepacked_cache.MatrixCount(), 8);
+}
+
+TEST(PrepackedCacheTest, TestCacheDifferentSourceLayouts) {
+  Context context;
+  context.set_max_num_threads(1);
+  context.set_runtime_enabled_paths(Path::kStandardCpp);
+
+  const float data[] = {1, 2, 3, 4, 5, 6};
+  float dst_data[4];
+  Matrix<float> lhs, rhs, dst;
+  MakeSimpleLayout(2, 2, Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(data);
+  lhs.set_cache_policy(CachePolicy::kAlwaysCache);
+  MakeSimpleLayout(2, 2, Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
+  MulParams<float, float> mul_params;
+
+  // The transposed LHS view and the RHS view need distinct cache entries.
+  for (int i = 0; i < 2; i++) {
+    Mul(lhs, lhs, mul_params, &context, &dst);
+    EXPECT_EQ(dst_data[0], 7);
+    EXPECT_EQ(dst_data[1], 15);
+    EXPECT_EQ(dst_data[2], 10);
+    EXPECT_EQ(dst_data[3], 22);
+  }
+  EXPECT_EQ(get_ctx(&context)->GetPrepackedCache()->MatrixCount(), 2);
+
+  const float rhs_data[] = {1, 1};
+  MakeSimpleLayout(2, 1, Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
+  MakeSimpleLayout(2, 1, Order::kColMajor, dst.mutable_layout());
+  Mul(lhs, rhs, mul_params, &context, &dst);
+  EXPECT_EQ(dst_data[0], 3);
+  EXPECT_EQ(dst_data[1], 7);
+
+  // Changing the order or stride must not reuse the previous packed view.
+  lhs.mutable_layout()->set_order(Order::kColMajor);
+  Mul(lhs, rhs, mul_params, &context, &dst);
+  EXPECT_EQ(dst_data[0], 4);
+  EXPECT_EQ(dst_data[1], 6);
+
+  lhs.mutable_layout()->set_order(Order::kRowMajor);
+  lhs.mutable_layout()->set_stride(3);
+  Mul(lhs, rhs, mul_params, &context, &dst);
+  EXPECT_EQ(dst_data[0], 3);
+  EXPECT_EQ(dst_data[1], 9);
+
+  // The original view can still reuse its cached entry.
+  lhs.mutable_layout()->set_stride(2);
+  Mul(lhs, rhs, mul_params, &context, &dst);
+  EXPECT_EQ(dst_data[0], 3);
+  EXPECT_EQ(dst_data[1], 7);
 }
 
 void TestCachePolicies(CachePolicy cache_policy, bool expected_cached) {

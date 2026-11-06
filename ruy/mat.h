@@ -111,6 +111,11 @@ struct MatLayout final {
   Order order = Order::kColMajor;
 };
 
+inline bool operator==(const MatLayout& a, const MatLayout& b) {
+  return a.cols == b.cols && a.rows == b.rows && a.stride == b.stride &&
+         a.order == b.order;
+}
+
 inline MatLayout ToInternal(const Layout& src) {
   MatLayout ret;
   ret.rows = src.rows();
