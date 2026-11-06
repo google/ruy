@@ -1620,12 +1620,10 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "ld1 {v1.8b}, [%[src_ptr1]]\n"
           "ld1 {v2.8b}, [%[src_ptr2]]\n"
           "ld1 {v3.8b}, [%[src_ptr3]]\n"
-          // Load values from the sums buffer, and start the reordering
-          // of the loaded 4x8 block by interleaving 8bit values.
+          // Start the reordering of the loaded 4x8 block by interleaving 8bit
+          // values.
           "zip1 v0.16b, v0.16b, v1.16b\n"
-          "ldr q8, [%[sums_ptr], 0]\n"
           "zip1 v1.16b, v2.16b, v3.16b\n"
-          "ldr q9, [%[sums_ptr], 16]\n"
           // Finish the reordering of the 4x8 block, putting it into
           // column-major order.
           "zip1 v2.8h, v0.8h, v1.8h\n"
@@ -1637,21 +1635,23 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "eor v2.16b, v2.16b, v26.16b\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], 128]\n")
           "eor v3.16b, v3.16b, v26.16b\n"
-          // Update the sums.
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], 128]\n")
-          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
-          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
           // Store the column-major 4x8 block to the packed matrix, and
           // increment some source pointers.
           "str q2, [%[packed_ptr], 0]\n"
           "add %[src_ptr0], %[src_ptr0], %w[src_inc0], sxtw\n"
           "str q3, [%[packed_ptr], 16]\n"
           "add %[src_ptr1], %[src_ptr1], %w[src_inc1], sxtw\n"
-          // Store the updated sums, and increment the remaining pointers
-          // and the block_col loop index.
-          "st1 {v8.4s}, [%[sums_ptr]], 16\n"
           "add %[packed_ptr], %[packed_ptr], %[packed_stride], lsl 3\n"
+          // Update and store the sums if sums_ptr is non-null.
+          "cbz %[sums_ptr], 5f\n"
+          "ldr q8, [%[sums_ptr], 0]\n"
+          "ldr q9, [%[sums_ptr], 16]\n"
+          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
+          "st1 {v8.4s}, [%[sums_ptr]], 16\n"
           "st1 {v9.4s}, [%[sums_ptr]], 16\n"
+          "5:\n"
           // Advance by 8 columns and set the condition code.
           "subs w0, w0, 8\n"
           "add %[src_ptr2], %[src_ptr2], %w[src_inc2], sxtw\n"
@@ -1692,12 +1692,10 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           "4:\n"
           // The leftovers source data is loaded, now we can perform the
           // computation as usual.
-          // Load values from the sums buffer, and start the reordering
-          // of the loaded 4x8 block by interleaving 8bit values.
+          // Start the reordering of the loaded 4x8 block by interleaving 8bit
+          // values.
           "zip1 v0.16b, v0.16b, v1.16b\n"
-          "ldr q8, [%[sums_ptr], 0]\n"
           "zip1 v1.16b, v2.16b, v3.16b\n"
-          "ldr q9, [%[sums_ptr], 16]\n"
           // Finish the reordering of the 4x8 block, putting it into
           // column-major order.
           "zip1 v2.8h, v0.8h, v1.8h\n"
@@ -1706,15 +1704,15 @@ void Pack8bitRowMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
           // if needed.
           "eor v2.16b, v2.16b, v26.16b\n"
           "eor v3.16b, v3.16b, v26.16b\n"
-          // Update the sums.
-          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
-          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
-          // Store the column-major 4x8 block to the packed matrix, and
-          // increment some source pointers.
+          // Store the column-major 4x8 block to the packed matrix.
           "str q2, [%[packed_ptr], 0]\n"
           "str q3, [%[packed_ptr], 16]\n"
-          // Store the updated sums, and increment the remaining pointers
-          // and the block_col loop index.
+          // Update and store the sums if sums_ptr is non-null.
+          "cbz %[sums_ptr], 3f\n"
+          "ldr q8, [%[sums_ptr], 0]\n"
+          "ldr q9, [%[sums_ptr], 16]\n"
+          ".inst 0x4e9b9448  // sdot v8.4s, v2.16b, v27.16b\n"
+          ".inst 0x4e9b9469  // sdot v9.4s, v3.16b, v27.16b\n"
           "st1 {v8.4s}, [%[sums_ptr]], 16\n"
           "st1 {v9.4s}, [%[sums_ptr]], 16\n"
 
@@ -2291,9 +2289,6 @@ void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
     // Tuning::kGeneric), then 8, then 4 to minimize the amount of slow
     // leftovers.
     //
-    // Load 8 sums in sums0, sums1.
-    int32x4_t sums0 = vld1q_s32(sums + col);
-    int32x4_t sums1 = vld1q_s32(sums + col + 4);
     // Load the 8x16 block from the source matrix.
     // Each val* here is the data from one row.
     int8x8_t val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, val10,
@@ -2379,21 +2374,26 @@ void Pack8bitRowMajorForNeon(const std::uint8_t* src_ptr, int src_stride,
         val15 = load_and_convert(src_ptr + 15 * src_stride);
     }
     src_ptr += 8;
-    // Compute sums.
-    int16x8_t sums16_0 = vaddl_s8(val0, val1);
-    int16x8_t sums16_1 = vaddl_s8(val2, val3);
-    sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val4, val5));
-    sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val6, val7));
-    sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val8, val9));
-    sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val10, val11));
-    sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val12, val13));
-    sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val14, val15));
-    int16x8_t sums16 = vaddq_s16(sums16_0, sums16_1);
-    sums0 = vaddw_s16(sums0, vget_low_s16(sums16));
-    sums1 = vaddw_s16(sums1, vget_high_s16(sums16));
-    // Store sums.
-    vst1q_s32(sums + col, sums0);
-    vst1q_s32(sums + col + 4, sums1);
+    if (sums) {
+      // Load 8 sums in sums0, sums1.
+      int32x4_t sums0 = vld1q_s32(sums + col);
+      int32x4_t sums1 = vld1q_s32(sums + col + 4);
+      // Compute sums.
+      int16x8_t sums16_0 = vaddl_s8(val0, val1);
+      int16x8_t sums16_1 = vaddl_s8(val2, val3);
+      sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val4, val5));
+      sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val6, val7));
+      sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val8, val9));
+      sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val10, val11));
+      sums16_0 = vaddq_s16(sums16_0, vaddl_s8(val12, val13));
+      sums16_1 = vaddq_s16(sums16_1, vaddl_s8(val14, val15));
+      int16x8_t sums16 = vaddq_s16(sums16_0, sums16_1);
+      sums0 = vaddw_s16(sums0, vget_low_s16(sums16));
+      sums1 = vaddw_s16(sums1, vget_high_s16(sums16));
+      // Store sums.
+      vst1q_s32(sums + col, sums0);
+      vst1q_s32(sums + col + 4, sums1);
+    }
 
     // Transpose the data, i.e. change the storage order of the
     // 16x8 block, to convert from the row-major source to the

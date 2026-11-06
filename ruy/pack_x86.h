@@ -369,7 +369,9 @@ struct PackImpl<Path::kAvx2Fma, FixedKernelLayout<Order::kColMajor, 4, 8>,
     static constexpr int kInputXor =
         std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
     std::int32_t* sums = packed_matrix->sums;
-    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    if (sums) {
+      std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    }
     int block_row = 0;
     for (; block_row < packed_matrix->layout.rows; block_row += 4) {
       int src_stride = src_matrix.layout.stride;
@@ -404,7 +406,9 @@ struct PackImpl<Path::kAvx, FixedKernelLayout<Order::kColMajor, 4, 8>, Scalar,
     static constexpr int kInputXor =
         std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
     std::int32_t* sums = packed_matrix->sums;
-    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    if (sums) {
+      std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    }
     int block_row = 0;
     for (; block_row < packed_matrix->layout.rows; block_row += 4) {
       int src_stride = src_matrix.layout.stride;
@@ -439,7 +443,9 @@ struct PackImpl<Path::kAvx512, FixedKernelLayout<Order::kColMajor, 4, 16>,
     static constexpr int kInputXor =
         std::is_same<Scalar, std::int8_t>::value ? 0 : 0x80;
     std::int32_t* sums = packed_matrix->sums;
-    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    if (sums) {
+      std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
+    }
     int block_row = 0;
     for (; block_row < packed_matrix->layout.rows; block_row += 4) {
       int src_stride = src_matrix.layout.stride;
