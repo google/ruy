@@ -401,31 +401,28 @@ inline void HalfPack8bitAvx512(const std::int8_t* src_ptr,
         const __m256i r3_0 = _mm512_castsi512_si256(r3);
         const __m256i r3_1 = _mm512_extracti32x8_epi32(r3, 1);
 
-        if (sums_ptr) {
-          __m512i sums_8x4_16bit;
-          sums_8x4_16bit = _mm512_cvtepi8_epi16(r0_0);
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r0_1));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r1_0));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r1_1));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r2_0));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r2_1));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r3_0));
-          sums_8x4_16bit =
-              _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r3_1));
-          // The sums have been performed across columns, and now we have
-          // 4x16-bit sums packed together. We use madd for pairwise 32-bit
-          // sums.
-          const __m512i sums_8x2_32bit_new =
-              _mm512_madd_epi16(sums_8x4_16bit, ones_16bit);
-          sums_8x2_32bit =
-              _mm512_add_epi32(sums_8x2_32bit, sums_8x2_32bit_new);
-        }
+        __m512i sums_8x4_16bit;
+        sums_8x4_16bit = _mm512_cvtepi8_epi16(r0_0);
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r0_1));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r1_0));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r1_1));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r2_0));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r2_1));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r3_0));
+        sums_8x4_16bit =
+            _mm512_add_epi16(sums_8x4_16bit, _mm512_cvtepi8_epi16(r3_1));
+        // The sums have been performed across columns, and now we have
+        // 4x16-bit sums packed together. We use madd for pairwise 32-bit
+        // sums.
+        const __m512i sums_8x2_32bit_new =
+            _mm512_madd_epi16(sums_8x4_16bit, ones_16bit);
+        sums_8x2_32bit = _mm512_add_epi32(sums_8x2_32bit, sums_8x2_32bit_new);
 
         _mm256_storeu_si256(
             reinterpret_cast<__m256i*>(trailing_buf + 0 * 16 * 4), r0_0);
@@ -1041,18 +1038,16 @@ void Pack8bitRowMajorForAvx512(const std::uint8_t* src_ptr, int src_stride,
     val2 = _mm_xor_si128(val2, input_xor_dup);
     val3 = _mm_xor_si128(val3, input_xor_dup);
     // Update the sums.
-    if (sums) {
-      __m256i val16_0 = _mm256_cvtepi8_epi16(val0);
-      __m256i val16_1 = _mm256_cvtepi8_epi16(val1);
-      __m256i val16_2 = _mm256_cvtepi8_epi16(val2);
-      __m256i val16_3 = _mm256_cvtepi8_epi16(val3);
-      __m256i new_sum16 = _mm256_add_epi16(_mm256_add_epi16(val16_0, val16_1),
-                                           _mm256_add_epi16(val16_2, val16_3));
-      __m512i sum =
-          _mm512_loadu_si512(reinterpret_cast<const __m512i*>(sums + col));
-      sum = _mm512_add_epi32(sum, _mm512_cvtepi16_epi32(new_sum16));
-      _mm512_storeu_si512(reinterpret_cast<__m512i*>(sums + col), sum);
-    }
+    __m256i val16_0 = _mm256_cvtepi8_epi16(val0);
+    __m256i val16_1 = _mm256_cvtepi8_epi16(val1);
+    __m256i val16_2 = _mm256_cvtepi8_epi16(val2);
+    __m256i val16_3 = _mm256_cvtepi8_epi16(val3);
+    __m256i new_sum16 = _mm256_add_epi16(_mm256_add_epi16(val16_0, val16_1),
+                                         _mm256_add_epi16(val16_2, val16_3));
+    __m512i sum =
+        _mm512_loadu_si512(reinterpret_cast<const __m512i*>(sums + col));
+    sum = _mm512_add_epi32(sum, _mm512_cvtepi16_epi32(new_sum16));
+    _mm512_storeu_si512(reinterpret_cast<__m512i*>(sums + col), sum);
     auto zip = [](__m128i x, __m128i y) {
       auto perm_64_0_64_0 = [](__m128i x) {
         return _mm256_permutexvar_epi64(_mm256_setr_epi64x(0, 2, 1, 3),

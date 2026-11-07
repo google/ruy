@@ -88,16 +88,8 @@ void PreparePackedMatrices(Ctx* ctx, TrMulParams* params) {
       packed_matrix.data = allocator->AllocateBytesAvoidingAliasingWith(
           DataBytes(packed_matrix), params->src[side].data);
       RUY_CHECK(packed_matrix.data != nullptr);
-      // Row/column sums are only needed to subtract the (other_zero_point *
-      // sums) cross-term during integer quantization; if the opposite operand
-      // has zero_point == 0, sums are unused.
-      if (!packed_matrix.sums_type.is_floating_point &&
-          params->packed_matrix[OtherSide(side)].zero_point != 0) {
-        packed_matrix.sums = allocator->AllocateBytes(SumsBytes(packed_matrix));
-        RUY_CHECK(packed_matrix.sums != nullptr);
-      } else {
-        packed_matrix.sums = nullptr;
-      }
+      packed_matrix.sums = allocator->AllocateBytes(SumsBytes(packed_matrix));
+      RUY_CHECK(packed_matrix.sums != nullptr);
     }
   }
 }
