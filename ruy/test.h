@@ -121,7 +121,8 @@ inline const char* TuningName(Tuning tuning) {
   case Tuning::NAME:               \
     return #NAME;
   switch (tuning) {
-    RUY_SUBPATHNAME_CASE(kA55ish)
+    RUY_SUBPATHNAME_CASE(kA53)
+    RUY_SUBPATHNAME_CASE(kA55)
     RUY_SUBPATHNAME_CASE(kX1)
     RUY_SUBPATHNAME_CASE(kGeneric)
     default:
@@ -1840,7 +1841,8 @@ inline std::vector<Tuning> EnumerateTuningsForPath(Path path, bool benchmark) {
   }
 #if RUY_PLATFORM_ARM
   if (path == Path::kNeon || path == Path::kNeonDotprod) {
-    return {Tuning::kA55ish, Tuning::kX1, Tuning::kGeneric, Tuning::kAuto};
+    return {Tuning::kA53, Tuning::kA55, Tuning::kX1, Tuning::kGeneric,
+            Tuning::kAuto};
   }
 #endif
   (void)path;

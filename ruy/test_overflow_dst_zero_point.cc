@@ -112,8 +112,8 @@ TEST(RuyTest, OverflowingAdditionOfDestinationZeroPoint) {
       continue;
     }
     context.set_runtime_enabled_paths(path);
-    for (ruy::Tuning tuning :
-         {ruy::Tuning::kGeneric, ruy::Tuning::kA55ish, ruy::Tuning::kX1}) {
+    for (ruy::Tuning tuning : {ruy::Tuning::kGeneric, ruy::Tuning::kA53,
+                               ruy::Tuning::kA55, ruy::Tuning::kX1}) {
       fprintf(stderr, "Testing path %s, tuning %s\n", PathName(path),
               TuningName(tuning));
       context.set_explicit_tuning(tuning);

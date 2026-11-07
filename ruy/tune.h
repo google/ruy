@@ -24,21 +24,17 @@ limitations under the License.
 // layouts compared to Path::kNeon; but within each, different tunings
 // will share that same layout.
 //
-// # Tuning is for now only based on 1 bit: Generic / A55ish
+// # Tuning for in-order vs out-of-order CPUs
 //
-// In practice, each of our asm code paths only needs one bit information to
-// decide on tuning: whether the CPU is out-of-order or in-order.
-// That is because out-of-order CPUs are by definition relatively insensitive
-// to small-scale asm details (which is what "tuning" is about); and for each
-// asm code path, there tends to be one main in-order CPU architecture that
-// we focus our tuning effort on. Examples:
-//  * For Path::kNeon, the main in-order CPU is Cortex-A53/A55 (pre-dotprod)
-//  * For Path::kNeonDotprod, the main in-order CPU is Cortex-A55r1 (dotprod)
-//
-// Because having tuned code paths is a compromise of efficiency gains
-// versus implementation effort and code size, we are happy to stop at just this
-// single bit of information, Generic / A55ish, at least in the current CPU
-// landscape. This could change in the future.
+// Out-of-order CPUs are by definition relatively insensitive to small-scale
+// asm details (which is what "tuning" is about), while in-order CPUs such as
+// Cortex-A53 and Cortex-A55 require careful instruction scheduling and
+// core-specific prefetch tuning:
+//  * For Cortex-A53 (kA53), 64-bit loads + INS are used and software prefetches
+//    (prfm) in the inner loop are beneficial.
+//  * For Cortex-A55 (kA55, covering both A55r0 pre-dotprod and A55r1+ with
+//    dotprod), 64-bit loads + INS are used and software prefetches (prfm) in
+//    the inner loop are omitted since they cost a full cycle.
 #ifndef RUY_RUY_TUNE_H_
 #define RUY_RUY_TUNE_H_
 
@@ -57,19 +53,16 @@ enum class Tuning {
   // Use code not tuned for any particular CPU, typically performing well
   // on out-of-order cores that don't require as much tuning.
   kGeneric,
-  // Use code tuned for "Cortex-A55-ish" CPUs, by which we mean mostly:
-  // A53, A55r0 (pre-dotprod), A55r1 (with dotprod). These CPUs have in common
-  // that they are in-order CPU cores with largely similar requirements of code
-  // tuning. The most important such requirement is to use only 64-bit loads
-  // to maximize dual-issuing.
-  //
-  // A55r1 differs from A55r0 and A53 in that it dual-issues 64-bit NEON loads
-  // whereas A55r0 and A53 require using non-NEON ARM 64-bit loads together with
-  // INS instructions to insert 64bit lanes into NEON registers. However, since
-  // A55r1 supports dotprod unlike A55r0 and A53, they are not using the same
-  // kernels in practice anyway, so there was no need to distinguish them with
-  // separate Tuning values.
-  kA55ish,
+  // Use code tuned for Cortex-A53 CPUs: in-order cores that require using
+  // non-NEON ARM 64-bit loads together with INS instructions to dual-issue
+  // 64-bit loads, and where software prefetches (prfm) in the inner loop are a
+  // performance win.
+  kA53,
+  // Use code tuned for Cortex-A55 CPUs (A55r0 pre-dotprod and A55r1+ with
+  // dotprod): in-order cores that benefit from 64-bit loads, but where
+  // software prefetches (prfm) in the inner loop cost a full cycle and are
+  // omitted.
+  kA55,
   // Use code tuned for Cortex-X1 CPUs. Currently, the driver to distinguish
   // this CPU is the get maximum performance on the dotprod kernels, where we
   // attain high performance simply by avoiding any manual loop unrolling. As a
