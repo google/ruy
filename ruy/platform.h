@@ -63,14 +63,16 @@ limitations under the License.
 #endif
 
 // Detect ARM 32-bit.
-#ifdef __arm__
+// MSVC on Windows ARM32 defines _M_ARM; GCC/Clang use __arm__.
+#if defined(__arm__) || defined(_M_ARM)
 #define RUY_PLATFORM_ARM_32 1
 #else
 #define RUY_PLATFORM_ARM_32 0
 #endif
 
 // Detect ARM 64-bit.
-#ifdef __aarch64__
+// MSVC on Windows ARM64 defines _M_ARM64; GCC/Clang use __aarch64__.
+#if defined(__aarch64__) || defined(_M_ARM64)
 #define RUY_PLATFORM_ARM_64 1
 #else
 #define RUY_PLATFORM_ARM_64 0
@@ -84,7 +86,10 @@ limitations under the License.
 // These are mostly sub-selections of architectures.
 
 // Detect NEON. Explicitly avoid emulation, or anything like it, on x86.
-#if (defined(__ARM_NEON) || defined(__ARM_NEON__)) && !RUY_PLATFORM_X86
+// MSVC on Windows ARM64 (_M_ARM64) has NEON but may not define __ARM_NEON__.
+// NEON is mandatory on AArch64, so any ARM64 target always has NEON.
+#if (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)) && \
+    !RUY_PLATFORM_X86
 #define RUY_PLATFORM_NEON 1
 #else
 #define RUY_PLATFORM_NEON 0
@@ -157,6 +162,12 @@ limitations under the License.
 #define RUY_PLATFORM_EMSCRIPTEN 1
 #else
 #define RUY_PLATFORM_EMSCRIPTEN 0
+#endif
+
+// MSVC does not provide __builtin_expect. Define a no-op shim so that ruy
+// code using branch-prediction hints compiles cleanly under MSVC ARM64.
+#if defined(_MSC_VER) && !defined(__builtin_expect)
+#define __builtin_expect(expr, expected) (expr)
 #endif
 
 #endif  // RUY_RUY_PLATFORM_H_

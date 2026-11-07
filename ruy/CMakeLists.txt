@@ -692,7 +692,7 @@ ruy_cc_library(
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
   set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 ";-mavx512f;-mavx512vl;-mavx512cd;-mavx512bw;-mavx512dq")
-elseif(MSVC)
+elseif(MSVC AND (CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64))  # ARM64 support: /arch:AVX512 is x86-only
   set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "/arch:AVX512")
 else()
   set(ruy_7_mavx512bw_mavx512cd_mavx512dq_mavx512f_mavx512vl_arch_AVX512 "")
@@ -764,7 +764,7 @@ ruy_cc_library(
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
   set(ruy_8_mavx2_mfma_arch_AVX2 "-mavx2;-mfma")
-elseif(MSVC)
+elseif(MSVC AND (CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64))  # ARM64 support: /arch:AVX2 is x86-only
   set(ruy_8_mavx2_mfma_arch_AVX2 "/arch:AVX2")
 else()
   set(ruy_8_mavx2_mfma_arch_AVX2 "")
@@ -836,7 +836,7 @@ ruy_cc_library(
 
 if((CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64) AND NOT MSVC)
   set(ruy_9_mavx_arch_AVX "-mavx")
-elseif(MSVC)
+elseif(MSVC AND (CMAKE_SYSTEM_PROCESSOR STREQUAL x86_64 OR CMAKE_SYSTEM_PROCESSOR STREQUAL amd64))  # ARM64 support: /arch:AVX is x86-only
   set(ruy_9_mavx_arch_AVX "/arch:AVX")
 else()
   set(ruy_9_mavx_arch_AVX "")
