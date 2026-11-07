@@ -999,13 +999,13 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
         "vsub.s32 q14, q14, q11\n"
         "vsub.s32 q15, q15, q11\n"
 
-        "402:\n"
-
         // If the destination is int32, it means the user asks for the raw
         // accumulators, no need for us to downquantize the value.
         "ldrb r10, [%[params], #" RUY_STR(RUY_OFFSET_DST_TYPE_ID) "]\n"
         "cmp r10, #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -1949,13 +1949,13 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
         // equation (7) in https://arxiv.org/pdf/1712.05877.pdf
         "vsub.s32 q14, q14, q11\n"
 
-        "402:\n"
-
         // If the destination is int32, it means the user asks for the raw
         // accumulators, no need for us to downquantize the value.
         "ldrb r10, [%[params], #" RUY_STR(RUY_OFFSET_DST_TYPE_ID) "]\n"
         "cmp r10, #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.

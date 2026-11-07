@@ -568,68 +568,58 @@ inline void Pack8bitColMajorForAvxPacker(const std::int8_t* src_ptr,
       r6 = mm256_xor_si256(r6, input_xor_v);
       r7 = mm256_xor_si256(r7, input_xor_v);
 
-      if (sums_ptr) {
-        __m256i sums_4x4_16bit_lo;
-        sums_4x4_16bit_lo = mm256_cvtepi8_epi16(_mm256_castsi256_si128(r0));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r1)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r2)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r3)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r4)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r5)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r6)));
-        sums_4x4_16bit_lo = mm256_add_epi16(
-            sums_4x4_16bit_lo,
-            mm256_cvtepi8_epi16(_mm256_castsi256_si128(r7)));
+      __m256i sums_4x4_16bit_lo;
+      sums_4x4_16bit_lo = mm256_cvtepi8_epi16(_mm256_castsi256_si128(r0));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r1)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r2)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r3)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r4)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r5)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r6)));
+      sums_4x4_16bit_lo = mm256_add_epi16(
+          sums_4x4_16bit_lo, mm256_cvtepi8_epi16(_mm256_castsi256_si128(r7)));
 
-        // The sums have been performed across columns, and now we have 4x16-bit
-        // sums packed together. We use madd for pairwise 32-bit sums.
-        const __m256i sums_4x2_32bit_lo_new =
-            mm256_madd_epi16(sums_4x4_16bit_lo, ones_16bit);
-        sums_4x2_32bit_lo =
-            mm256_add_epi32(sums_4x2_32bit_lo, sums_4x2_32bit_lo_new);
+      // The sums have been performed across columns, and now we have 4x16-bit
+      // sums packed together. We use madd for pairwise 32-bit sums.
+      const __m256i sums_4x2_32bit_lo_new =
+          mm256_madd_epi16(sums_4x4_16bit_lo, ones_16bit);
+      sums_4x2_32bit_lo =
+          mm256_add_epi32(sums_4x2_32bit_lo, sums_4x2_32bit_lo_new);
 
-        __m256i sums_4x4_16bit_hi;
-        sums_4x4_16bit_hi =
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r0, 1));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r1, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r2, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r3, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r4, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r5, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r6, 1)));
-        sums_4x4_16bit_hi = mm256_add_epi16(
-            sums_4x4_16bit_hi,
-            mm256_cvtepi8_epi16(mm256_extracti128_si256(r7, 1)));
+      __m256i sums_4x4_16bit_hi;
+      sums_4x4_16bit_hi = mm256_cvtepi8_epi16(mm256_extracti128_si256(r0, 1));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r1, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r2, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r3, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r4, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r5, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r6, 1)));
+      sums_4x4_16bit_hi =
+          mm256_add_epi16(sums_4x4_16bit_hi,
+                          mm256_cvtepi8_epi16(mm256_extracti128_si256(r7, 1)));
 
-        const __m256i sums_4x2_32bit_hi_new =
-            mm256_madd_epi16(sums_4x4_16bit_hi, ones_16bit);
-        sums_4x2_32bit_hi =
-            mm256_add_epi32(sums_4x2_32bit_hi, sums_4x2_32bit_hi_new);
-      }
+      const __m256i sums_4x2_32bit_hi_new =
+          mm256_madd_epi16(sums_4x4_16bit_hi, ones_16bit);
+      sums_4x2_32bit_hi =
+          mm256_add_epi32(sums_4x2_32bit_hi, sums_4x2_32bit_hi_new);
 
       _mm256_storeu_si256(reinterpret_cast<__m256i*>(trailing_buf + 0 * 8 * 4),
                           r0);
@@ -793,18 +783,16 @@ void Pack8bitRowMajorForAvx(const std::uint8_t* src_ptr, int src_stride,
     val2 = _mm_xor_si128(val2, input_xor_dup);
     val3 = _mm_xor_si128(val3, input_xor_dup);
     // Update the sums.
-    if (sums) {
-      __m128i val16_0 = _mm_cvtepi8_epi16(val0);
-      __m128i val16_1 = _mm_cvtepi8_epi16(val1);
-      __m128i val16_2 = _mm_cvtepi8_epi16(val2);
-      __m128i val16_3 = _mm_cvtepi8_epi16(val3);
-      __m128i new_sum16 = _mm_add_epi16(_mm_add_epi16(val16_0, val16_1),
-                                        _mm_add_epi16(val16_2, val16_3));
-      __m256i sum =
-          _mm256_loadu_si256(reinterpret_cast<const __m256i*>(sums + col));
-      sum = mm256_add_epi32(sum, mm256_cvtepi16_epi32(new_sum16));
-      _mm256_storeu_si256(reinterpret_cast<__m256i*>(sums + col), sum);
-    }
+    __m128i val16_0 = _mm_cvtepi8_epi16(val0);
+    __m128i val16_1 = _mm_cvtepi8_epi16(val1);
+    __m128i val16_2 = _mm_cvtepi8_epi16(val2);
+    __m128i val16_3 = _mm_cvtepi8_epi16(val3);
+    __m128i new_sum16 = _mm_add_epi16(_mm_add_epi16(val16_0, val16_1),
+                                      _mm_add_epi16(val16_2, val16_3));
+    __m256i sum =
+        _mm256_loadu_si256(reinterpret_cast<const __m256i*>(sums + col));
+    sum = mm256_add_epi32(sum, mm256_cvtepi16_epi32(new_sum16));
+    _mm256_storeu_si256(reinterpret_cast<__m256i*>(sums + col), sum);
     // Perform the transposition of 4x4 blocks
     __m128i t2_val0 = _mm_unpacklo_epi8(val0, val1);
     __m128i t2_val1 = _mm_unpacklo_epi8(val2, val3);

@@ -508,12 +508,12 @@ void Kernel8bitNeon(const KernelParams8bit<4, 4>& params) {
         "sub v18.4s, v18.4s, v11.4s\n"
         "sub v19.4s, v19.4s, v11.4s\n"
 
-        "402:\n"
-
         // If the destination is int32, it means the user asks for the raw
         // accumulators, no need for us to downquantize the value.
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -1421,12 +1421,12 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params) {
         // equation (7) in https://arxiv.org/pdf/1712.05877.pdf
         "sub v16.4s, v16.4s, v11.4s\n"
 
-        "402:\n"
-
         // If the destination is int32, it means the user asks for the raw
         // accumulators, no need for us to downquantize the value.
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -2261,12 +2261,12 @@ void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params) {
         "sub v18.4s, v18.4s, v11.4s\n"
         "sub v19.4s, v19.4s, v11.4s\n"
 
-        "402:\n"
-
         // If the destination is int32, it means the user asks for the raw
         // accumulators, no need for us to downquantize the value.
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -3501,10 +3501,10 @@ void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params) {
         "sub v30.4s, v30.4s, v11.4s\n"
         "sub v31.4s, v31.4s, v12.4s\n"
 
-        "402:\n"
-
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -4756,10 +4756,10 @@ void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params) {
         "sub v30.4s, v30.4s, v11.4s\n"
         "sub v31.4s, v31.4s, v12.4s\n"
 
-        "402:\n"
-
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -5897,10 +5897,10 @@ void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params) {
         "sub v16.4s, v16.4s, v11.4s\n"
         "sub v17.4s, v17.4s, v12.4s\n"
 
-        "402:\n"
-
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.
@@ -6701,10 +6701,10 @@ void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params) {
         "sub v30.4s, v30.4s, v11.4s\n"
         "sub v31.4s, v31.4s, v12.4s\n"
 
-        "402:\n"
-
         "cmp %w[dst_type_id], #" RUY_STR(RUY_ASM_TYPE_ID_INT32) "\n"
         "beq " RUY_STR(RUY_ASM_LABEL_STORE_INT32) "f\n"
+
+        "402:\n"
 
         // At this point we have computed the final int32 values. Now we
         // start down-quantizing them to obtain the final 8bit values from them.

@@ -155,17 +155,13 @@ void MakeKernelParams8bit(const PMat<std::int8_t>& lhs,
     params->bias = mul_params.bias();
     params->flags |= RUY_ASM_FLAG_HAS_BIAS;
   }
-  if (lhs.sums != nullptr && rhs.zero_point != 0) {
+  if (lhs.sums) {
     params->lhs_sums = lhs.sums;
     params->flags |= RUY_ASM_FLAG_HAS_LHS_SUMS;
-  } else {
-    params->lhs_sums = nullptr;
   }
-  if (rhs.sums != nullptr && lhs.zero_point != 0) {
+  if (rhs.sums) {
     params->rhs_sums = rhs.sums;
     params->flags |= RUY_ASM_FLAG_HAS_RHS_SUMS;
-  } else {
-    params->rhs_sums = nullptr;
   }
   if (mul_params.channel_dimension() == ChannelDimension::kCol) {
     params->flags |= RUY_ASM_FLAG_CHANNEL_DIMENSION_IS_COL;

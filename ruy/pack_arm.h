@@ -510,9 +510,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
     RUY_DCHECK(IsColMajor(packed_matrix->layout));
     RUY_DCHECK_EQ(start_col % 8, 0);
     std::int32_t* sums = packed_matrix->sums;
-    if (sums) {
-      std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
-    }
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
     Scalar zerobuf[8];
     memset(zerobuf, src_matrix.zero_point, sizeof(zerobuf));
     int src_stride = src_matrix.layout.stride;
@@ -563,7 +561,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
       std::int8_t* packed_ptr = packed_matrix->data +
                                 packed_matrix->layout.stride * start_col +
                                 8 * block_row;
-      std::int32_t* sums_ptr = sums ? sums + start_col : nullptr;
+      std::int32_t* sums_ptr = sums + start_col;
       Pack8bitRowMajorForNeonDotprod(
           src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1, src_inc2,
           src_inc3, src_cols, src_matrix.zero_point, packed_ptr,
@@ -589,9 +587,7 @@ struct PackImpl<Path::kNeon,
     RUY_DCHECK_EQ(src_matrix.layout.order, Order::kRowMajor);
     RUY_DCHECK_EQ((end_col - start_col) % KernelCols, 0);
     std::int32_t* sums = packed_matrix->sums;
-    if (sums) {
-      std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
-    }
+    std::memset(sums + start_col, 0, sizeof(sums[0]) * (end_col - start_col));
     int block_row = 0;
     for (; block_row < packed_matrix->layout.rows; block_row += 16) {
       int src_stride = src_matrix.layout.stride;
