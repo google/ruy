@@ -134,7 +134,7 @@ bool CpuInfo::AvxVnni() {
   return EnsureInitialized() && cpuinfo_has_x86_avx512vnni();
 }
 
-bool CpuInfo::CurrentCpuIsA55ish() {
+bool CpuInfo::CurrentCpuIsA53() {
   if (!EnsureInitialized()) {
     return false;
   }
@@ -146,6 +146,23 @@ bool CpuInfo::CurrentCpuIsA55ish() {
   }
   switch (cpuinfo_uarch->uarch) {
     case cpuinfo_uarch_cortex_a53:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool CpuInfo::CurrentCpuIsA55() {
+  if (!EnsureInitialized()) {
+    return false;
+  }
+
+  const struct cpuinfo_uarch_info* cpuinfo_uarch =
+      cpuinfo_get_uarch(cpuinfo_get_current_uarch_index());
+  if (!cpuinfo_uarch) {
+    return false;
+  }
+  switch (cpuinfo_uarch->uarch) {
     case cpuinfo_uarch_cortex_a55r0:
     case cpuinfo_uarch_cortex_a55:
       return true;
@@ -186,7 +203,8 @@ bool CpuInfo::Avx() { return false; }
 bool CpuInfo::Avx2Fma() { return false; }
 bool CpuInfo::Avx512() { return false; }
 bool CpuInfo::AvxVnni() { return false; }
-bool CpuInfo::CurrentCpuIsA55ish() { return false; }
+bool CpuInfo::CurrentCpuIsA53() { return false; }
+bool CpuInfo::CurrentCpuIsA55() { return false; }
 bool CpuInfo::CurrentCpuIsX1() { return false; }
 
 #endif

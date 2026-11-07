@@ -626,13 +626,13 @@ void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params) {
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
 
-void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
-                                   const void* src_ptr2, const void* src_ptr3,
-                                   int src_inc0, int src_inc1, int src_inc2,
-                                   int src_inc3, int src_rows,
-                                   int src_zero_point, std::int8_t* packed_ptr,
-                                   std::int32_t* sums_ptr, int input_xor) {
-  profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
+void Pack8bitColMajorForNeonA53(const void* src_ptr0, const void* src_ptr1,
+                                const void* src_ptr2, const void* src_ptr3,
+                                int src_inc0, int src_inc1, int src_inc2,
+                                int src_inc3, int src_rows,
+                                int src_zero_point, std::int8_t* packed_ptr,
+                                std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeon, optimized for Cortex-A53)");
   asm volatile(
       // clang-format off
           // v26 will be the vector to XOR input values with to perform
@@ -837,13 +837,208 @@ void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
             "v25", "v26", "v27", "v28", "v29", "v30", "v31");
 }
 
-void Pack8bitColMajorForNeonDotprodA55ish(
+void Pack8bitColMajorForNeonA55(const void* src_ptr0, const void* src_ptr1,
+                                const void* src_ptr2, const void* src_ptr3,
+                                int src_inc0, int src_inc1, int src_inc2,
+                                int src_inc3, int src_rows,
+                                int src_zero_point, std::int8_t* packed_ptr,
+                                std::int32_t* sums_ptr, int input_xor) {
+  profiler::ScopeLabel label("Pack (kNeon, optimized for Cortex-A55)");
+  asm volatile(
+      // clang-format off
+          // v26 will be the vector to XOR input values with to perform
+          // any input data type conversion (e.g. uint8 to int8).
+          "dup v26.16b, %w[input_xor]\n"
+          // w1 will be the number of rows already loaded.
+          "mov w1, #0\n"
+          // v28--v32 will be used to accumulate the sums
+          "movi v28.4s, #0\n"
+          "movi v29.4s, #0\n"
+          "movi v30.4s, #0\n"
+          "movi v31.4s, #0\n"
+          // Let w2 be `rows` rounded down to multiple of 16.
+          "ands w2, %w[rows], #-16\n"
+          // If there are no full blocks of 16 rows to process, jump to the
+          // code handling the last < 16 rows.
+          "beq 3f\n"
+          // Load the first block of 16 rows.
+          "add w1, w1, #16\n"
+          "ldr x10, [%[src_ptr0], #8]\n"
+          "ld1 {v0.8b}, [%[src_ptr0]], %[src_inc0]\n"
+          "ldr x11, [%[src_ptr1], #8]\n"
+          "ld1 {v1.8b}, [%[src_ptr1]], %[src_inc1]\n"
+          "ldr x12, [%[src_ptr2], #8]\n"
+          "ld1 {v2.8b}, [%[src_ptr2]], %[src_inc2]\n"
+          "ldr x13, [%[src_ptr3], #8]\n"
+          "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
+          // Check if these were the only full block of 16 rows to load.
+          "cmp w1, w2\n"
+          // In that case, jump to the code handling the last loaded block of
+          // 16 rows.
+          "beq 2f\n"
+          // Main loop processing blocks of 16 rows.
+          "1:\n"
+          // Load the next 16 rows, interleaved with the XOR input type
+          // conversion (e.g. uint8->int8) on the already loaded inputs.
+          "add w1, w1, #16\n"
+          "ins v0.d[1], x10\n"
+          "ldr x10, [%[src_ptr0], #8]\n"
+          "ins v1.d[1], x11\n"
+          "ldr x11, [%[src_ptr1], #8]\n"
+          "ins v2.d[1], x12\n"
+          "ldr x12, [%[src_ptr2], #8]\n"
+          "ins v3.d[1], x13\n"
+          "ldr x13, [%[src_ptr3], #8]\n"
+          "eor v4.16b, v0.16b, v26.16b\n"
+          "ld1 {v0.8b}, [%[src_ptr0]], %[src_inc0]\n"
+          "eor v5.16b, v1.16b, v26.16b\n"
+          "ld1 {v1.8b}, [%[src_ptr1]], %[src_inc1]\n"
+          "eor v6.16b, v2.16b, v26.16b\n"
+          "ld1 {v2.8b}, [%[src_ptr2]], %[src_inc2]\n"
+          "eor v7.16b, v3.16b, v26.16b\n"
+          "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
+          // Compute the sums, interleaved with storing to the packed matrix.
+          "saddlp v16.8h, v4.16b\n"
+          "str q4, [%[packed_ptr], #0]\n"
+          "saddlp v17.8h, v5.16b\n"
+          "str q5, [%[packed_ptr], #16]\n"
+          "saddlp v18.8h, v6.16b\n"
+          "str q6, [%[packed_ptr], #32]\n"
+          "saddlp v19.8h, v7.16b\n"
+          "str q7, [%[packed_ptr], #48]\n"
+          "sadalp v28.4s, v16.8h\n"
+          // Was this the last block of 16 rows to load?
+          "cmp w1, w2\n"
+          "sadalp v29.4s, v17.8h\n"
+          "add %[packed_ptr], %[packed_ptr], #64\n"
+          "sadalp v30.4s, v18.8h\n"
+          "sadalp v31.4s, v19.8h\n"
+          // End of main loop on blocks of 16 rows.
+          "bne 1b\n"
+
+          // Code handling the last already-loaded block of 16 rows.
+          "2:\n"
+          // Process the last loaded full 16x4 block.
+          "ins v0.d[1], x10\n"
+          "ins v1.d[1], x11\n"
+          "ins v2.d[1], x12\n"
+          "ins v3.d[1], x13\n"
+          "eor v4.16b, v0.16b, v26.16b\n"
+          "eor v5.16b, v1.16b, v26.16b\n"
+          "eor v6.16b, v2.16b, v26.16b\n"
+          "eor v7.16b, v3.16b, v26.16b\n"
+
+          "saddlp v16.8h, v4.16b\n"
+          "str q4, [%[packed_ptr], #0]\n"
+          "saddlp v17.8h, v5.16b\n"
+          "str q5, [%[packed_ptr], #16]\n"
+          "saddlp v18.8h, v6.16b\n"
+          "str q6, [%[packed_ptr], #32]\n"
+          "saddlp v19.8h, v7.16b\n"
+          "str q7, [%[packed_ptr], #48]\n"
+          "sadalp v28.4s, v16.8h\n"
+          "sadalp v29.4s, v17.8h\n"
+          "sadalp v30.4s, v18.8h\n"
+          "sadalp v31.4s, v19.8h\n"
+
+          "add %[packed_ptr], %[packed_ptr], #64\n"
+
+          // End of code handling full blocks of 16 rows.
+          // Now we handle any remaining rows.
+          "3:\n"
+          // Let w2 be the number of rows left to handle.
+          "ands w2, %w[rows], #15\n"
+          // If w2==0, there are no remaining rows, jump to the end.
+          "beq 4f\n"
+          // Zero out a 16x4 block in registers, which we'll partially overwrite
+          // with any remaining rows.
+          "dup v0.16b, %w[src_zero_point]\n"
+          "dup v1.16b, %w[src_zero_point]\n"
+          "dup v2.16b, %w[src_zero_point]\n"
+          "dup v3.16b, %w[src_zero_point]\n"
+#define RUY_LOAD_ONE_ROW(R)                   \
+  "cmp w2, #" #R "\n"                         \
+  "beq 5f\n"                                  \
+  "ld1 { v0.b }[" #R "], [%[src_ptr0]], #1\n" \
+  "ld1 { v1.b }[" #R "], [%[src_ptr1]], #1\n" \
+  "ld1 { v2.b }[" #R "], [%[src_ptr2]], #1\n" \
+  "ld1 { v3.b }[" #R "], [%[src_ptr3]], #1\n"
+
+          RUY_LOAD_ONE_ROW(0)
+          RUY_LOAD_ONE_ROW(1)
+          RUY_LOAD_ONE_ROW(2)
+          RUY_LOAD_ONE_ROW(3)
+          RUY_LOAD_ONE_ROW(4)
+          RUY_LOAD_ONE_ROW(5)
+          RUY_LOAD_ONE_ROW(6)
+          RUY_LOAD_ONE_ROW(7)
+          RUY_LOAD_ONE_ROW(8)
+          RUY_LOAD_ONE_ROW(9)
+          RUY_LOAD_ONE_ROW(10)
+          RUY_LOAD_ONE_ROW(11)
+          RUY_LOAD_ONE_ROW(12)
+          RUY_LOAD_ONE_ROW(13)
+          RUY_LOAD_ONE_ROW(14)
+          // Here we know that w2==15, so RUY_LOAD_ONE_ROW(15) would be a no-op.
+#undef RUY_LOAD_ONE_ROW
+          "5:\n"
+
+          // Process the last zero-padded 16x4 block.
+          "eor v4.16b, v0.16b, v26.16b\n"
+          "eor v5.16b, v1.16b, v26.16b\n"
+          "eor v6.16b, v2.16b, v26.16b\n"
+          "eor v7.16b, v3.16b, v26.16b\n"
+
+          "saddlp v16.8h, v4.16b\n"
+          "saddlp v17.8h, v5.16b\n"
+          "saddlp v18.8h, v6.16b\n"
+          "saddlp v19.8h, v7.16b\n"
+          "sadalp v28.4s, v16.8h\n"
+          "sadalp v29.4s, v17.8h\n"
+          "sadalp v30.4s, v18.8h\n"
+          "sadalp v31.4s, v19.8h\n"
+
+          "str q4, [%[packed_ptr], #0]\n"
+          "str q5, [%[packed_ptr], #16]\n"
+          "str q6, [%[packed_ptr], #32]\n"
+          "str q7, [%[packed_ptr], #48]\n"
+          "add %[packed_ptr], %[packed_ptr], #64\n"
+
+          "4:\n"
+
+          // Horizontal reduction of the registers used to accumulate sums.
+          "addp v28.4s, v28.4s, v29.4s\n"
+          "addp v30.4s, v30.4s, v31.4s\n"
+          "addp v28.4s, v28.4s, v30.4s\n"
+
+          // Store the sums.
+          "cmp %[sums_ptr], #0\n"
+          "beq 6f\n"
+          "st1 {v28.4s}, [%[sums_ptr]], #16\n"
+          "6:\n"
+          // clang-format on
+
+          : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1),
+            [ src_ptr2 ] "+r"(src_ptr2), [ src_ptr3 ] "+r"(src_ptr3),
+            [ packed_ptr ] "+r"(packed_ptr), [ sums_ptr ] "+r"(sums_ptr)
+          : [ src_inc0 ] "r"(static_cast<std::int64_t>(src_inc0)), [ src_inc1 ] "r"(static_cast<std::int64_t>(src_inc1)),
+            [ src_inc2 ] "r"(static_cast<std::int64_t>(src_inc2)), [ src_inc3 ] "r"(static_cast<std::int64_t>(src_inc3)),
+            [ rows ] "r"(src_rows),
+            [ src_zero_point ] "r"(src_zero_point),
+            [input_xor] "r"(input_xor)
+          : "cc", "memory", "x1", "x2", "x10", "x11", "x12", "x13", "v0", "v1", "v2", "v3", "v4", "v5",
+            "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",
+            "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", "v24",
+            "v25", "v26", "v27", "v28", "v29", "v30", "v31");
+}
+
+void Pack8bitColMajorForNeonDotprodA55(
     const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
     const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
     int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
     std::int32_t* sums_ptr, int input_xor) {
   profiler::ScopeLabel label(
-      "Pack (kNeonDotprod, optimized for in-order cores)");
+      "Pack (kNeonDotprod, optimized for Cortex-A55)");
   asm volatile(
           // clang-format off
           // v26 will be the vector to XOR input values with to perform
@@ -878,18 +1073,6 @@ void Pack8bitColMajorForNeonDotprodA55ish(
           "ld1 {v3.8b}, [%[src_ptr3]], %[src_inc3]\n"
           // Check if these were the only full block of 16 rows to load.
           "cmp w1, w2\n"
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #64]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #64]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #64]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #64]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #128]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #128]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #128]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #128]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #192]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #192]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #192]\n")
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #192]\n")
           // In that case, jump to the code handling the last loaded block of
           // 16 rows.
           "beq 2f\n"
@@ -924,13 +1107,9 @@ void Pack8bitColMajorForNeonDotprodA55ish(
 
           // Transposition of 4x4 blocks, part 1
           "trn1 v16.4s, v4.4s, v5.4s\n"
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr0], #240]\n")
           "trn2 v17.4s, v4.4s, v5.4s\n"
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr1], #240]\n")
           "trn1 v18.4s, v6.4s, v7.4s\n"
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr2], #240]\n")
           "trn2 v19.4s, v6.4s, v7.4s\n"
-          RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #240]\n")
 
           // Transposition of 4x4 blocks, part 2
           "trn1 v20.2d, v16.2d, v18.2d\n"
@@ -2062,13 +2241,13 @@ void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
 #endif  // (RUY_PLATFORM_NEON_32
 
 #if RUY_PLATFORM_NEON_64 && RUY_OPT(ASM)
-void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
-                                    const float* src_ptr1,
-                                    const float* src_ptr2,
-                                    const float* src_ptr3, int src_inc0,
-                                    int src_inc1, int src_inc2, int src_inc3,
-                                    int src_rows, float* packed_ptr) {
-  profiler::ScopeLabel label("Pack (kNeon, optimized for in-order cores)");
+void PackFloatColMajorForNeonA53(const float* src_ptr0,
+                                 const float* src_ptr1,
+                                 const float* src_ptr2,
+                                 const float* src_ptr3, int src_inc0,
+                                 int src_inc1, int src_inc2, int src_inc3,
+                                 int src_rows, float* packed_ptr) {
+  profiler::ScopeLabel label("Pack (kNeon, optimized for Cortex-A53)");
 
   asm volatile(
           // clang-format off
@@ -2113,6 +2292,143 @@ void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
           "ldr x13, [%[src_ptr3], #8]\n"
           "trn2 v19.4s, v2.4s, v3.4s\n"
           RUY_PREFETCH_LOAD("prfm pldl1strm, [%[src_ptr3], #240]\n")
+
+          "ld1 {v0.2s}, [%[src_ptr0]], %[src_inc0]\n"
+          "trn1 v20.2d, v16.2d, v18.2d\n"
+          "ld1 {v1.2s}, [%[src_ptr1]], %[src_inc1]\n"
+          "trn2 v22.2d, v16.2d, v18.2d\n"
+          "ld1 {v2.2s}, [%[src_ptr2]], %[src_inc2]\n"
+          "trn1 v21.2d, v17.2d, v19.2d\n"
+          "ld1 {v3.2s}, [%[src_ptr3]], %[src_inc3]\n"
+          "trn2 v23.2d, v17.2d, v19.2d\n"
+          "cmp w1, w2\n"
+
+          "ins v0.d[1], x10\n"
+          "str q20, [%[packed_ptr], #0]\n"
+          "ins v1.d[1], x11\n"
+          "str q21, [%[packed_ptr], #32]\n"
+          "ins v2.d[1], x12\n"
+          "str q22, [%[packed_ptr], #64]\n"
+          "ins v3.d[1], x13\n"
+          "str q23, [%[packed_ptr], #96]\n"
+
+          "add %[packed_ptr], %[packed_ptr], #128\n"
+
+          "bne 1b\n"
+
+          "2:\n"
+
+          "trn1 v16.4s, v0.4s, v1.4s\n"
+          "trn2 v17.4s, v0.4s, v1.4s\n"
+          "trn1 v18.4s, v2.4s, v3.4s\n"
+          "trn2 v19.4s, v2.4s, v3.4s\n"
+
+          "trn1 v20.2d, v16.2d, v18.2d\n"
+          "trn2 v22.2d, v16.2d, v18.2d\n"
+          "trn1 v21.2d, v17.2d, v19.2d\n"
+          "trn2 v23.2d, v17.2d, v19.2d\n"
+
+          "str q20, [%[packed_ptr], #0]\n"
+          "str q21, [%[packed_ptr], #32]\n"
+          "str q22, [%[packed_ptr], #64]\n"
+          "str q23, [%[packed_ptr], #96]\n"
+          "add %[packed_ptr], %[packed_ptr], #128\n"
+
+          "3:\n"
+
+          "ands w2, %w[rows], #3\n"
+          "beq 4f\n"
+          "movi v0.16b, #0\n"
+          "movi v1.16b, #0\n"
+          "movi v2.16b, #0\n"
+          "movi v3.16b, #0\n"
+#define RUY_LOAD_ONE_ROW(R)                   \
+  "cmp w2, #" #R "\n"                         \
+  "beq 5f\n"                                  \
+  "ld1 { v0.s }[" #R "], [%[src_ptr0]], #4\n" \
+  "ld1 { v1.s }[" #R "], [%[src_ptr1]], #4\n" \
+  "ld1 { v2.s }[" #R "], [%[src_ptr2]], #4\n" \
+  "ld1 { v3.s }[" #R "], [%[src_ptr3]], #4\n"
+
+          RUY_LOAD_ONE_ROW(0)
+          RUY_LOAD_ONE_ROW(1)
+          RUY_LOAD_ONE_ROW(2)
+          RUY_LOAD_ONE_ROW(3)
+#undef RUY_LOAD_ONE_ROW
+          "5:\n"
+
+          "trn1 v16.4s, v0.4s, v1.4s\n"
+          "trn2 v17.4s, v0.4s, v1.4s\n"
+          "trn1 v18.4s, v2.4s, v3.4s\n"
+          "trn2 v19.4s, v2.4s, v3.4s\n"
+
+          "trn1 v20.2d, v16.2d, v18.2d\n"
+          "trn2 v22.2d, v16.2d, v18.2d\n"
+          "trn1 v21.2d, v17.2d, v19.2d\n"
+          "trn2 v23.2d, v17.2d, v19.2d\n"
+
+          "mov x1, #32\n"
+
+#define RUY_STORE_ONE_ROW(ROW, REGISTER)                  \
+          "cmp w2, #" #ROW "\n"                           \
+          "beq 4f\n"                                      \
+          "st1 {" #REGISTER ".4s}, [%[packed_ptr]], x1\n"
+
+          RUY_STORE_ONE_ROW(0, v20)
+          RUY_STORE_ONE_ROW(1, v21)
+          RUY_STORE_ONE_ROW(2, v22)
+          RUY_STORE_ONE_ROW(3, v23)
+
+#undef RUY_STORE_ONE_ROW
+
+          "4:\n"
+
+          // clang-format on
+
+          : [ src_ptr0 ] "+r"(src_ptr0), [src_ptr1] "+r"(src_ptr1), [src_ptr2] "+r"(src_ptr2),
+            [src_ptr3] "+r"(src_ptr3), [packed_ptr] "+r"(packed_ptr)
+          : [ src_inc0 ] "r"(static_cast<std::int64_t>(src_inc0)), [src_inc1] "r"(static_cast<std::int64_t>(src_inc1)), [src_inc2] "r"(static_cast<std::int64_t>(src_inc2)),
+            [src_inc3] "r"(static_cast<std::int64_t>(src_inc3)), [rows] "r"(src_rows)
+          : "cc", "memory", "x1", "x2", "x10", "x11", "x12", "x13", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9",
+            "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17", "v18", "v19", "v20", "v21",
+            "v22", "v23", "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31");
+}
+
+void PackFloatColMajorForNeonA55(const float* src_ptr0,
+                                 const float* src_ptr1,
+                                 const float* src_ptr2,
+                                 const float* src_ptr3, int src_inc0,
+                                 int src_inc1, int src_inc2, int src_inc3,
+                                 int src_rows, float* packed_ptr) {
+  profiler::ScopeLabel label("Pack (kNeon, optimized for Cortex-A55)");
+
+  asm volatile(
+          // clang-format off
+          "mov w1, #0\n"
+
+          "and w2, %w[rows], #-4\n"
+          "cmp w1, w2\n"
+          "beq 3f\n"
+          "ld1 {v0.4s}, [%[src_ptr0]], %[src_inc0]\n"
+          "ld1 {v1.4s}, [%[src_ptr1]], %[src_inc1]\n"
+          "ld1 {v2.4s}, [%[src_ptr2]], %[src_inc2]\n"
+          "ld1 {v3.4s}, [%[src_ptr3]], %[src_inc3]\n"
+          "add w1, w1, #4\n"
+          "cmp w1, w2\n"
+
+          "beq 2f\n"
+
+          "1:\n"
+          "add w1, w1, #4\n"
+
+          "ldr x10, [%[src_ptr0], #8]\n"
+          "trn1 v16.4s, v0.4s, v1.4s\n"
+          "ldr x11, [%[src_ptr1], #8]\n"
+          "trn2 v17.4s, v0.4s, v1.4s\n"
+          "ldr x12, [%[src_ptr2], #8]\n"
+          "trn1 v18.4s, v2.4s, v3.4s\n"
+          "ldr x13, [%[src_ptr3], #8]\n"
+          "trn2 v19.4s, v2.4s, v3.4s\n"
 
           "ld1 {v0.2s}, [%[src_ptr0]], %[src_inc0]\n"
           "trn1 v20.2d, v16.2d, v18.2d\n"

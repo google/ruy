@@ -68,19 +68,25 @@ void Pack8bitColMajorForNeon(const void* src_ptr0, const void* src_ptr1,
                              int src_inc3, int src_rows, int src_zero_point,
                              std::int8_t* packed_ptr, std::int32_t* sums_ptr,
                              int input_xor);
-void Pack8bitColMajorForNeonA55ish(const void* src_ptr0, const void* src_ptr1,
-                                   const void* src_ptr2, const void* src_ptr3,
-                                   int src_inc0, int src_inc1, int src_inc2,
-                                   int src_inc3, int src_rows,
-                                   int src_zero_point, std::int8_t* packed_ptr,
-                                   std::int32_t* sums_ptr, int input_xor);
+void Pack8bitColMajorForNeonA53(const void* src_ptr0, const void* src_ptr1,
+                                const void* src_ptr2, const void* src_ptr3,
+                                int src_inc0, int src_inc1, int src_inc2,
+                                int src_inc3, int src_rows,
+                                int src_zero_point, std::int8_t* packed_ptr,
+                                std::int32_t* sums_ptr, int input_xor);
+void Pack8bitColMajorForNeonA55(const void* src_ptr0, const void* src_ptr1,
+                                const void* src_ptr2, const void* src_ptr3,
+                                int src_inc0, int src_inc1, int src_inc2,
+                                int src_inc3, int src_rows,
+                                int src_zero_point, std::int8_t* packed_ptr,
+                                std::int32_t* sums_ptr, int input_xor);
 void Pack8bitColMajorForNeonDotprod(const void* src_ptr0, const void* src_ptr1,
                                     const void* src_ptr2, const void* src_ptr3,
                                     int src_inc0, int src_inc1, int src_inc2,
                                     int src_inc3, int src_rows,
                                     int src_zero_point, std::int8_t* packed_ptr,
                                     std::int32_t* sums_ptr, int input_xor);
-void Pack8bitColMajorForNeonDotprodA55ish(
+void Pack8bitColMajorForNeonDotprodA55(
     const void* src_ptr0, const void* src_ptr1, const void* src_ptr2,
     const void* src_ptr3, int src_inc0, int src_inc1, int src_inc2,
     int src_inc3, int src_rows, int src_zero_point, std::int8_t* packed_ptr,
@@ -189,8 +195,13 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
           packed_matrix->data + packed_matrix->layout.stride * block_col;
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
 #if RUY_PLATFORM_NEON_64
-      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-        Pack8bitColMajorForNeonA55ish(
+      if (__builtin_expect(tuning == Tuning::kA53, true)) {
+        Pack8bitColMajorForNeonA53(
+            src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
+            src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
+            packed_ptr, sums_ptr, kInputXor);
+      } else if (__builtin_expect(tuning == Tuning::kA55, true)) {
+        Pack8bitColMajorForNeonA55(
             src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
             src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
             packed_ptr, sums_ptr, kInputXor);
@@ -322,8 +333,8 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
           packed_matrix->layout.stride * (block_col & ~7) +
           ((block_col & 4) * 4);
       std::int32_t* sums_ptr = sums ? sums + block_col : nullptr;
-      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-        Pack8bitColMajorForNeonDotprodA55ish(
+      if (__builtin_expect(tuning == Tuning::kA55, true)) {
+        Pack8bitColMajorForNeonDotprodA55(
             src_ptr0, src_ptr1, src_ptr2, src_ptr3, src_inc0, src_inc1,
             src_inc2, src_inc3, src_matrix.layout.rows, src_matrix.zero_point,
             packed_ptr, sums_ptr, kInputXor);
@@ -343,12 +354,18 @@ void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
                               const float* src_ptr2, const float* src_ptr3,
                               int src_inc0, int src_inc1, int src_inc2,
                               int src_inc3, int src_rows, float* packed_ptr);
-void PackFloatColMajorForNeonA55ish(const float* src_ptr0,
-                                    const float* src_ptr1,
-                                    const float* src_ptr2,
-                                    const float* src_ptr3, int src_inc0,
-                                    int src_inc1, int src_inc2, int src_inc3,
-                                    int src_rows, float* packed_ptr);
+void PackFloatColMajorForNeonA53(const float* src_ptr0,
+                                 const float* src_ptr1,
+                                 const float* src_ptr2,
+                                 const float* src_ptr3, int src_inc0,
+                                 int src_inc1, int src_inc2, int src_inc3,
+                                 int src_rows, float* packed_ptr);
+void PackFloatColMajorForNeonA55(const float* src_ptr0,
+                                 const float* src_ptr1,
+                                 const float* src_ptr2,
+                                 const float* src_ptr3, int src_inc0,
+                                 int src_inc1, int src_inc2, int src_inc3,
+                                 int src_rows, float* packed_ptr);
 
 #elif RUY_PLATFORM_NEON_32 && RUY_OPT(ASM)
 void PackFloatColMajorForNeon(const float* src_ptr0, const float* src_ptr1,
@@ -400,10 +417,14 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                           packed_matrix->layout.stride * (block_col & ~7) +
                           ((block_col & 4));
 #if RUY_PLATFORM_NEON_64
-      if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-        PackFloatColMajorForNeonA55ish(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
-                                       src_inc0, src_inc1, src_inc2, src_inc3,
-                                       src_matrix.layout.rows, packed_ptr);
+      if (__builtin_expect(tuning == Tuning::kA53, true)) {
+        PackFloatColMajorForNeonA53(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                    src_inc0, src_inc1, src_inc2, src_inc3,
+                                    src_matrix.layout.rows, packed_ptr);
+      } else if (__builtin_expect(tuning == Tuning::kA55, true)) {
+        PackFloatColMajorForNeonA55(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
+                                    src_inc0, src_inc1, src_inc2, src_inc3,
+                                    src_matrix.layout.rows, packed_ptr);
       } else {
         PackFloatColMajorForNeon(src_ptr0, src_ptr1, src_ptr2, src_ptr3,
                                  src_inc0, src_inc1, src_inc2, src_inc3,

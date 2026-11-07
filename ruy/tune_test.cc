@@ -36,7 +36,8 @@ TEST(TuneTest, TuneTest) {
   tuning_resolver.SetTuning(Tuning::kAuto);
 
 #ifdef RUY_IMPLEMENT_TUNING
-  for (auto tuning : {Tuning::kGeneric, Tuning::kA55ish}) {
+  for (auto tuning :
+       {Tuning::kGeneric, Tuning::kA53, Tuning::kA55, Tuning::kX1}) {
     tuning_resolver.SetTuning(tuning);
     ASSERT_TRUE(tuning_resolver.Resolve(&cpuinfo) == tuning);
     // See above comment about 1 second.

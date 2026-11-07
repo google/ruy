@@ -45,10 +45,11 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeon(const KernelParams8bit<4, 2>& params);
 void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params);
 #endif
-void Kernel8bitNeonA55ish(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonA53(const KernelParams8bit<4, 4>& params);
+void Kernel8bitNeonA55(const KernelParams8bit<4, 4>& params);
 void Kernel8bitNeonDotprod(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprod1Col(const KernelParams8bit<8, 8>& params);
-void Kernel8bitNeonDotprodA55ish(const KernelParams8bit<8, 8>& params);
+void Kernel8bitNeonDotprodA55(const KernelParams8bit<8, 8>& params);
 void Kernel8bitNeonDotprodX1(const KernelParams8bit<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
@@ -70,8 +71,10 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
       Kernel8bitNeon1Col(params);
       return;
     }
-    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-      Kernel8bitNeonA55ish(params);
+    if (__builtin_expect(tuning == Tuning::kA53, true)) {
+      Kernel8bitNeonA53(params);
+    } else if (__builtin_expect(tuning == Tuning::kA55, true)) {
+      Kernel8bitNeonA55(params);
     } else {
       Kernel8bitNeon(params);
     }
@@ -121,8 +124,8 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeonDotprod1Col(params);
-    } else if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-      Kernel8bitNeonDotprodA55ish(params);
+    } else if (__builtin_expect(tuning == Tuning::kA55, true)) {
+      Kernel8bitNeonDotprodA55(params);
     } else if (tuning == Tuning::kX1) {
       Kernel8bitNeonDotprodX1(params);
     } else {
@@ -134,9 +137,10 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
 
 void KernelFloatNeon(const KernelParamsFloat<8, 8>& params);
 void KernelFloatNeonX1(const KernelParamsFloat<8, 8>& params);
-void KernelFloatNeonA55ish(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonA53(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonA55(const KernelParamsFloat<8, 8>& params);
 void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params);
-void KernelFloatNeonDotprodA55ish(const KernelParamsFloat<8, 8>& params);
+void KernelFloatNeonDotprodA55(const KernelParamsFloat<8, 8>& params);
 
 #if RUY_PLATFORM_NEON_64
 // A Float kernel for ARM64 Neon.
@@ -153,8 +157,10 @@ struct Kernel<Path::kNeon, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-      KernelFloatNeonA55ish(params);
+    if (__builtin_expect(tuning == Tuning::kA53, true)) {
+      KernelFloatNeonA53(params);
+    } else if (__builtin_expect(tuning == Tuning::kA55, true)) {
+      KernelFloatNeonA55(params);
     } else if (tuning == Tuning::kX1) {
       KernelFloatNeonX1(params);
     } else {
@@ -186,9 +192,6 @@ struct Kernel<Path::kNeon, float, float, float, float> {
 };
 #endif
 
-// While the dotprod NEON extension does not concern floating-point arithmetic,
-// its presence allows us to distinguish, in the in-order tuning case, between
-// A53 and A55r1. TODO: should this be folded into tuning?
 template <>
 struct Kernel<Path::kNeonDotprod, float, float, float, float> {
   static constexpr Path kPath = Path::kNeonDotprod;
@@ -203,8 +206,10 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
     KernelParamsFloat<LhsLayout::kCols, RhsLayout::kCols> params;
     MakeKernelParamsFloat(lhs, rhs, mul_params, start_row, start_col, end_row,
                           end_col, dst, &params);
-    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
-      KernelFloatNeonDotprodA55ish(params);
+    if (__builtin_expect(tuning == Tuning::kA55, true)) {
+      KernelFloatNeonDotprodA55(params);
+    } else if (tuning == Tuning::kA53) {
+      KernelFloatNeonA53(params);
     } else if (tuning == Tuning::kX1) {
       KernelFloatNeonX1(params);
     } else {
