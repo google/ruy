@@ -416,6 +416,33 @@ cc_library(
     }),
 )
 
+cc_test(
+    name = "cpuinfo_test",
+    srcs = ["cpuinfo_test.cc"],
+    copts = ruy_copts() +
+            select({
+                "@platforms//os:windows": [],
+                "//conditions:default": [
+                    "-Wno-undef",
+                ],
+            }) + select({
+        ":ppc": [],
+        ":s390x": [],
+        ":fuchsia": [],
+        "//conditions:default": ["-DRUY_HAVE_CPUINFO"],
+    }),
+    deps = [
+        ":cpu_cache_params",
+        ":cpuinfo",
+        ":gtest_wrapper",
+    ] + select({
+        ":ppc": [],
+        ":s390x": [],
+        ":fuchsia": [],
+        "//conditions:default": ["@cpuinfo"],
+    }),
+)
+
 cc_library(
     name = "path",
     hdrs = ["path.h"],

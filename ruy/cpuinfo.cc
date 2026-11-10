@@ -1,7 +1,8 @@
 #include "ruy/cpuinfo.h"
 
+#include <stdint.h>
+
 #include <algorithm>
-#include <cstdint>
 #include <limits>
 
 #include "ruy/check_macros.h"
@@ -39,6 +40,23 @@ bool CpuInfo::EnsureInitialized() {
 }
 
 namespace {
+struct CacheLevel {
+  const struct cpuinfo_cache* cache;
+  const struct cpuinfo_cache* caches;
+  uint32_t count;
+};
+
+bool IsValidCachePtr(const struct cpuinfo_cache* cache,
+                     const struct cpuinfo_cache* caches, uint32_t count) {
+  if (!cache || !caches) {
+    return false;
+  }
+  const uintptr_t addr = (uintptr_t)cache;
+  const uintptr_t base = (uintptr_t)caches;
+  return addr >= base && (addr - base) % sizeof(*caches) == 0 &&
+         (addr - base) / sizeof(*caches) < count;
+}
+
 bool QueryCacheParams(CpuCacheParams* cache_params) {
   const int processors_count = cpuinfo_get_processors_count();
   RUY_DCHECK_GT(processors_count, 0);
@@ -53,9 +71,17 @@ bool QueryCacheParams(CpuCacheParams* cache_params) {
     }
     // Loop over cache levels. Ignoring L4 for now: it seems that in CPUs that
     // have L4, we would still prefer to stay in lower-latency L3.
-    for (const cpuinfo_cache* cache :
-         {processor->cache.l1d, processor->cache.l2, processor->cache.l3}) {
-      if (!cache) {
+    const struct CacheLevel levels[3] = {
+        {processor->cache.l1d, cpuinfo_get_l1d_caches(),
+         cpuinfo_get_l1d_caches_count()},
+        {processor->cache.l2, cpuinfo_get_l2_caches(),
+         cpuinfo_get_l2_caches_count()},
+        {processor->cache.l3, cpuinfo_get_l3_caches(),
+         cpuinfo_get_l3_caches_count()},
+    };
+    for (int l = 0; l < 3; l++) {
+      const struct cpuinfo_cache* cache = levels[l].cache;
+      if (!IsValidCachePtr(cache, levels[l].caches, levels[l].count)) {
         continue;  // continue, not break, it is possible to have L1+L3 but no
                    // L2.
       }

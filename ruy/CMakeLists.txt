@@ -439,6 +439,24 @@ ruy_cc_library(
     ${ruy_6_cpuinfo_cpuinfo}
 )
 
+ruy_cc_test(
+  NAME
+    ruy_cpuinfo_test
+  SRCS
+    cpuinfo_test.cc
+  COPTS
+    ${ruy_0_Wall_Wextra_Wundef}
+    ${ruy_1_mfpu_neon}
+    ${ruy_2_O3}
+    ${ruy_4_Wno_undef}
+    ${ruy_5_DRUY_HAVE_CPUINFO}
+  DEPS
+    ruy_cpu_cache_params
+    ruy_cpuinfo
+    ruy_gtest_wrapper
+    ${ruy_6_cpuinfo_cpuinfo}
+)
+
 ruy_cc_library(
   NAME
     ruy_path
