@@ -90,7 +90,7 @@ inline void disable_fpu_denormals() {
       "VMRS %[fpscr], fpscr\n"
       "ORRS %[fpscr], %[bitmask]\n"
       "VMSR fpscr, %[fpscr]\n"
-      : [fpscr] "=l"(fpscr)
+      : [fpscr] "=&l"(fpscr)
       : [bitmask] "l"(0x1000000)
       : "cc");
 #else
@@ -104,8 +104,8 @@ inline void disable_fpu_denormals() {
   std::uint64_t fpcr;
   __asm__ __volatile__(
       "MRS %[fpcr], fpcr\n"
-      "ORR %w[fpcr], %w[fpcr], 0x1000000\n"
-      "ORR %w[fpcr], %w[fpcr], 0x80000\n"
+      "ORR %[fpcr], %[fpcr], 0x1000000\n"
+      "ORR %[fpcr], %[fpcr], 0x80000\n"
       "MSR fpcr, %[fpcr]\n"
       : [fpcr] "=r"(fpcr));
 #endif

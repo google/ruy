@@ -434,6 +434,9 @@ inline std::ptrdiff_t DataBytes(const PEMat& packed) {
 }
 
 inline std::ptrdiff_t SumsBytes(const PEMat& packed) {
+  if (packed.sums_type.is_floating_point) {
+    return 0;
+  }
   // Packed matrices are only relevant for Ruy's TrMul implementations. For
   // TrMul, the number of sums is always equal to the number of columns.
   return packed.layout.cols * packed.sums_type.size;

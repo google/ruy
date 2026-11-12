@@ -15,9 +15,43 @@ limitations under the License.
 
 #include "ruy/allocator.h"
 
+#include <cstddef>
+#include <limits>
+
+#include "ruy/context.h"
+#include "ruy/context_get_ctx.h"
+#include "ruy/ctx.h"
 #include "ruy/gtest_wrapper.h"
+#include "ruy/matrix.h"
+#include "ruy/mul_params.h"
+#include "ruy/path.h"
+#include "ruy/ruy.h"
+
+extern "C" const char *__asan_default_options() {
+  return "allocator_may_return_null=1";
+}
+extern "C" const char *__msan_default_options() {
+  return "allocator_may_return_null=1";
+}
+extern "C" const char *__tsan_default_options() {
+  return "allocator_may_return_null=1";
+}
 
 namespace ruy {
+
+struct AllocatorTestPeer {
+  static void TriggerConsolidationOom(Allocator *allocator) {
+    // Put one 64-byte fallback block in fallback_blocks_, then inflate size_ so
+    // FreeAll()'s SystemAlignedAlloc(new_size) requests ~PTRDIFF_MAX bytes and
+    // deterministically fails (returning nullptr) without exhausting RAM.
+    allocator->FreeAll();
+    allocator->current_ = allocator->size_;
+    allocator->AllocateBytes(64);
+    allocator->size_ = std::numeric_limits<std::ptrdiff_t>::max() - 4096;
+    allocator->FreeAll();
+  }
+};
+
 namespace {
 
 TEST(AllocatorTest, ReturnsValidMemory) {
@@ -115,6 +149,37 @@ TEST(AllocatorTest, AvoidAliasing) {
     }
     allocator.FreeAll();
   }
+}
+
+TEST(AllocatorTest, MulSurvivesConsolidationOom) {
+  Context context;
+  context.set_max_num_threads(1);
+  alignas(1024) float lhs_data[125 * 4] = {};
+  alignas(1024) float rhs_data[4 * 4] = {};
+  float bias_data[125] = {};
+  float dst_data[125 * 4] = {};
+  for (int i = 0; i < 125; ++i) {
+    lhs_data[i * 4] = 2.0f;
+    bias_data[i] = 1.0f;
+  }
+  rhs_data[0] = 3.0f;
+
+  Matrix<float> lhs;
+  MakeSimpleLayout(125, 4, Order::kRowMajor, lhs.mutable_layout());
+  lhs.set_data(lhs_data);
+  Matrix<float> rhs;
+  MakeSimpleLayout(4, 4, Order::kColMajor, rhs.mutable_layout());
+  rhs.set_data(rhs_data);
+  Matrix<float> dst;
+  MakeSimpleLayout(125, 4, Order::kColMajor, dst.mutable_layout());
+  dst.set_data(dst_data);
+  MulParams<float, float> mul_params;
+  mul_params.set_bias(bias_data);
+
+  AllocatorTestPeer::TriggerConsolidationOom(
+      get_ctx(&context)->GetMainAllocator());
+  Mul<kAllPaths>(lhs, rhs, mul_params, &context, &dst);
+  EXPECT_EQ(dst_data[0], 7.0f);
 }
 
 }  // namespace

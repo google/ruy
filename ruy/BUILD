@@ -232,6 +232,7 @@ cc_library(
     ],
     copts = ruy_copts(),
     deps = [
+        ":check_macros",
         ":mat",
         ":system_aligned_alloc",
         "//ruy/profiler:instrumentation",
@@ -288,7 +289,14 @@ cc_test(
     copts = ruy_copts(),
     deps = [
         ":allocator",
+        ":context",
+        ":context_get_ctx",
+        ":ctx",
         ":gtest_wrapper",
+        ":matrix",
+        ":mul_params",
+        ":path",
+        ":ruy",
     ],
 )
 

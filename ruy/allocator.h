@@ -84,6 +84,7 @@ class Allocator final {
   void FreeAll();
 
  private:
+  friend struct AllocatorTestPeer;
   void operator=(const Allocator&) = delete;
   void* AllocateFast(std::ptrdiff_t num_bytes);
   void* AllocateSlow(std::ptrdiff_t num_bytes);

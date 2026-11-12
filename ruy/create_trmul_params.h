@@ -23,6 +23,7 @@ limitations under the License.
 #include <type_traits>
 
 #include "ruy/allocator.h"
+#include "ruy/check_macros.h"
 #include "ruy/ctx.h"
 #include "ruy/kernel.h"
 #include "ruy/mat.h"
@@ -294,6 +295,7 @@ struct EnsurePerChannelBuffersLargeEnoughImpl {
     if (mul_params->bias()) {
       AccumScalar* new_data =
           allocator->Allocate<AccumScalar>(required_capacity);
+      RUY_CHECK(new_data != nullptr);
       std::memcpy(new_data, mul_params->bias(),
                   user_size * sizeof(AccumScalar));
       std::memset(new_data + user_size, 0,
@@ -303,6 +305,7 @@ struct EnsurePerChannelBuffersLargeEnoughImpl {
     if (mul_params->multiplier_fixedpoint_perchannel()) {
       AccumScalar* new_data =
           allocator->Allocate<AccumScalar>(required_capacity);
+      RUY_CHECK(new_data != nullptr);
       std::memcpy(new_data, mul_params->multiplier_fixedpoint_perchannel(),
                   user_size * sizeof(AccumScalar));
       std::memset(new_data + user_size, 0,
@@ -311,6 +314,7 @@ struct EnsurePerChannelBuffersLargeEnoughImpl {
     }
     if (mul_params->multiplier_exponent_perchannel()) {
       int* new_data = allocator->Allocate<int>(required_capacity);
+      RUY_CHECK(new_data != nullptr);
       std::memcpy(new_data, mul_params->multiplier_exponent_perchannel(),
                   user_size * sizeof(int));
       std::memset(new_data + user_size, 0,
@@ -338,6 +342,7 @@ struct EnsurePerChannelBuffersLargeEnoughImpl<AccumScalar, DstScalar, false> {
     if (mul_params->bias()) {
       AccumScalar* new_data =
           allocator->Allocate<AccumScalar>(required_capacity);
+      RUY_CHECK(new_data != nullptr);
       std::memcpy(new_data, mul_params->bias(),
                   user_size * sizeof(AccumScalar));
       std::memset(new_data + user_size, 0,

@@ -15,7 +15,9 @@ limitations under the License.
 
 #include "ruy/prepacked_cache.h"
 
+#include <cstdint>
 #include <thread>  // NOLINT(build/c++11)
+#include <vector>
 
 #include "ruy/context.h"
 #include "ruy/context_get_ctx.h"
@@ -31,9 +33,8 @@ namespace {
 PEMat MakeDummyPEMat(Type data_type, int rows, int cols) {
   PEMat ret;
   ret.data_type = data_type;
-  if (!data_type.is_floating_point) {
-    ret.sums_type = Type::Create<std::int32_t>();
-  }
+  ret.sums_type = data_type.is_floating_point ? data_type
+                                              : Type::Create<std::int32_t>();
   ret.layout.rows = rows;
   ret.layout.cols = cols;
   ret.layout.stride = rows;
@@ -135,6 +136,32 @@ TEST(PrepackedCacheTest, TestCacheEjection) {
               PrepackedCache::Action::kGotExistingEntry);
   EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
               PrepackedCache::Action::kInsertedNewEntry);
+}
+
+TEST(PrepackedCacheTest, TestCacheEjectionFloat) {
+  PrepackedCache prepacked_cache(859);
+  // DataBytes=200*4=800, SumsBytes=0 because float, Total: 800 bytes
+  std::vector<float> data1(10 * 20);
+  PEMat mat1 = MakeDummyPEMat(Type::Create<float>(), 10, 20);
+  prepacked_cache.Get(data1.data(), &mat1);
+  DummyPack(data1, &mat1);
+
+  // DataBytes=15*4=60, SumsBytes=0 because float, Total: 60 bytes
+  std::vector<float> data2(5 * 3);
+  PEMat mat2 = MakeDummyPEMat(Type::Create<float>(), 5, 3);
+  prepacked_cache.Get(data2.data(), &mat2);
+  DummyPack(data2, &mat2);
+
+  // The first matrix should have been ejected without underflowing
+  // BuffersBytes().
+  EXPECT_EQ(prepacked_cache.MatrixCount(), 1);
+  EXPECT_EQ(prepacked_cache.BuffersBytes(), 60);
+  EXPECT_TRUE(prepacked_cache.Get(data2.data(), &mat2) ==
+              PrepackedCache::Action::kGotExistingEntry);
+  EXPECT_TRUE(prepacked_cache.Get(data1.data(), &mat1) ==
+              PrepackedCache::Action::kInsertedNewEntry);
+  EXPECT_EQ(prepacked_cache.MatrixCount(), 1);
+  EXPECT_EQ(prepacked_cache.BuffersBytes(), 800);
 }
 
 TEST(PrepackedCacheTest, TestCacheEjection2) {

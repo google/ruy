@@ -107,7 +107,7 @@ void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params) {
   //  |        q1.s[3]      |  | q4.s[3]   ..    q10.s[3] |
   //  \---------------------/  \--------------------------/
   //                             accumulators 8x4 block
-  // q11, q14, q15 currently unused. q12 and q13 are used to load
+  // q11, q12, q13, q14, q15 are used to load
   // parameters used for the post-accumulation part of the kernel.
   // For completeness, here is the register layout in "d" registers:
   //                                    RHS 1x4 block
@@ -528,7 +528,7 @@ void KernelFloat32Neon(const KernelParamsFloat<8, 4>& params) {
         // d registers are listed in the clobbers list.
         : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r8", "r10", "cc",
           "memory", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8",
-          "q9", "q10", "q12", "q13");
+          "q9", "q10", "q11", "q12", "q13", "q14", "q15");
 }
 
 #undef RUY_MAKE_ZERO
@@ -1629,7 +1629,7 @@ void Kernel8bitNeon(const KernelParams8bit<4, 2>& params) {
            // d registers). There is a (currently unexplained) slowdown if
            // d registers are listed in the clobbers list.
           "memory", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8",
-          "q9", "q10", "q12", "q13", "q14", "q15");
+          "q9", "q10", "q11", "q12", "q13", "q14", "q15");
 }
 
 // Fast-int8 true "GEMV" kernel (RHS has 1 column). We assume the RHS
@@ -2487,7 +2487,7 @@ void Kernel8bitNeon1Col(const KernelParams8bit<4, 2>& params) {
            // d registers). There is a (currently unexplained) slowdown if
            // d registers are listed in the clobbers list.
           "memory", "q0", "q1", "q2", "q3", "q4", "q5", "q6", "q7", "q8",
-          "q9", "q10", "q12", "q13", "q14", "q15");
+          "q9", "q10", "q11", "q12", "q13", "q14", "q15");
 }
 
 #undef RUY_OFFSET_BIAS

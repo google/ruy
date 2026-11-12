@@ -27,7 +27,7 @@ Allocator::~Allocator() {
 }
 
 void* Allocator::AllocateFast(std::ptrdiff_t num_bytes) {
-  if (current_ + num_bytes > size_) {
+  if (ptr_ == nullptr || current_ + num_bytes > size_) {
     return nullptr;
   }
   void* ret = static_cast<char*>(ptr_) + current_;
@@ -125,7 +125,7 @@ void Allocator::FreeAll() {
   // of iterations.
   std::ptrdiff_t new_size = size_ + fallback_blocks_total_size_;
   ptr_ = detail::SystemAlignedAlloc(new_size);
-  size_ = new_size;
+  size_ = (ptr_ != nullptr) ? new_size : 0;
 
   fallback_blocks_.clear();
   fallback_blocks_total_size_ = 0;

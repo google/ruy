@@ -216,6 +216,7 @@ ruy_cc_library(
     ${ruy_1_mfpu_neon}
     ${ruy_2_O3}
   DEPS
+    ruy_check_macros
     ruy_mat
     ruy_system_aligned_alloc
     ruy_profiler_instrumentation
@@ -285,7 +286,14 @@ ruy_cc_test(
     ${ruy_2_O3}
   DEPS
     ruy_allocator
+    ruy_context
+    ruy_context_get_ctx
+    ruy_ctx
     ruy_gtest_wrapper
+    ruy_matrix
+    ruy_mul_params
+    ruy_path
+    ruy
 )
 
 ruy_cc_library(

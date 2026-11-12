@@ -461,12 +461,13 @@ void Pack8bitColMajorForNeon4Cols(const PackParams8bit& params) {
       // clang-format on
 
       : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1),
-        [ src_ptr2 ] "+r"(src_ptr2), [ src_ptr3 ] "+r"(src_ptr3)
+        [ src_ptr2 ] "+r"(src_ptr2), [ src_ptr3 ] "+r"(src_ptr3),
+        [ packed_ptr ] "+r"(packed_ptr)
       : [ src_inc0 ] "r"(src_inc0), [ src_inc1 ] "r"(src_inc1),
         [ src_inc2 ] "r"(src_inc2), [ src_inc3 ] "r"(src_inc3),
-        [ packed_ptr ] "r"(packed_ptr), [ params ] "r"(&params)
-      : "cc", "memory", "r1", "r2", "r3", "q0", "q1", "q2", "q3",
-        "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13");
+        [ params ] "r"(&params)
+      : "cc", "memory", "r1", "r2", "r3", "q0", "q1", "q2", "q3", "q4", "q5",
+        "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13", "q14", "q15");
 }
 
 // Packing code for out-of-order ARMv7 CPUs like the Krait 400 or A9.
@@ -601,9 +602,10 @@ void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params) {
           "6:\n"
       // clang-format on
 
-      : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1)
+      : [ src_ptr0 ] "+r"(src_ptr0), [ src_ptr1 ] "+r"(src_ptr1),
+        [ packed_ptr ] "+r"(packed_ptr)
       : [ src_inc0 ] "r"(src_inc0), [ src_inc1 ] "r"(src_inc1),
-        [ packed_ptr ] "r"(packed_ptr), [ params ] "r"(&params)
+        [ params ] "r"(&params)
       : "cc", "memory", "r1", "r2", "r3", "q0", "q1", "q2", "q3",
         "q4", "q5", "q6", "q7", "q8", "q9", "q10", "q11", "q12", "q13");
 }
@@ -611,9 +613,9 @@ void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params) {
 #undef RUY_OFFSET_SRC_PTR0
 #undef RUY_OFFSET_SRC_PTR1
 #undef RUY_OFFSET_SRC_PTR2
-#undef RUY_OFFSET_SRC_PTR32
+#undef RUY_OFFSET_SRC_PTR3
 #undef RUY_OFFSET_SUMS_PTR
-#undef RUY_OFFSET_PACKED_PTR0
+#undef RUY_OFFSET_PACKED_PTR
 #undef RUY_OFFSET_SRC_INC0
 #undef RUY_OFFSET_SRC_INC1
 #undef RUY_OFFSET_SRC_INC2

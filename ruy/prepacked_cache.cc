@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "ruy/prepacked_cache.h"
 
+#include "ruy/check_macros.h"
 #include "ruy/mat.h"
 #include "ruy/profiler/instrumentation.h"
 #include "ruy/system_aligned_alloc.h"
@@ -29,11 +30,17 @@ namespace {
 std::ptrdiff_t AllocateBuffers(PEMat* packed_matrix) {
   const std::ptrdiff_t data_bytes = DataBytes(*packed_matrix);
   packed_matrix->data = detail::SystemAlignedAlloc(data_bytes);
+  if (data_bytes > 0) {
+    RUY_CHECK(packed_matrix->data != nullptr);
+  }
   std::ptrdiff_t sums_bytes = 0;
   if (!packed_matrix->sums_type.is_floating_point) {
     // Integer quantized matrices also need the `sums` buffer.
     sums_bytes = SumsBytes(*packed_matrix);
     packed_matrix->sums = detail::SystemAlignedAlloc(sums_bytes);
+    if (sums_bytes > 0) {
+      RUY_CHECK(packed_matrix->sums != nullptr);
+    }
   }
   return data_bytes + sums_bytes;
 }
