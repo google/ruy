@@ -38,7 +38,8 @@ class CpuInfo final {
 
   // Common features
   const CpuCacheParams& CacheParams();
-  bool CurrentCpuIsA55ish();
+  bool CurrentCpuIsA53();
+  bool CurrentCpuIsA55();
   bool CurrentCpuIsX1();
 
  private:
