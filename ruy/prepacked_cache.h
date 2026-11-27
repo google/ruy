@@ -52,10 +52,11 @@ class PrepackedCache final {
   // (since they are used to determine whether to allocate a new buffer).
   // So they instead use the source matrix's data pointer. On the other hand,
   // the packed matrix's layout structure is already available by the time we
-  // need to handle Keys, and that's fortunate because it is more specific
-  // than the source matrix's layout: it also encodes details about the kernel's
-  // small-scale block layout. In the past, we made the kernel function pointer
-  // part of the cache key, but all that is relevant here is the packed layout.
+  // need to handle Keys, and it encodes details about the kernel's small-scale
+  // block layout. The source layout is also needed: different source views
+  // can have the same packed layout but different packed values. In the past,
+  // we made the kernel function pointer part of the cache key, but the packed
+  // layout already captures the relevant kernel details.
   //
   // The only other field that needs to be involved is the zero_point, for
   // quantized matrices, although it seems far-fetched that the same matrix
@@ -68,6 +69,8 @@ class PrepackedCache final {
   struct Key {
     // The source matrix's data pointer.
     const void* src_data;
+    // The source matrix's layout, see EMat::layout.
+    MatLayout src_layout;
     // The packed matrix's layout, see PEMat::layout.
     PMatLayout packed_layout;
     // The packed matrix's zero point (for integer-quantized matrices only).
@@ -75,8 +78,8 @@ class PrepackedCache final {
   };
 
   friend bool operator==(const Key& a, const Key& b) {
-    return a.src_data == b.src_data && a.packed_layout == b.packed_layout &&
-           a.zero_point == b.zero_point;
+    return a.src_data == b.src_data && a.src_layout == b.src_layout &&
+           a.packed_layout == b.packed_layout && a.zero_point == b.zero_point;
   }
 
   struct KeyHash {
@@ -109,13 +112,15 @@ class PrepackedCache final {
   // This is the method by which new matrices are cached, and existing cache
   // entries are queried.
   // `src_data` is the source matrix data pointer.
+  // `src_layout` is the source matrix layout.
   // `packed_matrix` is a packed matrix structure where all fields have already
   // been populated, except for the `data` and `sums` pointers which have not
   // yet been allocated.
   //
   // This method:
-  // 1. Queries the cache for an entry matching the given `src_data` pointer and
-  //    the relevant fields of `packed_matrix`, particularly its `layout`.
+  // 1. Queries the cache for an entry matching the given `src_data` pointer,
+  //    `src_layout`, and the relevant fields of `packed_matrix`, particularly
+  //    its `layout`.
   // 2. If a matching cache entry does not exist, it is created and inserted
   //    into the cache, and its `data` and `sums` buffers are allocated.
   // 3. The `packed_matrix` has its `data` and `sums` pointers set to point
@@ -124,7 +129,8 @@ class PrepackedCache final {
   //    entry.
   // 5. The return value is Action::kInsertedNewEntry if at step 2 a new
   //    entry was created. Otherwise it is Action::kGotExistingEntry.
-  Action Get(const void* src_data, PEMat* packed_matrix);
+  Action Get(const void* src_data, const MatLayout& src_layout,
+             PEMat* packed_matrix);
 
  private:
   void EjectOne();
