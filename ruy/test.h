@@ -73,6 +73,19 @@ limitations under the License.
 #include <unistd.h>
 #endif
 
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define RUY_TSAN
+#endif
+#if __has_feature(address_sanitizer)
+#define RUY_ASAN
+#endif
+#if __has_feature(memory_sanitizer)
+#define RUY_MSAN
+#include <sanitizer/msan_interface.h>
+#endif
+#endif  // defined(__has_feature)
+
 namespace ruy {
 
 const float kClampRatio = 0.1f;
@@ -698,15 +711,6 @@ TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::~TestSet() {
   GlobalContext().ClearPrepackedCache();
 }
 
-#if defined(__has_feature)
-#if __has_feature(thread_sanitizer)
-#define RUY_TSAN
-#endif
-#if __has_feature(address_sanitizer)
-#define RUY_ASAN
-#endif
-#endif  // defined(__has_feature)
-
 template <typename LhsScalar, typename RhsScalar, typename AccumScalar,
           typename DstScalar>
 void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::DoMul(
@@ -729,11 +733,49 @@ void TestSet<LhsScalar, RhsScalar, AccumScalar, DstScalar>::EvalRuy(
     GlobalContext().set_max_num_threads(1 + global_random_engine()() % 8);
   }
   get_ctx(&GlobalContext())->SetRuntimeEnabledPaths(result->path);
+#ifdef RUY_MSAN
+  auto poison_dst = [&]() {
+    if (!result->storage_matrix.data.empty()) {
+      __msan_poison(result->storage_matrix.data.data(),
+                    result->storage_matrix.data.size() * sizeof(DstScalar));
+    }
+  };
+  auto check_dst_padding_still_poisoned = [&]() {
+    const Layout& layout = result->storage_matrix.matrix.layout();
+    const int inner_dim =
+        layout.order() == Order::kColMajor ? layout.rows() : layout.cols();
+    const int outer_dim =
+        layout.order() == Order::kColMajor ? layout.cols() : layout.rows();
+    const int pad_elems = layout.stride() - inner_dim;
+    if (pad_elems > 0) {
+      const std::size_t pad_bytes =
+          static_cast<std::size_t>(pad_elems) * sizeof(DstScalar);
+      for (int outer = 0; outer < outer_dim; ++outer) {
+        const unsigned char* pad_ptr = reinterpret_cast<const unsigned char*>(
+            result->storage_matrix.data.data() +
+            static_cast<std::ptrdiff_t>(outer) * layout.stride() + inner_dim);
+        for (std::size_t byte = 0; byte < pad_bytes; ++byte) {
+          RUY_CHECK_EQ(__msan_test_shadow(pad_ptr + byte, 1), 0);
+        }
+      }
+    }
+  };
+  poison_dst();
+#endif
   DoMul(result);
+#ifdef RUY_MSAN
+  check_dst_padding_still_poisoned();
+#endif
   // If enabling caching, Mul is stateful, so we run it a second time to get
   // coverage of these aspects.
   if (!benchmark && (cache_lhs || cache_rhs)) {
+#ifdef RUY_MSAN
+    poison_dst();
+#endif
     DoMul(result);
+#ifdef RUY_MSAN
+    check_dst_padding_still_poisoned();
+#endif
   }
   RUY_CHECK_EQ(GlobalContext().last_used_path(), result->path);
   GlobalContext().set_explicit_tuning(Tuning::kAuto);

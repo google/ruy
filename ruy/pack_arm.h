@@ -17,6 +17,7 @@ limitations under the License.
 #define RUY_RUY_PACK_ARM_H_
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 
@@ -139,6 +140,34 @@ void Pack8bitColMajorForNeon2Cols(const PackParams8bit& params);
 
 #if (RUY_PLATFORM_NEON_32 || RUY_PLATFORM_NEON_64) && RUY_OPT(ASM)
 
+// MemorySanitizer cannot observe stores performed inside inline assembly blocks
+// in the Arm NEON packing routines, so unpoison the written packed data and
+// sums buffers.
+template <typename PackedScalar>
+void MsanUnpoisonPacked(PMat<PackedScalar>* packed_matrix, int start_col,
+                        int end_col) {
+#if RUY_HAVE_MSAN
+  const int num_cols = end_col - start_col;
+  if (num_cols <= 0) {
+    return;
+  }
+  __msan_unpoison(
+      packed_matrix->data +
+          static_cast<std::ptrdiff_t>(packed_matrix->layout.stride) * start_col,
+      static_cast<std::size_t>(num_cols) * packed_matrix->layout.stride *
+          sizeof(PackedScalar));
+  if (packed_matrix->sums) {
+    __msan_unpoison(packed_matrix->sums + start_col,
+                    static_cast<std::size_t>(num_cols) *
+                        sizeof(typename PMat<PackedScalar>::SumsType));
+  }
+#else
+  (void)packed_matrix;
+  (void)start_col;
+  (void)end_col;
+#endif
+}
+
 template <typename Scalar>
 struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
                 std::int8_t, std::int32_t, Order::kColMajor> {
@@ -213,6 +242,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 4>, Scalar,
       Pack8bitColMajorForNeon4Cols(params);
 #endif  // RUY_PLATFORM_NEON_64
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 
@@ -266,6 +296,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kColMajor, 16, 2>, Scalar,
                          kInputXor, &params);
       Pack8bitColMajorForNeon2Cols(params);
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 #endif  // (RUY_PLATFORM_NEON_32) && RUY_OPT(ASM)
@@ -334,6 +365,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
             packed_ptr, sums_ptr, kInputXor);
       }
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 #endif  // (RUY_PLATFORM_NEON_64&& RUY_OPT(ASM)
@@ -429,6 +461,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 8>, float,
                                kOutputStride);
 #endif  // RUY_PLATFORM_NEON_64
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 
@@ -486,6 +519,7 @@ struct PackImpl<Path::kNeon, FixedKernelLayout<Order::kRowMajor, 1, 4>, float,
                                src_matrix.layout.rows, packed_ptr,
                                kOutputStride);
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 #endif  // (RUY_PLATFORM_NEON_32)
@@ -569,6 +603,7 @@ struct PackImpl<Path::kNeonDotprod, FixedKernelLayout<Order::kColMajor, 4, 8>,
           src_inc3, src_cols, src_matrix.zero_point, packed_ptr,
           packed_matrix->layout.stride, sums_ptr, kInputXor);
     }
+    MsanUnpoisonPacked(packed_matrix, start_col, end_col);
   }
 };
 

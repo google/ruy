@@ -40,4 +40,15 @@ limitations under the License.
 #define RUY_STR(s) RUY_STR_UNEXPANDED(s)
 #define RUY_STR_UNEXPANDED(s) #s
 
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer)
+#define RUY_HAVE_MSAN 1
+#include <sanitizer/msan_interface.h>
+#endif
+#endif
+
+#ifndef RUY_HAVE_MSAN
+#define RUY_HAVE_MSAN 0
+#endif
+
 #endif  // RUY_RUY_ASM_HELPERS_H_

@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef RUY_RUY_KERNEL_ARM_H_
 #define RUY_RUY_KERNEL_ARM_H_
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
@@ -34,6 +35,43 @@ limitations under the License.
 namespace ruy {
 
 #if RUY_PLATFORM_NEON && RUY_OPT(ASM)
+
+// MemorySanitizer cannot observe stores performed inside inline assembly blocks
+// in the Arm NEON kernels, so unpoison the written destination tile after each
+// kernel invocation.
+template <typename DstScalar>
+void MsanUnpoisonDst(int start_row, int start_col, int end_row, int end_col,
+                     Mat<DstScalar>* dst) {
+#if RUY_HAVE_MSAN
+  const int clamped_end_row = std::min(end_row, dst->layout.rows);
+  const int clamped_end_col = std::min(end_col, dst->layout.cols);
+  const int num_rows = clamped_end_row - start_row;
+  const int num_cols = clamped_end_col - start_col;
+  if (num_rows <= 0 || num_cols <= 0) {
+    return;
+  }
+  if (start_row == 0 && num_rows == dst->layout.stride) {
+    __msan_unpoison(
+        dst->data.get() +
+            static_cast<std::ptrdiff_t>(start_col) * dst->layout.stride,
+        static_cast<std::size_t>(num_cols) * dst->layout.stride *
+            sizeof(DstScalar));
+  } else {
+    for (int col = start_col; col < clamped_end_col; ++col) {
+      __msan_unpoison(
+          dst->data.get() +
+              static_cast<std::ptrdiff_t>(col) * dst->layout.stride + start_row,
+          static_cast<std::size_t>(num_rows) * sizeof(DstScalar));
+    }
+  }
+#else
+  (void)start_row;
+  (void)start_col;
+  (void)end_row;
+  (void)end_col;
+  (void)dst;
+#endif
+}
 
 RUY_INHERIT_KERNEL(Path::kStandardCpp, Path::kNeon)
 RUY_INHERIT_KERNEL(Path::kNeon, Path::kNeonDotprod)
@@ -68,13 +106,12 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeon1Col(params);
-      return;
-    }
-    if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
+    } else if (__builtin_expect(tuning == Tuning::kA55ish, true)) {
       Kernel8bitNeonA55ish(params);
     } else {
       Kernel8bitNeon(params);
     }
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 #endif
@@ -96,9 +133,10 @@ struct Kernel<Path::kNeon, std::int8_t, std::int8_t, std::int32_t, DstScalar> {
     if (dst->layout.cols == 1 &&
         mul_params.channel_dimension() == ChannelDimension::kRow) {
       Kernel8bitNeon1Col(params);
-      return;
+    } else {
+      Kernel8bitNeon(params);
     }
-    Kernel8bitNeon(params);
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 #endif
@@ -128,6 +166,7 @@ struct Kernel<Path::kNeonDotprod, std::int8_t, std::int8_t, std::int32_t,
     } else {
       Kernel8bitNeonDotprod(params);
     }
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 #endif
@@ -160,6 +199,7 @@ struct Kernel<Path::kNeon, float, float, float, float> {
     } else {
       KernelFloatNeon(params);
     }
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 #endif
@@ -182,6 +222,7 @@ struct Kernel<Path::kNeon, float, float, float, float> {
                           end_col, dst, &params);
 
     KernelFloat32Neon(params);
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 #endif
@@ -210,6 +251,7 @@ struct Kernel<Path::kNeonDotprod, float, float, float, float> {
     } else {
       KernelFloatNeon(params);
     }
+    MsanUnpoisonDst(start_row, start_col, end_row, end_col, dst);
   }
 };
 
